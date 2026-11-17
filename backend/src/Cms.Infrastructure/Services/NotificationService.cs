@@ -23,6 +23,7 @@ public class NotificationService : INotificationService
         string title,
         string message,
         string channel,
+        string idempotencyKey,
         CancellationToken cancellationToken = default)
     {
         var now = _dateTimeService.UtcNow;
@@ -33,6 +34,7 @@ public class NotificationService : INotificationService
             Title = title,
             Message = message,
             Channel = channel,
+            IdempotencyKey = idempotencyKey,
             CreatedAt = now
         };
 
@@ -47,6 +49,8 @@ public class NotificationService : INotificationService
                 Message = message,
                 Channel = channel
             }),
+            EntityId = notification.Id,
+            IdempotencyKey = idempotencyKey,
             CreatedAt = now
         };
 
