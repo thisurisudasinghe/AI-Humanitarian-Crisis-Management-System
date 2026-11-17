@@ -1,15 +1,15 @@
-
 using Cms.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Cms.Infrastructure.Data.Configurations;
 
-public class OutboxMessageConfiguration : IEntityTypeConfiguration<OutboxMessage>
+public class OutboxMessageConfiguration
+    : IEntityTypeConfiguration<OutboxMessage>
 {
     public void Configure(EntityTypeBuilder<OutboxMessage> builder)
     {
-        builder.ToTable("OutboxMessages");
+        builder.ToTable("OutboxMessages", "notif");
 
         builder.HasKey(o => o.Id);
 
@@ -18,26 +18,43 @@ public class OutboxMessageConfiguration : IEntityTypeConfiguration<OutboxMessage
             .HasMaxLength(200);
 
         builder.Property(o => o.Payload)
+            .HasColumnName("PayloadJson")
             .IsRequired()
             .HasColumnType("nvarchar(max)");
+
+        builder.Property(o => o.IdempotencyKey)
+            .IsRequired()
+            .HasMaxLength(200);
+
+        builder.Property(o => o.EntityId)
+            .IsRequired();
+        builder.Property(o => o.ProcessingStartedAt);
+
+        builder.Property(o => o.Attempts)
+            .IsRequired();
+
+        builder.Ignore(o => o.RetryCount);
 
         builder.Property(o => o.Status)
             .HasConversion<string>()
             .IsRequired()
             .HasMaxLength(30);
 
+        builder.Property(o => o.NextRetryAt)
+            .HasColumnName("NextAttemptAt");
+
+        builder.Ignore(o => o.NextAttemptAt);
+
         builder.Property(o => o.ErrorMessage)
+            .HasColumnName("LastError")
             .HasMaxLength(2000);
 
-        builder.HasIndex(
-                o => new { o.Status, o.NextRetryAt },
-                "IX_OutboxMessages_Status_NextRetryAt_Pending")
-            .HasFilter("[Status] = 'Pending'");
+        builder.Ignore(o => o.LastError);
 
-        builder.HasIndex(
-                o => new { o.Status, o.NextRetryAt },
-                "IX_OutboxMessages_Status_NextRetryAt_Failed")
-            .HasFilter("[Status] = 'Failed'");
+        builder.HasIndex(o => o.IdempotencyKey)
+            .IsUnique();
+
+        builder.HasIndex(o => new { o.Status, o.NextRetryAt });
 
         builder.HasIndex(o => o.CreatedAt);
     }
