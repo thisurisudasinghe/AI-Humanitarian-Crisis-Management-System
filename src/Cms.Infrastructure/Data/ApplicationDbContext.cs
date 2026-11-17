@@ -19,6 +19,9 @@ public class ApplicationDbContext : DbContext
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
     public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<Recommendation> Recommendations => Set<Recommendation>();
+
+    public DbSet<DecisionRecord> DecisionRecords => Set<DecisionRecord>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

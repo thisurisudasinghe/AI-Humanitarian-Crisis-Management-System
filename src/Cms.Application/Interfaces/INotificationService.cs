@@ -1,4 +1,3 @@
-
 namespace Cms.Application.Interfaces;
 
 public interface INotificationService
@@ -8,5 +7,6 @@ public interface INotificationService
         string title,
         string message,
         string channel,
+        string idempotencyKey,
         CancellationToken cancellationToken = default);
 }
