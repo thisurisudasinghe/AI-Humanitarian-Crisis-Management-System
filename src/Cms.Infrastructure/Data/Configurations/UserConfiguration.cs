@@ -1,5 +1,4 @@
 using Cms.Domain.Entities;
-using Cms.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -9,7 +8,7 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
 {
     public void Configure(EntityTypeBuilder<User> builder)
     {
-        builder.ToTable("Users");
+        builder.ToTable("Users", "identity");
 
         builder.HasKey(u => u.Id);
 
@@ -27,9 +26,9 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.EmailHash)
             .HasMaxLength(64);
 
-        builder.HasIndex(u => u.EmailHash)
+        builder.HasIndex(u => u.EmailHash, "UX_users_email_hash")
             .IsUnique()
-            .HasFilter("[EmailHash] IS NOT NULL");
+            .HasFilter("[email_hash] IS NOT NULL");
 
         builder.Property(u => u.PasswordHash)
             .IsRequired()
@@ -46,10 +45,13 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.HasOne(u => u.Organisation)
             .WithMany()
             .HasForeignKey(u => u.OrganisationId)
+            .HasConstraintName("FK_users_organisations")
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasMany(u => u.UserRoles)
             .WithOne(ur => ur.User)
-            .HasForeignKey(ur => ur.UserId);
+            .HasForeignKey(ur => ur.UserId)
+            .HasConstraintName("FK_user_roles_users")
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

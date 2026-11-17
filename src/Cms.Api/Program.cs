@@ -1,12 +1,16 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Threading.RateLimiting;
 using Cms.Api.Authentication;
-using Cms.Application.Interfaces;
-using Cms.Infrastructure.Data;
-using Cms.Infrastructure.Services;
-using Cms.Infrastructure.Authentication;
-using Microsoft.EntityFrameworkCore;
+using Cms.Api.Middleware;
+using Cms.Api.Modules;
+using Cms.Infrastructure;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.OpenApi;
 
 var builder = WebApplication.CreateBuilder(args);
-// Map V4 environment variables to application configuration keys
+
+// Secrets never live in source control. Environment variables win over appsettings.
 builder.Configuration["EmailProtection:EncryptionKey"] =
     Environment.GetEnvironmentVariable("EMAIL_ENCRYPTION_KEY")
     ?? builder.Configuration["EmailProtection:EncryptionKey"];
@@ -19,43 +23,117 @@ builder.Configuration["Jwt:SecretKey"] =
     Environment.GetEnvironmentVariable("JWT_SECRET")
     ?? builder.Configuration["Jwt:SecretKey"];
 
-// Register API services
-builder.Services.AddControllers();
-builder.Services.AddOpenApi();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 
-// Register SQL Server Database
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(
-        builder.Configuration.GetConnectionString("DefaultConnection")));
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "AI-Powered Humanitarian Crisis Management API",
+        Version = "v1",
+        Description = "Crisis response, aid coordination, resources, shelters and notifications."
+    });
 
-// Register Shared Infrastructure Services
-builder.Services.AddHttpContextAccessor();
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        In = ParameterLocation.Header,
+        Description = "Paste the JWT access token from /api/v1/auth/login."
+    });
 
-builder.Services.AddScoped<IDateTimeService, DateTimeService>();
-builder.Services.AddScoped<IAuditService, AuditService>();
-builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
-builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
-builder.Services.AddScoped<INotificationService, NotificationService>();
-builder.Services.AddScoped<JwtTokenService>();
-builder.Services.AddScoped<Cms.Infrastructure.Security.EmailProtectionService>();
-builder.Services.AddScoped<Cms.Infrastructure.Security.PasswordHashingService>();
+    var xmlPath = Path.Combine(AppContext.BaseDirectory, "Cms.Api.xml");
+    if (File.Exists(xmlPath))
+    {
+        options.IncludeXmlComments(xmlPath, includeControllerXmlComments: true);
+    }
+});
 
-// Register JWT Authentication and Authorization
+builder.Services.AddProblemDetails();
+
+// Platform foundation: DbContext, current user, audit trail, repository, stubs, HTTP client.
+builder.Services.AddFoundation(builder.Configuration);
+
+// Authentication and authorisation (JWT bearer, role claim "role").
 builder.Services.AddJwtAuthentication(builder.Configuration);
+
+// Every feature module registers itself here.
+builder.Services.AddCmsModules();
+
+var allowedOrigins = builder.Configuration
+    .GetSection("Cors:AllowedOrigins")
+    .Get<string[]>()
+    ?? ["http://localhost:3000"];
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("Default", policy =>
+        policy
+            .WithOrigins(allowedOrigins)
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials());
+});
+
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    // Baseline protection for every endpoint: 100 requests per minute per client IP.
+    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
+    {
+        var key = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        return RateLimitPartition.GetFixedWindowLimiter(key, _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 100,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0
+        });
+    });
+
+    // Stricter policy for credential endpoints. Apply with
+    // [EnableRateLimiting("auth")] on /api/v1/auth/* controllers.
+    options.AddPolicy("auth", httpContext =>
+    {
+        var key = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        return RateLimitPartition.GetFixedWindowLimiter(key, _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 60,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0
+        });
+    });
+});
 
 var app = builder.Build();
 
-// Configure HTTP pipeline
+app.UseMiddleware<ExceptionHandlingMiddleware>();
+
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+else
+{
+    app.UseHsts();
+    app.UseHttpsRedirection();
 }
 
-app.UseHttpsRedirection();
-
+app.UseCors("Default");
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapCmsModules();
 
 app.Run();
+
+/// <summary>Exposed so the integration test harness can reference the API assembly.</summary>
+public partial class Program;
