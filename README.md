@@ -88,20 +88,28 @@ dotnet test Cms.slnx
 
 1. Create a SQL Server database named `CmsDb`.
 2. Configure the database connection string in the API configuration.
-3. Apply EF Core migrations from the repository root:
+3. Apply the schema.
 
-```powershell
-dotnet ef database update --project backend/src/Cms.Infrastructure --startup-project backend/src/Cms.Api
-```
+> **Known state (D1-02 pending):** The checked-in EF migrations predate the V4
+> `identity`/`common` snake_case model, so `dotnet ef database update` currently
+> stops with `PendingModelChangesWarning`. Do not regenerate or delete the
+> migrations yet: the agreed plan is to replace them with ordered SQL scripts
+> once the D-01 schema decision is signed off. Until then, create a scratch
+> database from the current model (for example with an `EnsureCreated` harness)
+> when you need to run the API locally.
 
 ### SQL Script Execution Order
 
-For manual SQL setup, execute the following scripts in order:
+After D1-02 lands, execute the scripts in the canonical order:
 
-1. `backend/db/00_foundation.sql`
-2. `backend/db/98_foreign_keys.sql`
+1. `backend/db/00_common.sql`
+2. `backend/db/01_cases.sql` … `backend/db/08_don.sql` (module owners publish these)
+3. `backend/db/98_foreign_keys.sql`
+4. `backend/db/99_seed_users.sql`
+5. `backend/db/90_seed_scenario.sql`, `backend/db/91_seed_ops.sql`
 
-**Important:** Do not execute the foundation script against a database that already contains the foundation tables.
+**Important:** Do not execute a foundation script against a database that already
+contains the foundation tables.
 
 ## 7. Secret Management
 
