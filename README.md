@@ -91,3 +91,50 @@ Refer to `ALLOCATION.md` for the agreed developer responsibilities.
 Submit → Verify → AI Classify & Score → Human Review → Allocate → Notify → Complete → Audit
 
 AI provides recommendations only. Critical decisions remain under human control.
+
+## 10. Build and test
+
+```powershell
+dotnet build Cms.slnx
+dotnet test Cms.slnx
+```
+
+The test suite includes an in-memory `WebApplicationFactory` harness that runs
+the real middleware, JWT authentication, authorization policies and controllers.
+No SQL Server instance is required for `dotnet test`.
+
+## 11. API overview
+
+| Area | Endpoints |
+|---|---|
+| Identity | `/api/v1/auth/register`, `/login`, `/refresh`, `/logout`, `/me`, `/role-check` |
+| Users | `/api/v1/users` (SystemAdmin) |
+| Organisations | `/api/v1/organisations` (SystemAdmin) |
+| Configuration | `/api/v1/admin/config` (SystemAdmin) |
+| Audit | `/api/v1/audit-events` (SystemAdmin) |
+| KPIs | `/api/v1/kpis` (`KpiViewer`) |
+| Health | `/api/Health` (public) |
+
+Swagger is available at `/swagger` in Development. Every endpoint is authenticated
+by default; public endpoints use `[AllowAnonymous]`.
+
+A Postman master collection is provided at
+`docs/postman/Cms.postman_collection.json`. Set `baseUrl`, `adminEmail` and
+`password` collection variables before running it.
+
+## 12. Security
+
+See `docs/SECURITY.md` for the enforced controls, role policies, rate limits,
+secret handling and threat-model summary. Do not commit secrets, role strings
+outside `RoleNames`, or audit-row updates.
+
+## 13. Dev 1 status notes
+
+- Identity, hardening, audit viewer and administration endpoints are implemented
+  and covered by the integration harness.
+- KPI endpoint returns a typed provisional report until Members 2–4 publish the
+  final cross-module table/column names; no guessed SQL is used.
+- Plain SQL script replacement (`D1-02`) and cross-module foreign keys (`98`)
+  remain gated on the D-01 team decision. Keep the EF migrations until sign-off.
+- Donations (`D1-09`) is P2 and is not part of the P1 release unless the core
+  loop is green before feature freeze.

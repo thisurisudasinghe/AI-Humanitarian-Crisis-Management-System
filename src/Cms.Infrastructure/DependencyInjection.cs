@@ -48,6 +48,10 @@ public static class DependencyInjection
         services.TryAddScoped<JwtTokenService>();
         services.TryAddScoped<EmailProtectionService>();
         services.TryAddScoped<PasswordHashingService>();
+        services.TryAddScoped<IAuthenticationService, AuthenticationService>();
+        services.TryAddScoped<IAuditQueryService, AuditQueryService>();
+        services.TryAddScoped<IAdminService, AdminService>();
+        services.TryAddScoped<IKpiService, KpiService>();
         services.TryAddScoped(typeof(IRepository<>), typeof(EfRepository<>));
 
         services.AddCmsHttpClient();

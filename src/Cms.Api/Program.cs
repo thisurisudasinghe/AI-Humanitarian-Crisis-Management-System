@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
@@ -5,12 +6,18 @@ using Cms.Api.Authentication;
 using Cms.Api.Middleware;
 using Cms.Api.Modules;
 using Cms.Infrastructure;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.OpenApi;
 
 var builder = WebApplication.CreateBuilder(args);
+var isDevelopment = builder.Environment.IsDevelopment();
 
-// Secrets never live in source control. Environment variables win over appsettings.
+static string GenerateKey() =>
+    Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
+
+// Environment variables win over appsettings/user-secrets. In Development only,
+// missing keys become ephemeral process keys so a fresh checkout still runs.
 builder.Configuration["EmailProtection:EncryptionKey"] =
     Environment.GetEnvironmentVariable("EMAIL_ENCRYPTION_KEY")
     ?? builder.Configuration["EmailProtection:EncryptionKey"];
@@ -23,9 +30,64 @@ builder.Configuration["Jwt:SecretKey"] =
     Environment.GetEnvironmentVariable("JWT_SECRET")
     ?? builder.Configuration["Jwt:SecretKey"];
 
-builder.Services.AddControllers()
-    .AddJsonOptions(options =>
-        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+builder.Configuration["ConnectionStrings:DefaultConnection"] =
+    Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
+    ?? builder.Configuration["ConnectionStrings:DefaultConnection"];
+
+if (isDevelopment)
+{
+    builder.Configuration["EmailProtection:EncryptionKey"] ??= GenerateKey();
+    builder.Configuration["EmailProtection:HashKey"] ??= GenerateKey();
+    builder.Configuration["Jwt:SecretKey"] ??= GenerateKey();
+    builder.Configuration["ConnectionStrings:DefaultConnection"] ??=
+        "Server=(localdb)\\mssqllocaldb;Database=CmsDb;Trusted_Connection=True;TrustServerCertificate=True;";
+}
+else
+{
+    var missingSecrets = new List<string>();
+
+    if (string.IsNullOrWhiteSpace(builder.Configuration["Jwt:SecretKey"]))
+    {
+        missingSecrets.Add("JWT_SECRET");
+    }
+
+    if (string.IsNullOrWhiteSpace(builder.Configuration["EmailProtection:EncryptionKey"]))
+    {
+        missingSecrets.Add("EMAIL_ENCRYPTION_KEY");
+    }
+
+    if (string.IsNullOrWhiteSpace(builder.Configuration["EmailProtection:HashKey"]))
+    {
+        missingSecrets.Add("EMAIL_HASH_KEY");
+    }
+
+    if (string.IsNullOrWhiteSpace(builder.Configuration["ConnectionStrings:DefaultConnection"]))
+    {
+        missingSecrets.Add("ConnectionStrings__DefaultConnection");
+    }
+
+    if (missingSecrets.Count > 0)
+    {
+        throw new InvalidOperationException(
+            $"Missing required configuration outside Development: {string.Join(", ", missingSecrets)}");
+    }
+}
+
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.Limits.MaxRequestBodySize = RequestBodyLimitMiddleware.MaxBodyBytes;
+});
+
+builder.Services.AddControllers(options =>
+{
+    options.Filters.Add(new ProducesAttribute("application/json"));
+})
+.AddJsonOptions(options =>
+    options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()))
+.ConfigureApiBehaviorOptions(options =>
+{
+    options.InvalidModelStateResponseFactory = ValidationProblemResponse.Create;
+});
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
@@ -59,7 +121,7 @@ builder.Services.AddProblemDetails();
 // Platform foundation: DbContext, current user, audit trail, repository, stubs, HTTP client.
 builder.Services.AddFoundation(builder.Configuration);
 
-// Authentication and authorisation (JWT bearer, role claim "role").
+// Authentication and authorisation (JWT bearer, role claim "role", default deny).
 builder.Services.AddJwtAuthentication(builder.Configuration);
 
 // Every feature module registers itself here.
@@ -84,6 +146,18 @@ builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 
+    options.OnRejected = async (context, token) =>
+    {
+        context.HttpContext.Response.Headers.RetryAfter = "60";
+
+        await ProblemDetailsResponses.WriteAsync(
+            context.HttpContext,
+            StatusCodes.Status429TooManyRequests,
+            "Too many requests",
+            "The rate limit for this endpoint has been reached. Retry after 60 seconds.",
+            "RATE_LIMITED");
+    };
+
     // Baseline protection for every endpoint: 100 requests per minute per client IP.
     options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
     {
@@ -96,8 +170,7 @@ builder.Services.AddRateLimiter(options =>
         });
     });
 
-    // Stricter policy for credential endpoints. Apply with
-    // [EnableRateLimiting("auth")] on /api/v1/auth/* controllers.
+    // Stricter policy for credential endpoints.
     options.AddPolicy("auth", httpContext =>
     {
         var key = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
@@ -108,13 +181,27 @@ builder.Services.AddRateLimiter(options =>
             QueueLimit = 0
         });
     });
+
+    // Public read-only endpoints (for example health checks) get a tighter budget.
+    options.AddPolicy("public", httpContext =>
+    {
+        var key = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        return RateLimitPartition.GetFixedWindowLimiter(key, _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 30,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0
+        });
+    });
 });
 
 var app = builder.Build();
 
 app.UseMiddleware<ExceptionHandlingMiddleware>();
+app.UseMiddleware<SecurityHeadersMiddleware>();
+app.UseMiddleware<RequestBodyLimitMiddleware>();
 
-if (app.Environment.IsDevelopment())
+if (isDevelopment)
 {
     app.UseSwagger();
     app.UseSwaggerUI();
