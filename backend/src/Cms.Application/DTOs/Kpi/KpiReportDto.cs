@@ -32,9 +32,27 @@ public class KpiReportDto
 
     public int? DeadLetterCount { get; set; }
 
+    /// <summary>Requests per area (FR-MAP-05, P2). Empty until cases/geo schemas are published.</summary>
+    public IReadOnlyCollection<KpiAreaBreakdownDto> RequestsByArea { get; set; } =
+        Array.Empty<KpiAreaBreakdownDto>();
+
+    /// <summary>Shelters per area (FR-MAP-05, P2). Empty until shelter/geo schemas are published.</summary>
+    public IReadOnlyCollection<KpiAreaBreakdownDto> SheltersByArea { get; set; } =
+        Array.Empty<KpiAreaBreakdownDto>();
+
     /// <summary>
     /// Indicates that aggregates are provisional until the owning modules publish
     /// their final table and column names.
     /// </summary>
     public bool IsPlaceholder { get; set; } = true;
+}
+
+/// <summary>One row of an area breakdown table on the KPI page.</summary>
+public class KpiAreaBreakdownDto
+{
+    public Guid AreaId { get; set; }
+
+    public string AreaName { get; set; } = string.Empty;
+
+    public int Count { get; set; }
 }

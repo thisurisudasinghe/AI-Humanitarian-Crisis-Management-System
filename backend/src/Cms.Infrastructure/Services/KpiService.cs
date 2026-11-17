@@ -38,12 +38,22 @@ public sealed class KpiService : IKpiService
 
         return Task.FromResult(new KpiReportDto
         {
-            From = from,
-            To = to,
+            From = AsUtc(from),
+            To = AsUtc(to),
             CrisisEventId = crisisEventId,
             AreaId = areaId,
             GeneratedAt = _dateTimeService.UtcNow,
+            RequestsByArea = Array.Empty<KpiAreaBreakdownDto>(),
+            SheltersByArea = Array.Empty<KpiAreaBreakdownDto>(),
             IsPlaceholder = true
         });
     }
+
+    private static DateTime AsUtc(DateTime value) =>
+        value.Kind switch
+        {
+            DateTimeKind.Utc => value,
+            DateTimeKind.Local => value.ToUniversalTime(),
+            _ => DateTime.SpecifyKind(value, DateTimeKind.Utc)
+        };
 }

@@ -219,4 +219,178 @@ public sealed class AdminEndpointTests : IClassFixture<CmsWebApplicationFactory>
             "/api/v1/kpis?from=2026-11-17T00:00:00Z&to=2026-11-01T00:00:00Z");
         Assert.Equal(HttpStatusCode.UnprocessableEntity, invalid.StatusCode);
     }
+
+    [Theory]
+    [InlineData("POST", "/api/v1/users")]
+    [InlineData("PUT", "/api/v1/users/00000000-0000-0000-0000-000000000001/roles")]
+    [InlineData("PATCH", "/api/v1/users/00000000-0000-0000-0000-000000000001")]
+    [InlineData("POST", "/api/v1/organisations")]
+    [InlineData("PATCH", "/api/v1/organisations/00000000-0000-0000-0000-000000000001")]
+    [InlineData("PATCH", "/api/v1/admin/config")]
+    public async Task Admin_write_endpoints_reject_non_admin_callers(string method, string path)
+    {
+        await _factory.EnsureSeededAsync();
+        using var citizen = await _factory.CreateAuthenticatedClientAsync(CmsWebApplicationFactory.CitizenEmail);
+        using var officer = await _factory.CreateAuthenticatedClientAsync(CmsWebApplicationFactory.OfficerEmail);
+
+        using var citizenRequest = new HttpRequestMessage(new HttpMethod(method), path)
+        {
+            Content = JsonContent.Create(new { })
+        };
+        using var officerRequest = new HttpRequestMessage(new HttpMethod(method), path)
+        {
+            Content = JsonContent.Create(new { })
+        };
+
+        Assert.Equal(HttpStatusCode.Forbidden, (await citizen.SendAsync(citizenRequest)).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await officer.SendAsync(officerRequest)).StatusCode);
+    }
+
+    [Fact]
+    public async Task Admin_can_read_users_and_organisations_by_id_and_unknown_ids_return_404()
+    {
+        using var admin = await _factory.CreateAuthenticatedClientAsync(CmsWebApplicationFactory.AdminEmail);
+
+        var users = await admin.GetAsync("/api/v1/users?page=1&pageSize=5");
+        var userPage = await users.Content.ReadFromJsonAsync<PagedResultDto<UserSummaryDto>>(JsonOptions);
+        Assert.NotNull(userPage);
+        var firstUser = Assert.Single(userPage!.Items.Take(1));
+
+        var userResponse = await admin.GetAsync($"/api/v1/users/{firstUser.Id}");
+        Assert.Equal(HttpStatusCode.OK, userResponse.StatusCode);
+        var user = await userResponse.Content.ReadFromJsonAsync<UserSummaryDto>(JsonOptions);
+        Assert.NotNull(user);
+        Assert.Equal(firstUser.Id, user!.Id);
+
+        var missingUser = await admin.GetAsync($"/api/v1/users/{Guid.NewGuid()}");
+        Assert.Equal(HttpStatusCode.NotFound, missingUser.StatusCode);
+
+        var organisations = await admin.GetAsync("/api/v1/organisations?page=1&pageSize=5");
+        var organisationPage = await organisations.Content.ReadFromJsonAsync<PagedResultDto<OrganisationDto>>(JsonOptions);
+        Assert.NotNull(organisationPage);
+        var firstOrganisation = Assert.Single(organisationPage!.Items.Take(1));
+
+        var organisationResponse = await admin.GetAsync($"/api/v1/organisations/{firstOrganisation.Id}");
+        Assert.Equal(HttpStatusCode.OK, organisationResponse.StatusCode);
+        var organisation = await organisationResponse.Content.ReadFromJsonAsync<OrganisationDto>(JsonOptions);
+        Assert.NotNull(organisation);
+        Assert.Equal(firstOrganisation.Id, organisation!.Id);
+
+        var missingOrganisation = await admin.GetAsync($"/api/v1/organisations/{Guid.NewGuid()}");
+        Assert.Equal(HttpStatusCode.NotFound, missingOrganisation.StatusCode);
+    }
+
+    [Fact]
+    public async Task Replacing_roles_with_an_unknown_role_returns_422()
+    {
+        using var admin = await _factory.CreateAuthenticatedClientAsync(CmsWebApplicationFactory.AdminEmail);
+
+        var createResponse = await admin.PostAsJsonAsync("/api/v1/users", new CreateUserRequestDto
+        {
+            FullName = "Role Validation User",
+            Email = $"role.validation.{Guid.NewGuid():N}@tests.local",
+            Password = TestSecrets.Password,
+            Roles = [RoleNames.Citizen]
+        });
+
+        var created = await createResponse.Content.ReadFromJsonAsync<UserSummaryDto>(JsonOptions);
+        Assert.NotNull(created);
+
+        var response = await admin.PutAsJsonAsync(
+            $"/api/v1/users/{created!.Id}/roles",
+            new ReplaceRolesRequestDto { Roles = ["SuperWizard"] });
+
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Equal("VALIDATION_FAILED", document.RootElement.GetProperty("code").GetString());
+    }
+
+    [Fact]
+    public async Task Audit_query_filters_by_action_actor_and_date_and_pages_newest_first()
+    {
+        using var admin = await _factory.CreateAuthenticatedClientAsync(CmsWebApplicationFactory.AdminEmail);
+        var adminAuth = await _factory.LoginAsync(CmsWebApplicationFactory.AdminEmail);
+
+        await admin.PatchAsJsonAsync("/api/v1/admin/config", new UpdateConfigRequestDto
+        {
+            Settings =
+            [
+                new SystemSettingValueDto { Key = SystemSettingKeys.SlaHours, Value = "24" }
+            ]
+        });
+
+        await admin.PostAsJsonAsync("/api/v1/organisations", new CreateOrganisationRequestDto
+        {
+            Name = $"Audit Filter Org {Guid.NewGuid():N}",
+            OrganisationType = OrganisationType.Other
+        });
+
+        var actionResponse = await admin.GetAsync(
+            $"/api/v1/audit-events?action={AuditActions.ConfigUpdated}&page=1&pageSize=50");
+        Assert.Equal(HttpStatusCode.OK, actionResponse.StatusCode);
+        var actionPage = await actionResponse.Content.ReadFromJsonAsync<PagedResultDto<AuditEventDto>>();
+        Assert.NotNull(actionPage);
+        Assert.NotEmpty(actionPage!.Items);
+        Assert.All(actionPage.Items, item => Assert.Equal(AuditActions.ConfigUpdated, item.Action));
+
+        var actorResponse = await admin.GetAsync(
+            $"/api/v1/audit-events?actorUserId={adminAuth.UserId}&page=1&pageSize=50");
+        var actorPage = await actorResponse.Content.ReadFromJsonAsync<PagedResultDto<AuditEventDto>>();
+        Assert.NotNull(actorPage);
+        Assert.NotEmpty(actorPage!.Items);
+        Assert.All(actorPage.Items, item => Assert.Equal(adminAuth.UserId, item.ActorUserId));
+
+        var now = DateTime.UtcNow;
+        var dateResponse = await admin.GetAsync(
+            $"/api/v1/audit-events?from={Uri.EscapeDataString(now.AddHours(-1).ToString("O"))}" +
+            $"&to={Uri.EscapeDataString(now.AddHours(1).ToString("O"))}&page=1&pageSize=50");
+        var datePage = await dateResponse.Content.ReadFromJsonAsync<PagedResultDto<AuditEventDto>>();
+        Assert.NotNull(datePage);
+        Assert.NotEmpty(datePage!.Items);
+
+        var futureResponse = await admin.GetAsync(
+            $"/api/v1/audit-events?from={Uri.EscapeDataString(now.AddDays(1).ToString("O"))}");
+        var futurePage = await futureResponse.Content.ReadFromJsonAsync<PagedResultDto<AuditEventDto>>();
+        Assert.NotNull(futurePage);
+        Assert.Empty(futurePage!.Items);
+
+        var firstPageResponse = await admin.GetAsync("/api/v1/audit-events?page=1&pageSize=1");
+        var secondPageResponse = await admin.GetAsync("/api/v1/audit-events?page=2&pageSize=1");
+        var firstPage = await firstPageResponse.Content.ReadFromJsonAsync<PagedResultDto<AuditEventDto>>();
+        var secondPage = await secondPageResponse.Content.ReadFromJsonAsync<PagedResultDto<AuditEventDto>>();
+        Assert.NotNull(firstPage);
+        Assert.NotNull(secondPage);
+        Assert.True(firstPage!.TotalCount >= 2);
+        Assert.NotEqual(firstPage.Items.Single().Id, secondPage!.Items.Single().Id);
+        Assert.True(firstPage.Items.Single().CreatedAt >= secondPage.Items.Single().CreatedAt);
+    }
+
+    [Fact]
+    public async Task Kpi_endpoint_rejects_anonymous_callers_and_echoes_filters_as_utc()
+    {
+        await _factory.EnsureSeededAsync();
+        using var anonymous = _factory.CreateClient();
+
+        var anonymousResponse = await anonymous.GetAsync(
+            "/api/v1/kpis?from=2026-11-01T00:00:00Z&to=2026-11-30T00:00:00Z");
+        Assert.Equal(HttpStatusCode.Unauthorized, anonymousResponse.StatusCode);
+
+        var crisisId = Guid.NewGuid();
+        var areaId = Guid.NewGuid();
+        using var admin = await _factory.CreateAuthenticatedClientAsync(CmsWebApplicationFactory.AdminEmail);
+        var response = await admin.GetAsync(
+            $"/api/v1/kpis?from=2026-11-01T00:00:00&to=2026-11-30T00:00:00" +
+            $"&crisisEventId={crisisId}&areaId={areaId}");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var report = await response.Content.ReadFromJsonAsync<KpiReportDto>();
+        Assert.NotNull(report);
+        Assert.Equal(crisisId, report!.CrisisEventId);
+        Assert.Equal(areaId, report.AreaId);
+        Assert.Equal(DateTimeKind.Utc, report.From.Kind);
+        Assert.Equal(DateTimeKind.Utc, report.To.Kind);
+        Assert.Empty(report.RequestsByArea);
+        Assert.Empty(report.SheltersByArea);
+    }
 }

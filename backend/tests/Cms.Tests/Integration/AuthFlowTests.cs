@@ -169,6 +169,24 @@ public sealed class AuthFlowTests : IClassFixture<CmsWebApplicationFactory>
         Assert.Contains(RoleNames.CaseManager, current.Roles);
     }
 
+    [Theory]
+    [InlineData("GET", "/api/v1/auth/me")]
+    [InlineData("GET", "/api/v1/auth/role-check")]
+    [InlineData("POST", "/api/v1/auth/logout")]
+    public async Task Protected_auth_endpoints_reject_anonymous_callers(string method, string path)
+    {
+        await _factory.EnsureSeededAsync();
+        using var client = _factory.CreateClient();
+        using var request = new HttpRequestMessage(new HttpMethod(method), path)
+        {
+            Content = JsonContent.Create(new { refreshToken = "not-a-real-token" })
+        };
+
+        var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
     [Fact]
     public async Task Two_role_user_passes_role_policy_and_single_role_users_fail()
     {

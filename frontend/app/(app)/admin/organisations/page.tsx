@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   Button,
+  ConfirmDialog,
   Input,
   Modal,
   Select,
@@ -52,6 +53,7 @@ export default function OrganisationsPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [saving, setSaving] = useState(false);
+  const [statusTarget, setStatusTarget] = useState<OrganisationDto | null>(null);
 
   const load = useCallback(async () => {
     const params = new URLSearchParams({ page: String(page), pageSize: "20" });
@@ -159,6 +161,7 @@ export default function OrganisationsPage() {
   }
 
   async function toggleStatus(organisation: OrganisationDto) {
+    setStatusTarget(null);
     setNotice(null);
 
     try {
@@ -222,7 +225,7 @@ export default function OrganisationsPage() {
           </Button>
           <Button
             variant="secondary"
-            onClick={() => void toggleStatus(organisation)}
+            onClick={() => setStatusTarget(organisation)}
           >
             {organisation.isActive ? "Deactivate" : "Activate"}
           </Button>
@@ -345,6 +348,24 @@ export default function OrganisationsPage() {
             </Button>
           </div>
         </Modal>
+      ) : null}
+
+      {statusTarget ? (
+        <ConfirmDialog
+          title={
+            statusTarget.isActive
+              ? "Deactivate organisation"
+              : "Activate organisation"
+          }
+          message={
+            statusTarget.isActive
+              ? `Deactivate ${statusTarget.name}? Linked accounts keep their data but the organisation is marked inactive.`
+              : `Activate ${statusTarget.name}? The organisation becomes selectable again.`
+          }
+          confirmLabel={statusTarget.isActive ? "Deactivate" : "Activate"}
+          onConfirm={() => void toggleStatus(statusTarget)}
+          onCancel={() => setStatusTarget(null)}
+        />
       ) : null}
 
       <Toast message={notice?.message ?? null} tone={notice?.tone} onDismiss={() => setNotice(null)} />

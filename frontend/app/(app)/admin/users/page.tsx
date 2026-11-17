@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
   Badge,
   Button,
+  ConfirmDialog,
   Input,
   Modal,
   Select,
@@ -49,6 +50,14 @@ export default function UsersPage() {
     user: UserSummary;
     roles: string[];
   } | null>(null);
+  const [editTarget, setEditTarget] = useState<{
+    user: UserSummary;
+    firstName: string;
+    lastName: string;
+    organisationId: string;
+    status: string;
+  } | null>(null);
+  const [statusTarget, setStatusTarget] = useState<UserSummary | null>(null);
 
   const load = useCallback(async () => {
     const params = new URLSearchParams({
@@ -146,7 +155,60 @@ export default function UsersPage() {
     }
   }
 
+  function splitName(fullName: string): { firstName: string; lastName: string } {
+    const parts = fullName.trim().split(/\s+/);
+    return {
+      firstName: parts[0] ?? "",
+      lastName: parts.slice(1).join(" ")
+    };
+  }
+
+  function openEdit(user: UserSummary) {
+    const { firstName, lastName } = splitName(user.fullName);
+    setEditTarget({
+      user,
+      firstName,
+      lastName,
+      organisationId: user.organisationId ?? "",
+      status: user.status
+    });
+  }
+
+  async function saveUser() {
+    if (!editTarget) {
+      return;
+    }
+
+    const firstName = editTarget.firstName.trim();
+    if (!firstName) {
+      setNotice({ message: "First name is required.", tone: "error" });
+      return;
+    }
+
+    setSaving(true);
+    setNotice(null);
+
+    try {
+      await apiJson<UserSummary>(`/api/v1/users/${editTarget.user.id}`, "PATCH", {
+        firstName,
+        lastName: editTarget.lastName.trim(),
+        // Guid.Empty explicitly clears the organisation on the API.
+        organisationId:
+          editTarget.organisationId || "00000000-0000-0000-0000-000000000000",
+        status: editTarget.status
+      });
+      setEditTarget(null);
+      setNotice({ message: "User updated.", tone: "success" });
+      await refresh();
+    } catch (caught) {
+      setNotice({ message: errorMessage(caught), tone: "error" });
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function toggleStatus(user: UserSummary) {
+    setStatusTarget(null);
     setNotice(null);
 
     try {
@@ -234,13 +296,16 @@ export default function UsersPage() {
       header: "Actions",
       render: (user) => (
         <div className="actions">
+          <Button variant="secondary" onClick={() => openEdit(user)}>
+            Edit
+          </Button>
           <Button
             variant="secondary"
             onClick={() => setRoleTarget({ user, roles: [...user.roles] })}
           >
             Edit roles
           </Button>
-          <Button variant="secondary" onClick={() => void toggleStatus(user)}>
+          <Button variant="secondary" onClick={() => setStatusTarget(user)}>
             {user.isActive ? "Deactivate" : "Activate"}
           </Button>
         </div>
@@ -426,6 +491,76 @@ export default function UsersPage() {
             </Button>
           </div>
         </Modal>
+      ) : null}
+
+      {editTarget ? (
+        <Modal
+          title={`Edit user — ${editTarget.user.fullName}`}
+          onClose={() => setEditTarget(null)}
+        >
+          <Input
+            label="First name"
+            value={editTarget.firstName}
+            onChange={(event) =>
+              setEditTarget({ ...editTarget, firstName: event.target.value })
+            }
+            required
+          />
+          <Input
+            label="Last name"
+            value={editTarget.lastName}
+            onChange={(event) =>
+              setEditTarget({ ...editTarget, lastName: event.target.value })
+            }
+          />
+          <Select
+            label="Organisation"
+            value={editTarget.organisationId}
+            onChange={(event) =>
+              setEditTarget({ ...editTarget, organisationId: event.target.value })
+            }
+          >
+            <option value="">No organisation</option>
+            {organisations.map((organisation) => (
+              <option key={organisation.id} value={organisation.id}>
+                {organisation.name}
+              </option>
+            ))}
+          </Select>
+          <Select
+            label="Status"
+            value={editTarget.status}
+            onChange={(event) =>
+              setEditTarget({ ...editTarget, status: event.target.value })
+            }
+          >
+            <option value="Active">Active</option>
+            <option value="Inactive">Inactive</option>
+            <option value="Suspended">Suspended</option>
+          </Select>
+          <div className="actions">
+            <Button onClick={() => void saveUser()} disabled={saving}>
+              {saving ? "Saving…" : "Save changes"}
+            </Button>
+            <Button variant="secondary" onClick={() => setEditTarget(null)}>
+              Cancel
+            </Button>
+          </div>
+        </Modal>
+      ) : null}
+
+      {statusTarget ? (
+        <ConfirmDialog
+          title={statusTarget.isActive ? "Deactivate user" : "Activate user"}
+          message={
+            statusTarget.isActive
+              ? `Deactivate ${statusTarget.fullName}? They will no longer be able to sign in.`
+              : `Activate ${statusTarget.fullName}? They will be able to sign in again.`
+          }
+          confirmLabel={statusTarget.isActive ? "Deactivate" : "Activate"}
+          onConfirm={() => void toggleStatus(statusTarget)}
+          onCancel={() => setStatusTarget(null)}
+        />
       ) : null}
 
       <Toast message={notice?.message ?? null} tone={notice?.tone} onDismiss={() => setNotice(null)} />

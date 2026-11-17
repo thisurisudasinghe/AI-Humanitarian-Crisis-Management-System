@@ -47,6 +47,12 @@ export interface AuditEventDto {
   createdAt: string;
 }
 
+export interface KpiAreaBreakdown {
+  areaId: string;
+  areaName: string;
+  count: number;
+}
+
 export interface KpiReportDto {
   from: string;
   to: string;
@@ -63,6 +69,8 @@ export interface KpiReportDto {
   aiOverrideRatePercent?: number | null;
   failedNotifications?: number | null;
   deadLetterCount?: number | null;
+  requestsByArea: KpiAreaBreakdown[];
+  sheltersByArea: KpiAreaBreakdown[];
   isPlaceholder: boolean;
 }
 

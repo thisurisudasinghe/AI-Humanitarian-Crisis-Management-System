@@ -7,6 +7,7 @@ import { api, errorMessage } from "@/lib/api";
 import {
   formatDate,
   formatMetric,
+  type KpiAreaBreakdown,
   type KpiReportDto
 } from "@/lib/admin";
 import {
@@ -24,13 +25,68 @@ const kpiRoles: RoleName[] = [
 
 type Notice = { message: string; tone: "error" | "success" } | null;
 
+const guidPattern =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function parseGuid(value: string, label: string): string | undefined {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+
+  if (!guidPattern.test(trimmed)) {
+    throw new Error(`${label} must be a valid GUID.`);
+  }
+
+  return trimmed;
+}
+
+function AreaTable({ rows }: { rows: KpiAreaBreakdown[] }) {
+  if (rows.length === 0) {
+    return (
+      <p className="metric__label">
+        No area breakdown yet. It appears once the owning module publishes its
+        schema.
+      </p>
+    );
+  }
+
+  return (
+    <div className="table-wrap">
+      <table className="table">
+        <thead>
+          <tr>
+            <th scope="col">Area</th>
+            <th scope="col">Count</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row.areaId}>
+              <td>{row.areaName || row.areaId}</td>
+              <td>{row.count}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 export default function KpiPage() {
   const { user } = useAuth();
   const [from, setFrom] = useState("2026-11-01");
   const [to, setTo] = useState("2026-11-30");
+  const [crisisEventId, setCrisisEventId] = useState("");
+  const [areaId, setAreaId] = useState("");
   const [report, setReport] = useState<KpiReportDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState<Notice>(null);
+
+  const crisisInvalid =
+    crisisEventId.trim().length > 0 && !guidPattern.test(crisisEventId.trim());
+  const areaInvalid =
+    areaId.trim().length > 0 && !guidPattern.test(areaId.trim());
 
   const load = useCallback(async () => {
     const params = new URLSearchParams({
@@ -38,8 +94,18 @@ export default function KpiPage() {
       to: `${to}T23:59:59Z`
     });
 
+    const crisis = parseGuid(crisisEventId, "Crisis event ID");
+    if (crisis) {
+      params.set("crisisEventId", crisis);
+    }
+
+    const area = parseGuid(areaId, "Area ID");
+    if (area) {
+      params.set("areaId", area);
+    }
+
     return api<KpiReportDto>(`/api/v1/kpis?${params.toString()}`);
-  }, [from, to]);
+  }, [areaId, crisisEventId, from, to]);
 
   useEffect(() => {
     let cancelled = false;
@@ -97,6 +163,22 @@ export default function KpiPage() {
                   type="date"
                   value={to}
                   onChange={(event) => setTo(event.target.value)}
+                />
+                <Input
+                  label="Crisis event ID"
+                  placeholder="Optional GUID"
+                  value={crisisEventId}
+                  error={
+                    crisisInvalid ? "Enter a GUID or leave the field blank." : undefined
+                  }
+                  onChange={(event) => setCrisisEventId(event.target.value)}
+                />
+                <Input
+                  label="Area ID"
+                  placeholder="Optional GUID"
+                  value={areaId}
+                  error={areaInvalid ? "Enter a GUID or leave the field blank." : undefined}
+                  onChange={(event) => setAreaId(event.target.value)}
                 />
               </div>
             </section>
@@ -169,6 +251,25 @@ export default function KpiPage() {
                   </div>
                 </>
               )}
+            </section>
+
+            <section className="card-grid" aria-label="KPI area breakdowns">
+              <div className="card">
+                <h2>Requests by area</h2>
+                {loading ? (
+                  <Skeleton rows={3} />
+                ) : (
+                  <AreaTable rows={report?.requestsByArea ?? []} />
+                )}
+              </div>
+              <div className="card">
+                <h2>Shelters by area</h2>
+                {loading ? (
+                  <Skeleton rows={3} />
+                ) : (
+                  <AreaTable rows={report?.sheltersByArea ?? []} />
+                )}
+              </div>
             </section>
 
             <section className="card">
