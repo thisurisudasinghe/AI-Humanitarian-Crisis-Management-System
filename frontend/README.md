@@ -8,7 +8,7 @@ provisional KPI report.
 ## Setup
 
 ```powershell
-cd web
+cd frontend
 npm install
 npm run dev
 ```
@@ -42,7 +42,7 @@ npm start
 
 ## Token storage decision
 
-- The access token is kept **in memory only** (`web/lib/api.ts`). It is never
+- The access token is kept **in memory only** (`frontend/lib/api.ts`). It is never
   written to `localStorage` or `sessionStorage`.
 - The refresh token is stored in `sessionStorage` so a tab refresh can restore
   the session without persisting it across browser restarts.
@@ -56,5 +56,5 @@ npm start
 
 ## Role names
 
-Use `web/lib/roles.ts` rather than raw strings. The ten roles are frozen by the
+Use `frontend/lib/roles.ts` rather than raw strings. The ten roles are frozen by the
 shared team contract and must match `Cms.Domain.Constants.RoleNames`.
