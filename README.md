@@ -33,8 +33,11 @@ AI-Humanitarian-Crisis-Management-System/
 │   │   └── Cms.Tests/
 │   │
 │   ├── db/
-│   │   ├── 00_foundation.sql
-│   │   └── 98_foreign_keys.sql
+│   │   ├── 00_common.sql
+│   │   ├── 01_cases.sql ... 08_don.sql   (module owners)
+│   │   ├── 98_foreign_keys.sql
+│   │   ├── 99_seed_users.sql
+│   │   └── 90_seed_scenario.sql, 91_seed_ops.sql
 │   │
 │   ├── Cms.sln
 │   ├── Cms.slnx
@@ -87,33 +90,40 @@ dotnet test Cms.slnx
 ## 6. Database Setup
 
 1. Create a SQL Server database named `CmsDb`.
-2. Configure the database connection string in the API configuration.
-3. Apply the schema.
+2. Configure the connection string (`ConnectionStrings__DefaultConnection`).
+3. Run the ordered SQL scripts from `backend/db`.
 
-> **Known state (D1-02 pending):** The checked-in EF migrations predate the V4
-> `identity`/`common` snake_case model, so `dotnet ef database update` currently
-> stops with `PendingModelChangesWarning`. Do not regenerate or delete the
-> migrations yet: the agreed plan is to replace them with ordered SQL scripts
-> once the D-01 schema decision is signed off. Until then, create a scratch
-> database from the current model (for example with an `EnsureCreated` harness)
-> when you need to run the API locally.
+The schema is defined by plain, idempotent SQL scripts. EF migrations are not
+used and `dotnet ef database update` is not part of the workflow.
 
 ### SQL Script Execution Order
 
-After D1-02 lands, execute the scripts in the canonical order:
+Run the scripts in this canonical order:
 
-1. `backend/db/00_common.sql`
-2. `backend/db/01_cases.sql` … `backend/db/08_don.sql` (module owners publish these)
-3. `backend/db/98_foreign_keys.sql`
-4. `backend/db/99_seed_users.sql`
-5. `backend/db/90_seed_scenario.sql`, `backend/db/91_seed_ops.sql`
+1. `backend/db/00_common.sql` — identity and common tables (Dev 1)
+2. `backend/db/01_cases.sql` … `backend/db/08_don.sql` — module scripts (owners)
+3. `backend/db/98_foreign_keys.sql` — guarded cross-module foreign keys
+4. `backend/db/99_seed_users.sql` — roles, demo organisation, demo users, settings
+5. `backend/db/90_seed_scenario.sql`, `backend/db/91_seed_ops.sql` — optional demo data
 
-**Important:** Do not execute a foundation script against a database that already
-contains the foundation tables.
+Example with `sqlcmd` (the `-I` flag is required for filtered indexes):
+
+```powershell
+sqlcmd -S "(localdb)\mssqllocaldb" -d CmsDb -I -b -i backend/db/00_common.sql
+sqlcmd -S "(localdb)\mssqllocaldb" -d CmsDb -I -b -i backend/db/98_foreign_keys.sql
+sqlcmd -S "(localdb)\mssqllocaldb" -d CmsDb -I -b -i backend/db/99_seed_users.sql
+```
+
+Every Dev 1 script is idempotent: re-running it skips existing tables, indexes,
+roles, users and settings instead of failing.
+
+Demo users are seeded with the password `Demo1234!`. See
+`backend/db/99_seed_users.sql` for the full list of demo accounts and roles.
 
 ## 7. Secret Management
 
-Never commit secrets, passwords, or credentials to Git.
+Never commit real secrets, passwords, or credentials to Git. The only exception
+is the fixed, public, development-only configuration described below.
 
 The application may require the following environment variables:
 
@@ -127,24 +137,35 @@ The application may require the following environment variables:
 
 ### Local Development
 
-Navigate to the API project:
+`backend/src/Cms.Api/appsettings.Development.json` already provides fixed
+development-only keys and a LocalDB connection string, so a fresh checkout can
+run the SQL-seeded demo users without extra setup. These keys are public and
+must never be used outside local development.
+
+To override only the connection string (for example, to use a different SQL
+Server instance):
 
 ```powershell
 cd backend/src/Cms.Api
 dotnet user-secrets init
+dotnet user-secrets set "ConnectionStrings:DefaultConnection" "<local SQL connection>"
 ```
 
-Set secret values using `dotnet user-secrets set` and the configuration keys expected by the application:
+If you replace the email or JWT keys with your own values, the demo users seeded
+by `99_seed_users.sql` will no longer be found by email until you reseed them
+with the new keys. User-secrets override `appsettings.Development.json`, so
+remove any old values before using the committed demo keys:
 
-- `EmailProtection:EncryptionKey`
-- `EmailProtection:HashKey`
-- `Jwt:SecretKey`
+```powershell
+dotnet user-secrets remove "EmailProtection:EncryptionKey"
+dotnet user-secrets remove "EmailProtection:HashKey"
+dotnet user-secrets remove "Jwt:SecretKey"
+```
 
-Use separate secure values for encryption, email hashing, and JWT signing.
-
-Never share or commit these values.
-
-For deployment, configure the corresponding environment variables securely. SMTP settings are required when email delivery is configured.
+For deployment, configure `JWT_SECRET`, `EMAIL_ENCRYPTION_KEY`,
+`EMAIL_HASH_KEY` and `ConnectionStrings__DefaultConnection` securely through
+environment variables or a secret store. SMTP settings are required when email
+delivery is configured.
 
 ## 8. Team Module Allocation
 
@@ -225,9 +246,12 @@ outside `RoleNames`, or audit-row updates.
 
 - Identity, hardening, audit viewer and administration endpoints are implemented
   and covered by the integration harness.
+- `D1-02` is complete: the stale EF migrations and `00_foundation.sql` were
+  replaced by the idempotent `00_common.sql`, `98_foreign_keys.sql` and
+  `99_seed_users.sql`.
 - KPI endpoint returns a typed provisional report until Members 2–4 publish the
   final cross-module table/column names; no guessed SQL is used.
-- Plain SQL script replacement (`D1-02`) and cross-module foreign keys (`98`)
-  remain gated on the D-01 team decision. Keep the EF migrations until sign-off.
+- `98_foreign_keys.sql` currently guards the `notifications` → `identity.users`
+  relationship and documents the extension pattern for other cross-module FKs.
 - Donations (`D1-09`) is P2 and is not part of the P1 release unless the core
   loop is green before feature freeze.

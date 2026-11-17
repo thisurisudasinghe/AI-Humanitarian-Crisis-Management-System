@@ -14,7 +14,7 @@ team (NFR-SEC-01/02/03/04/05/08 and NFR-AUD-01).
 | Request pipeline | Oversized/malformed payloads | 1 MiB body limit, central validation -> 422 ProblemDetails, JSON content type on writes |
 | Browser clients | XSS/clickjacking/referrer leakage | Conservative CSP, `X-Frame-Options: DENY`, `nosniff`, `Referrer-Policy: no-referrer`, Permissions-Policy |
 | Audit trail | Tampering or sensitive-data leakage | Append-only EF guard, no `UpdatedAt`, explicit actor overload, recursive masking |
-| Secrets | Accidental commit | No secrets in `appsettings.json`; environment variables or user-secrets only; non-dev startup fails fast |
+| Secrets | Accidental commit | No real secrets in `appsettings.json`; fixed development-only keys are committed in `appsettings.Development.json`; production uses environment variables or a secret store; non-dev startup fails fast |
 
 ## Authentication
 
@@ -57,8 +57,8 @@ with `[AllowAnonymous]`. Use `RoleNames` constants, never raw role strings.
 
 ## Audit and privacy
 
-- `AuditLogger` inserts one `common.AuditEvents` row per state change and commits
-  it after the business change.
+- `AuditLogger` inserts one `common.audit_events` row per state change and
+  commits it after the business change.
 - `SensitiveDataMasker` redacts keys containing password, token, secret, email,
   phone, medical, accessibility or file-path terms. It is applied before storage
   and again on audit reads.
@@ -69,19 +69,34 @@ with `[AllowAnonymous]`. Use `RoleNames` constants, never raw role strings.
 
 ## Local development keys
 
-In Development only, missing keys become ephemeral process keys so a fresh
-checkout can start. They are not persisted and tokens do not survive a restart.
-For repeatable local runs, set them with user-secrets:
+`backend/src/Cms.Api/appsettings.Development.json` intentionally contains fixed,
+public, development-only keys. They exist so the SQL-seeded demo users in
+`backend/db/99_seed_users.sql` keep working across process restarts: the seed
+stores an HMAC of each email and an AES-GCM ciphertext produced with these exact
+keys.
+
+These keys are not secrets and must never be used outside local development.
+Production and any shared environment must supply `JWT_SECRET`,
+`EMAIL_ENCRYPTION_KEY`, `EMAIL_HASH_KEY` and `ConnectionStrings__DefaultConnection`
+through environment variables or a secret store; non-Development startup fails
+fast when they are missing.
+
+If the committed file is removed or the keys are blank, Development still falls
+back to ephemeral process keys so a fresh checkout can start. Those keys are not
+persisted and tokens do not survive a restart.
+
+If you replace the development keys with your own user-secrets, the demo users
+will no longer be found by email until you reseed or register them again.
+User-secrets take precedence over `appsettings.Development.json`; remove old
+values with `dotnet user-secrets remove "<key>"` if you want the committed demo
+keys. To override the connection string only:
 
 ```powershell
-cd src/Cms.Api
-dotnet user-secrets set "Jwt:SecretKey" "<32+ byte random value>"
-dotnet user-secrets set "EmailProtection:EncryptionKey" "<base64 32 bytes>"
-dotnet user-secrets set "EmailProtection:HashKey" "<different base64 32 bytes>"
+cd backend/src/Cms.Api
 dotnet user-secrets set "ConnectionStrings:DefaultConnection" "<local SQL connection>"
 ```
 
-Generate distinct keys, for example:
+Generate distinct keys for non-development environments, for example:
 
 ```powershell
 [Convert]::ToBase64String([byte[]](1..32 | ForEach-Object { Get-Random -Max 256 }))

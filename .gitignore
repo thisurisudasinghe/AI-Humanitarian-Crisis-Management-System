@@ -18,5 +18,8 @@ coverage/
 !.env.example
 appsettings.Development.json
 appsettings.*.Local.json
+# The canonical Development config is intentionally committed: it contains only
+# fixed, public, development-only demo keys needed by backend/db/99_seed_users.sql.
+!backend/src/Cms.Api/appsettings.Development.json
 # Logs
 *.log
