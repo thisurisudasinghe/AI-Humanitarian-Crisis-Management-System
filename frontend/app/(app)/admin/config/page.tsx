@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Button, Input, Skeleton, Toast } from "@/components/ui";
 import { AuthGuard } from "@/components/AuthGuard";
+import { AdminNav } from "@/components/safeway/AdminNav";
 import { api, apiJson, errorMessage } from "@/lib/api";
 import { ConfigKeys, type SystemSettingDto } from "@/lib/admin";
 import { RoleNames } from "@/lib/roles";
@@ -104,6 +105,8 @@ export default function ConfigPage() {
             {saving ? "Saving…" : "Save changes"}
           </Button>
         </header>
+
+        <AdminNav />
 
         <section className="card">
           {loading ? (

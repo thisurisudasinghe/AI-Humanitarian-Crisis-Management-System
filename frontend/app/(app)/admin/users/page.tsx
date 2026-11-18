@@ -15,6 +15,7 @@ import {
   type Column
 } from "@/components/ui";
 import { AuthGuard } from "@/components/AuthGuard";
+import { AdminNav } from "@/components/safeway/AdminNav";
 import { api, apiJson, errorMessage } from "@/lib/api";
 import {
   formatDate,
@@ -23,6 +24,7 @@ import {
   type UserSummary
 } from "@/lib/admin";
 import { AllRoles, RoleNames } from "@/lib/roles";
+import { useDebouncedValue } from "@/lib/useDebouncedValue";
 
 type Notice = { message: string; tone: "error" | "success" } | null;
 
@@ -59,14 +61,16 @@ export default function UsersPage() {
   } | null>(null);
   const [statusTarget, setStatusTarget] = useState<UserSummary | null>(null);
 
+  const debouncedSearch = useDebouncedValue(search);
+
   const load = useCallback(async () => {
     const params = new URLSearchParams({
       page: String(page),
       pageSize: "20"
     });
 
-    if (search.trim()) {
-      params.set("search", search.trim());
+    if (debouncedSearch.trim()) {
+      params.set("search", debouncedSearch.trim());
     }
 
     if (role) {
@@ -78,7 +82,7 @@ export default function UsersPage() {
     }
 
     return api<PagedResult<UserSummary>>(`/api/v1/users?${params.toString()}`);
-  }, [active, page, role, search]);
+  }, [active, debouncedSearch, page, role]);
 
   useEffect(() => {
     let cancelled = false;
@@ -323,6 +327,8 @@ export default function UsersPage() {
           </div>
           <Button onClick={() => setCreateOpen(true)}>Create user</Button>
         </header>
+
+        <AdminNav />
 
         <section className="card">
           <div className="filters">

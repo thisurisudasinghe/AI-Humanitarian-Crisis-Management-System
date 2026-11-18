@@ -92,6 +92,26 @@ export interface KpiReportDto {
   isPlaceholder: boolean;
 }
 
+export type OutboxMessageStatus =
+  | "Pending"
+  | "Processing"
+  | "Processed"
+  | "Failed"
+  | "DeadLettered";
+
+export interface OutboxMessageDto {
+  id: string;
+  type: string;
+  entityId: string;
+  status: OutboxMessageStatus;
+  retryCount: number;
+  nextRetryAt?: string | null;
+  processedAt?: string | null;
+  errorMessage?: string | null;
+  createdAt: string;
+  updatedAt?: string | null;
+}
+
 export const OrganisationTypes = [
   "Government",
   "NonGovernmentalOrganisation",

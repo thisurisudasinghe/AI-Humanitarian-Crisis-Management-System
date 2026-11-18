@@ -17,6 +17,8 @@ import {
   type RoleName
 } from "@/lib/roles";
 import { useAuth } from "@/lib/auth";
+import { currentMonthRange } from "@/lib/dates";
+import { useDebouncedValue } from "@/lib/useDebouncedValue";
 
 const kpiRoles: RoleName[] = [
   RoleNames.SystemAdmin,
@@ -76,37 +78,50 @@ function AreaTable({ rows }: { rows: KpiAreaBreakdown[] }) {
 
 export default function KpiPage() {
   const { user } = useAuth();
-  const [from, setFrom] = useState("2026-11-01");
-  const [to, setTo] = useState("2026-11-30");
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
   const [crisisEventId, setCrisisEventId] = useState("");
   const [areaId, setAreaId] = useState("");
   const [report, setReport] = useState<KpiReportDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState<Notice>(null);
 
+  const debouncedCrisisEventId = useDebouncedValue(crisisEventId);
+  const debouncedAreaId = useDebouncedValue(areaId);
+
+  useEffect(() => {
+    const range = currentMonthRange();
+    setFrom(range.from);
+    setTo(range.to);
+  }, []);
+
   const crisisInvalid =
     crisisEventId.trim().length > 0 && !guidPattern.test(crisisEventId.trim());
   const areaInvalid =
     areaId.trim().length > 0 && !guidPattern.test(areaId.trim());
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (): Promise<KpiReportDto | null> => {
+    if (!from || !to) {
+      return null;
+    }
+
     const params = new URLSearchParams({
       from: `${from}T00:00:00Z`,
       to: `${to}T23:59:59Z`
     });
 
-    const crisis = parseGuid(crisisEventId, "Crisis event ID");
+    const crisis = parseGuid(debouncedCrisisEventId, "Crisis event ID");
     if (crisis) {
       params.set("crisisEventId", crisis);
     }
 
-    const area = parseGuid(areaId, "Area ID");
+    const area = parseGuid(debouncedAreaId, "Area ID");
     if (area) {
       params.set("areaId", area);
     }
 
     return api<KpiReportDto>(`/api/v1/kpis?${params.toString()}`);
-  }, [areaId, crisisEventId, from, to]);
+  }, [debouncedAreaId, debouncedCrisisEventId, from, to]);
 
   useEffect(() => {
     let cancelled = false;
@@ -114,7 +129,7 @@ export default function KpiPage() {
 
     void load()
       .then((value) => {
-        if (!cancelled) {
+        if (!cancelled && value) {
           setReport(value);
         }
       })

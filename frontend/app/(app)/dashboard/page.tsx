@@ -1,15 +1,26 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Icon } from "@/components/safeway/Icon";
 import { EmptyPanel, IntegrationNotice } from "@/components/safeway/IntegrationNotice";
 import { useAuth } from "@/lib/auth";
+import { isStaff } from "@/lib/roles";
 
 export default function DashboardPage() {
-  const { user } = useAuth();
+  const router = useRouter();
+  const { user, ready } = useAuth();
   const [today, setToday] = useState("");
   const [greeting, setGreeting] = useState("Welcome back");
+
+  const staff = user ? isStaff(user.roles) : false;
+
+  useEffect(() => {
+    if (ready && user && isStaff(user.roles)) {
+      router.replace("/operations");
+    }
+  }, [ready, user, router]);
 
   useEffect(() => {
     const now = new Date();
@@ -27,6 +38,20 @@ export default function DashboardPage() {
   }, []);
 
   const firstName = user?.fullName?.trim().split(/\s+/)[0] ?? "there";
+
+  if (staff) {
+    return (
+      <div className="page">
+        <section className="card">
+          <h1>Redirecting to the command centre…</h1>
+          <p>
+            Staff accounts use the operations dashboard. If nothing happens,{" "}
+            <Link href="/operations">open the command centre</Link>.
+          </p>
+        </section>
+      </div>
+    );
+  }
 
   return (
     <>

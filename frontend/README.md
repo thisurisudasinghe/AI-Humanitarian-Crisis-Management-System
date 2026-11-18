@@ -56,7 +56,7 @@ npm start
 
 | Route | Purpose |
 |---|---|
-| `/dashboard` | Citizen landing page |
+| `/dashboard` | Citizen landing page; staff accounts are redirected to `/operations` |
 | `/my-reports` | Report tracking shell (awaiting Dev 2) |
 | `/notifications` | Inbox shell (awaiting M9 / Member 3) |
 | `/account` | Profile, roles and session details from `/auth/me` |
@@ -79,6 +79,10 @@ npm start
 | `/admin/organisations` | Organisation CRUD (`SystemAdmin`) |
 | `/admin/config` | Runtime settings (`SystemAdmin`) |
 | `/admin/audit` | Append-only audit viewer (`SystemAdmin`) |
+| `/admin/outbox` | Read-only outbox dead-letter queue (`SystemAdmin`) |
+
+Every `/admin/*` page shares an `AdminNav` tab strip so the sections are
+reachable without returning to the sidebar.
 
 `/403`, `not-found`, `error` and `loading` use the same design system.
 
@@ -91,7 +95,12 @@ Live against the Dev 1 API:
 - audit events (append-only, `AdminOnly`)
 - KPI report (`KpiViewer`)
 - donations, campaigns, allocations, expenses and transparency report
-- file upload and outbox dead-letter endpoints
+- file upload and outbox dead-letter endpoints (`/admin/outbox` is read-only;
+  replay is owned by the outbox processor)
+- role-aware landing: `homePathForRoles` and `/dashboard` send staff accounts to
+  `/operations`, citizens stay in the public workspace
+- date-range filters default to the current local month and text filters are
+  debounced (`frontend/lib/useDebouncedValue.ts`) to avoid a request per keystroke
 
 Not connected yet — shown as designed shells with no fabricated records:
 
