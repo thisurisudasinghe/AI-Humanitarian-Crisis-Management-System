@@ -74,8 +74,10 @@ export interface KpiReportDto {
   shelterOccupancyPercent?: number | null;
   sheltersAtCapacity?: number | null;
   aiOverrideRatePercent?: number | null;
-  failedNotifications?: number | null;
-  deadLetterCount?: number | null;
+  totalNotificationCount: number;
+  sentNotificationCount: number;
+  failedNotifications: number;
+  deadLetterCount: number;
   totalUserCount: number;
   activeUserCount: number;
   newUserCount: number;

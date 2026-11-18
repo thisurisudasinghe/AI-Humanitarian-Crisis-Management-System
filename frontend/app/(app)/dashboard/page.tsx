@@ -3,9 +3,12 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { Skeleton } from "@/components/ui";
 import { Icon } from "@/components/safeway/Icon";
 import { EmptyPanel, IntegrationNotice } from "@/components/safeway/IntegrationNotice";
+import { errorMessage } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { getInbox, type NotificationInboxDto } from "@/lib/notifications";
 import { isStaff } from "@/lib/roles";
 
 export default function DashboardPage() {
@@ -13,8 +16,12 @@ export default function DashboardPage() {
   const { user, ready } = useAuth();
   const [today, setToday] = useState("");
   const [greeting, setGreeting] = useState("Welcome back");
+  const [inbox, setInbox] = useState<NotificationInboxDto | null>(null);
+  const [inboxLoading, setInboxLoading] = useState(true);
+  const [inboxError, setInboxError] = useState<string | null>(null);
 
   const staff = user ? isStaff(user.roles) : false;
+  const userId = user?.userId;
 
   useEffect(() => {
     if (ready && user && isStaff(user.roles)) {
@@ -36,6 +43,37 @@ export default function DashboardPage() {
     const hour = now.getHours();
     setGreeting(hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening");
   }, []);
+
+  useEffect(() => {
+    if (!ready || !userId) {
+      return;
+    }
+
+    let active = true;
+    setInboxLoading(true);
+
+    getInbox({ limit: 3 })
+      .then((result) => {
+        if (active) {
+          setInbox(result);
+          setInboxError(null);
+        }
+      })
+      .catch((error) => {
+        if (active) {
+          setInboxError(errorMessage(error));
+        }
+      })
+      .finally(() => {
+        if (active) {
+          setInboxLoading(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [ready, userId]);
 
   const firstName = user?.fullName?.trim().split(/\s+/)[0] ?? "there";
 
@@ -118,15 +156,44 @@ export default function DashboardPage() {
           <div className="card-heading">
             <div>
               <h3>Notifications</h3>
-              <p>Updates about your reports and nearby assistance</p>
+              <p>
+                {inbox
+                  ? `${inbox.unreadCount} unread of ${inbox.totalCount}`
+                  : "Updates about your reports and nearby assistance"}
+              </p>
             </div>
             <Link href="/notifications" aria-label="Open notifications">
               <Icon name="bell" />
             </Link>
           </div>
-          <EmptyPanel title="Notifications are not connected" owner="Member 3 — M9 notifications">
-            Delivery, read state and preferences arrive with the notification module.
-          </EmptyPanel>
+          {inboxLoading ? (
+            <div style={{ padding: "18px 20px" }}>
+              <Skeleton rows={2} />
+            </div>
+          ) : inboxError ? (
+            <EmptyPanel title="Notifications could not be loaded">{inboxError}</EmptyPanel>
+          ) : !inbox || inbox.items.length === 0 ? (
+            <EmptyPanel title="No notifications yet">
+              Account messages, report progress and nearby assistance updates will appear here.
+            </EmptyPanel>
+          ) : (
+            <>
+              {inbox.items.map((notification) => (
+                <div className="notice" key={notification.id}>
+                  <i style={notification.isRead ? { background: "#b6c6d2" } : undefined} />
+                  <span>
+                    <b>{notification.subject ?? notification.templateKey}</b>
+                    <p>{notification.body ?? "Open your inbox for details."}</p>
+                  </span>
+                </div>
+              ))}
+              <div style={{ padding: "12px 20px" }}>
+                <Link className="btn btn-outline" href="/notifications">
+                  View all notifications
+                </Link>
+              </div>
+            </>
+          )}
         </aside>
       </div>
 
@@ -135,9 +202,9 @@ export default function DashboardPage() {
         owner="Dev 2, Dev 3 and Dev 4"
         inline
       >
-        Authentication, profile, donations and KPI reporting are backed by the Dev 1 API. Crisis
-        reports, shelters, resources and AI recommendations will fill the remaining cards as their
-        owners ship their modules.
+        Authentication, profile, notifications, donations and KPI reporting are backed by the Dev 1
+        API. Crisis reports, shelters, resources and AI recommendations will fill the remaining
+        cards as their owners ship their modules.
       </IntegrationNotice>
 
       <section className="safety-banner">

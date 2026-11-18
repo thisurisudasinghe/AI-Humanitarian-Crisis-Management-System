@@ -201,7 +201,7 @@ export default function KpiPage() {
 
             {report?.isPlaceholder ? (
               <section className="notice">
-                Identity and donation aggregates are live.
+                Identity, donation and notification aggregates are live.
                 {report.pendingSections.length > 0
                   ? ` Still provisional: ${report.pendingSections.join(", ")} — waiting on Members 2–4 to publish their table and column names.`
                   : null}{" "}
@@ -254,6 +254,18 @@ export default function KpiPage() {
                     <div className="metric__label">AI override rate</div>
                     <div className="metric__value">
                       {formatMetric(report?.aiOverrideRatePercent, "%")}
+                    </div>
+                  </div>
+                  <div className="card">
+                    <div className="metric__label">Total notifications</div>
+                    <div className="metric__value">
+                      {report?.totalNotificationCount ?? "—"}
+                    </div>
+                  </div>
+                  <div className="card">
+                    <div className="metric__label">Sent notifications</div>
+                    <div className="metric__value">
+                      {report?.sentNotificationCount ?? "—"}
                     </div>
                   </div>
                   <div className="card">
