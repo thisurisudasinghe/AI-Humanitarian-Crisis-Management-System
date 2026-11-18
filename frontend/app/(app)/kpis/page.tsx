@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Button, Input, Skeleton, Toast } from "@/components/ui";
 import { AuthGuard } from "@/components/AuthGuard";
-import { api, errorMessage } from "@/lib/api";
+import { api, apiBlob, errorMessage } from "@/lib/api";
 import {
   formatDate,
   formatMetric,
@@ -84,6 +84,7 @@ export default function KpiPage() {
   const [areaId, setAreaId] = useState("");
   const [report, setReport] = useState<KpiReportDto | null>(null);
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
   const [notice, setNotice] = useState<Notice>(null);
 
   const debouncedCrisisEventId = useDebouncedValue(crisisEventId);
@@ -100,7 +101,7 @@ export default function KpiPage() {
   const areaInvalid =
     areaId.trim().length > 0 && !guidPattern.test(areaId.trim());
 
-  const load = useCallback(async (): Promise<KpiReportDto | null> => {
+  const buildParams = useCallback((): URLSearchParams | null => {
     if (!from || !to) {
       return null;
     }
@@ -120,8 +121,49 @@ export default function KpiPage() {
       params.set("areaId", area);
     }
 
-    return api<KpiReportDto>(`/api/v1/kpis?${params.toString()}`);
+    return params;
   }, [debouncedAreaId, debouncedCrisisEventId, from, to]);
+
+  const load = useCallback(async (): Promise<KpiReportDto | null> => {
+    const params = buildParams();
+
+    if (!params) {
+      return null;
+    }
+
+    return api<KpiReportDto>(`/api/v1/kpis?${params.toString()}`);
+  }, [buildParams]);
+
+  async function handleExport() {
+    const params = buildParams();
+
+    if (!params) {
+      return;
+    }
+
+    setExporting(true);
+
+    try {
+      const { blob, fileName } = await apiBlob(
+        `/api/v1/kpis/export?${params.toString()}`
+      );
+
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = fileName ?? "kpi-report.csv";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+
+      setNotice({ message: "KPI report downloaded.", tone: "success" });
+    } catch (caught) {
+      setNotice({ message: errorMessage(caught), tone: "error" });
+    } finally {
+      setExporting(false);
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -159,9 +201,18 @@ export default function KpiPage() {
             <h1>KPIs</h1>
             <p>Cross-module performance indicators for the selected period.</p>
           </div>
-          <Button onClick={() => void load().then(setReport).catch((caught: unknown) => setNotice({ message: errorMessage(caught), tone: "error" }))} disabled={loading}>
-            Refresh
-          </Button>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <Button
+              variant="secondary"
+              onClick={() => void handleExport()}
+              disabled={loading || exporting || !report}
+            >
+              {exporting ? "Exporting…" : "Export CSV"}
+            </Button>
+            <Button onClick={() => void load().then(setReport).catch((caught: unknown) => setNotice({ message: errorMessage(caught), tone: "error" }))} disabled={loading}>
+              Refresh
+            </Button>
+          </div>
         </header>
 
         {!allowed ? null : (
