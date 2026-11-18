@@ -116,6 +116,10 @@ Not connected yet — shown as designed shells with no fabricated records:
 submitted. Replace that stub when the Dev 2 intake endpoint is published; no UI
 changes are required.
 
+User search in `/admin/users` matches names by substring and emails only as an
+exact address, because the API stores encrypted emails plus a deterministic HMAC
+lookup hash. The search placeholder says "exact email" for that reason.
+
 ## Token storage decision
 
 - The access token is kept **in memory only** (`frontend/lib/api.ts`). It is never

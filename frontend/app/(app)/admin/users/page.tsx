@@ -334,7 +334,7 @@ export default function UsersPage() {
           <div className="filters">
             <Input
               label="Search"
-              placeholder="Name or email"
+              placeholder="Name or exact email"
               value={search}
               onChange={(event) => {
                 setSearch(event.target.value);
