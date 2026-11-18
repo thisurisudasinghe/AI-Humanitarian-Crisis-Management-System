@@ -58,7 +58,7 @@ Stop `Cms.Api` before rebuilding; the running process locks the output DLLs.
 
 ## 3. Current coverage
 
-- 109 backend tests, 0 skipped (unit + integration).
+- 129 backend tests, 0 skipped (unit + integration).
 - 13 frontend routes build statically, including `/donations` and `/kpis`.
 
 | Area | Covered by |
@@ -70,6 +70,7 @@ Stop `Cms.Api` before rebuilding; the running process locks the output DLLs.
 | Identity, audit and donation KPI sections | `KpiEndpointTests` |
 | Donor, campaign, donation, allocation, expense, flagging and transparency report | `DonationEndpointTests` |
 | Evidence upload validation, storage and audit | `FileUploadTests`, `LocalFileStoreTests` |
+| Outbox enqueue, idempotency, dispatch, retry, dead-letter, stale recovery and admin view | `OutboxServiceTests`, `OutboxProcessorTests`, `OutboxEndpointTests` |
 | Cases, AI, governance, resources, shelter, volunteers, mapping, notifications | Pending other modules |
 
 ## 4. End-to-end UAT loop
@@ -143,6 +144,12 @@ Run this before every Dev 1 hand-off or demo.
    Confirm a `.txt` upload, a PNG whose bytes are not a PNG, and a file over
    1 MB are all rejected with `422`, and that `File.Uploaded` appears in the
    audit viewer.
+10. Outbox: run `00_common.sql` twice and confirm `common.outbox_messages` plus
+    `UX_outbox_idempotency_key`, `IX_outbox_status_retry_pending`,
+    `IX_outbox_status_retry_failed` and `IX_outbox_created_at`. Insert a
+    `Pending` row of an unhandled type; the processor must move it through
+    `Failed` to `DeadLettered`, and `GET /api/v1/admin/outbox/dead` must show it
+    without `payload` or `idempotencyKey`.
 
 ## 7. Accessibility checks (NFR-USA-02)
 
@@ -166,4 +173,7 @@ and endpoints:
   user relationship.
 - Integration tests for requests, AI, governance, resources, shelter, volunteers,
   mapping and notifications.
+- The `Notification.Send` outbox handler (Member 3, M9). Until it is registered,
+  notification events retry and then dead-letter; the outbox framework itself is
+  tested with a recording handler.
 - The full UAT run and the Task 3 UAT evidence pack.

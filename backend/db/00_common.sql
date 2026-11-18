@@ -2,7 +2,8 @@
 -- 00_common.sql - Dev 1 foundation schema (identity + common)
 -- ============================================================================
 -- Creates the shared tables owned by Dev 1 for the V4 snake_case model:
---   common.organisations, common.system_settings, common.audit_events
+--   common.organisations, common.system_settings, common.audit_events,
+--   common.outbox_messages
 --   identity.roles, identity.users, identity.refresh_tokens, identity.user_roles
 --
 -- Canonical run order:
@@ -85,6 +86,29 @@ BEGIN
         [created_at] datetime2 NOT NULL,
         [updated_at] datetime2 NULL,
         CONSTRAINT [PK_system_settings] PRIMARY KEY ([id])
+    );
+END;
+GO
+
+-- ----------------------------------------------------------------------------
+-- common.outbox_messages (transactional outbox, owned by Dev 1)
+-- ----------------------------------------------------------------------------
+IF OBJECT_ID(N'[common].[outbox_messages]', N'U') IS NULL
+BEGIN
+    CREATE TABLE [common].[outbox_messages] (
+        [id] uniqueidentifier NOT NULL,
+        [type] nvarchar(100) NOT NULL,
+        [entity_id] uniqueidentifier NOT NULL,
+        [payload] nvarchar(max) NOT NULL,
+        [idempotency_key] nvarchar(256) NOT NULL,
+        [status] nvarchar(50) NOT NULL,
+        [retry_count] int NOT NULL,
+        [next_retry_at] datetime2 NULL,
+        [processed_at] datetime2 NULL,
+        [error_message] nvarchar(max) NULL,
+        [created_at] datetime2 NOT NULL,
+        [updated_at] datetime2 NULL,
+        CONSTRAINT [PK_outbox_messages] PRIMARY KEY ([id])
     );
 END;
 GO
@@ -210,6 +234,43 @@ IF NOT EXISTS (
       AND [object_id] = OBJECT_ID(N'[common].[system_settings]'))
     CREATE UNIQUE INDEX [UX_system_settings_key]
         ON [common].[system_settings] ([key]);
+GO
+
+IF NOT EXISTS (
+    SELECT 1 FROM sys.indexes
+    WHERE [name] = N'UX_outbox_idempotency_key'
+      AND [object_id] = OBJECT_ID(N'[common].[outbox_messages]'))
+    CREATE UNIQUE INDEX [UX_outbox_idempotency_key]
+        ON [common].[outbox_messages] ([idempotency_key]);
+GO
+
+-- SQL Server filtered indexes reject OR/IN in the predicate (verified on
+-- SQL Server 2025), so the contract's single OR index is implemented as two
+-- equivalent filtered indexes. QUOTED_IDENTIFIER ON is required.
+IF NOT EXISTS (
+    SELECT 1 FROM sys.indexes
+    WHERE [name] = N'IX_outbox_status_retry_pending'
+      AND [object_id] = OBJECT_ID(N'[common].[outbox_messages]'))
+    CREATE INDEX [IX_outbox_status_retry_pending]
+        ON [common].[outbox_messages] ([status], [next_retry_at])
+        WHERE [status] = 'Pending';
+GO
+
+IF NOT EXISTS (
+    SELECT 1 FROM sys.indexes
+    WHERE [name] = N'IX_outbox_status_retry_failed'
+      AND [object_id] = OBJECT_ID(N'[common].[outbox_messages]'))
+    CREATE INDEX [IX_outbox_status_retry_failed]
+        ON [common].[outbox_messages] ([status], [next_retry_at])
+        WHERE [status] = 'Failed';
+GO
+
+IF NOT EXISTS (
+    SELECT 1 FROM sys.indexes
+    WHERE [name] = N'IX_outbox_created_at'
+      AND [object_id] = OBJECT_ID(N'[common].[outbox_messages]'))
+    CREATE INDEX [IX_outbox_created_at]
+        ON [common].[outbox_messages] ([created_at]);
 GO
 
 IF NOT EXISTS (

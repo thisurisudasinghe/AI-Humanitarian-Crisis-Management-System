@@ -56,6 +56,8 @@ public static class DependencyInjection
         services.TryAddScoped<IAdminService, AdminService>();
         services.TryAddScoped<IKpiService, KpiService>();
         services.TryAddScoped<IDonationService, DonationService>();
+        services.TryAddScoped<IOutbox, OutboxService>();
+        services.TryAddScoped<IOutboxAdminService, OutboxAdminService>();
         services.TryAddScoped(typeof(IRepository<>), typeof(EfRepository<>));
 
         // Local evidence storage. The root is configuration-driven so tests and
@@ -80,9 +82,12 @@ public static class DependencyInjection
 
         services.AddCmsHttpClient();
 
+        // Transactional outbox dispatcher. Modules register IOutboxHandler
+        // implementations; the processor resolves them per message.
+        services.AddHostedService<OutboxProcessor>();
+
         // Fail-closed defaults. A module's real implementation overrides these
         // because it registers after the foundation.
-        services.TryAddScoped<IOutbox, NullOutbox>();
         services.TryAddScoped<IRequestReader, NullRequestReader>();
         services.TryAddScoped<IRequestStatusService, NoOpRequestStatusService>();
         services.TryAddScoped<IRecommendationService, NullRecommendationService>();

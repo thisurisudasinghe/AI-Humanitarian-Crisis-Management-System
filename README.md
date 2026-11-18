@@ -226,6 +226,7 @@ No SQL Server instance is required for `dotnet test`.
 | Organisations | `/api/v1/organisations` (SystemAdmin) |
 | Configuration | `/api/v1/admin/config` (SystemAdmin) |
 | Audit | `/api/v1/audit-events` (SystemAdmin) |
+| Outbox | `/api/v1/admin/outbox/dead` (SystemAdmin dead-letter view) |
 | KPIs | `/api/v1/kpis` (`KpiViewer`) |
 | Donations | `/api/v1/donations`, `/donors`, `/campaigns`, `/report` (`DonationViewer`; writes require `DonationManager`) |
 | Files | `/api/v1/files` (authenticated evidence upload; PNG/JPEG/WebP/PDF, 1 MB) |
@@ -248,7 +249,7 @@ outside `RoleNames`, or audit-row updates.
 
 See `docs/TESTING.md` for the test layers, commands, coverage matrix, the
 end-to-end UAT loop and the manual regression checklist. The suite currently
-runs 109 backend tests with no SQL Server instance required.
+runs 129 backend tests with no SQL Server instance required.
 
 ## 15. Dev 1 status notes
 
@@ -276,3 +277,15 @@ runs 109 backend tests with no SQL Server instance required.
   validates the magic bytes and records a `File.Uploaded` audit event. Reading
   a file back is left to the owning module so it can authorise the caller
   against the owning record.
+- The transactional outbox (`common.outbox_messages`, `IOutbox`,
+  `IOutboxHandler`, `OutboxProcessor`) is owned by Dev 1. `EnqueueAsync` adds
+  the event row to the caller's `CmsDbContext` so it commits atomically with the
+  business change; the unique `UX_outbox_idempotency_key` index and an in-memory
+  pre-check make enqueue idempotent. The background processor polls every five
+  seconds, dispatches to the registered handler, retries with exponential
+  backoff and dead-letters after three attempts. `GET
+  /api/v1/admin/outbox/dead` lists dead-lettered rows for SystemAdmin without
+  exposing the payload or idempotency key. The processor is disabled in the
+  in-memory test harness via `Outbox:ProcessorEnabled=false`. Member 3 still
+  owns the `Notification.Send` handler; until it is registered those events
+  retry and dead-letter.

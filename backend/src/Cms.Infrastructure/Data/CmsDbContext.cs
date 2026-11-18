@@ -28,8 +28,9 @@ public class CmsDbContext : DbContext
 
     public DbSet<SystemSetting> SystemSettings => Set<SystemSetting>();
 
-    // Owned by Member 3 (notif schema). Kept here so IOutbox can add rows
-    // to the caller's SaveChanges.
+    // Shared transactional outbox (common.outbox_messages), owned by Dev 1.
+    // Kept on the shared context so callers can add an event row to their own
+    // SaveChanges transaction.
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
 
     public DbSet<Notification> Notifications => Set<Notification>();

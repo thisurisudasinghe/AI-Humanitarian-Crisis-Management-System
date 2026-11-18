@@ -65,7 +65,8 @@ public sealed class CmsWebApplicationFactory : WebApplicationFactory<Program>
                 ["Jwt:RefreshTokenExpirationDays"] = "7",
                 ["EmailProtection:EncryptionKey"] = TestSecrets.EmailEncryptionKey,
                 ["EmailProtection:HashKey"] = TestSecrets.EmailHashKey,
-                ["FileStorage:RootPath"] = _storageRoot
+                ["FileStorage:RootPath"] = _storageRoot,
+                ["Outbox:ProcessorEnabled"] = "false"
             });
         });
 

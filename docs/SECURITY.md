@@ -15,6 +15,7 @@ team (NFR-SEC-01/02/03/04/05/08 and NFR-AUD-01).
 | Evidence uploads | Malicious file, path traversal, storage abuse | PNG/JPEG/WebP/PDF allowlist, magic-byte check, generated storage keys, 1 MB file cap, 20/min upload limiter, `File.Uploaded` audit row |
 | Browser clients | XSS/clickjacking/referrer leakage | Conservative CSP, `X-Frame-Options: DENY`, `nosniff`, `Referrer-Policy: no-referrer`, Permissions-Policy |
 | Audit trail | Tampering or sensitive-data leakage | Append-only EF guard, no `UpdatedAt`, explicit actor overload, recursive masking |
+| Outbox | Lost or duplicated events, poison messages | Event row shares the caller's transaction, unique idempotency key, retry backoff, dead-letter after three attempts, `AdminOnly` dead-letter view with no payload |
 | Secrets | Accidental commit | No real secrets in `appsettings.json`; fixed development-only keys are committed in `appsettings.Development.json`; production uses environment variables or a secret store; non-dev startup fails fast |
 
 ## Authentication
@@ -72,6 +73,33 @@ with `[AllowAnonymous]`. Use `RoleNames` constants, never raw role strings.
 - Failed logins are audited with the email masked.
 - Never log credentials, bearer tokens, phone numbers, medical data or
   accessibility details on any module.
+
+## Transactional outbox
+
+- `IOutbox.EnqueueAsync` adds a `common.outbox_messages` row to the caller's
+  `CmsDbContext` and does not save. The caller's `SaveChangesAsync` commits the
+  business change and the event together, so a committed change always has an
+  event and a rolled-back change never does.
+- Enqueue is idempotent. A key that is already tracked or persisted is ignored,
+  and the unique `UX_outbox_idempotency_key` index stops a concurrent duplicate.
+  Callers should use `OutboxEventTypes.BuildIdempotencyKey` (`type:entityId:version`).
+- `OutboxProcessor` polls `Pending` and `Failed` rows every five seconds, claims
+  a row as `Processing`, resolves the single `IOutboxHandler` whose `Type`
+  matches, and saves the handler's changes with the `Processed` status. A
+  handler failure discards that scope, increments `RetryCount` with exponential
+  backoff, and moves the row to `DeadLettered` after `Outbox:MaxRetries`
+  (default three). Rows stuck in `Processing` past
+  `Outbox:StaleProcessingMinutes` (default ten) are recovered.
+- `GET /api/v1/admin/outbox/dead` is `AdminOnly`. It returns type, entity id,
+  status, retry count, timestamps and the error message, but never the serialized
+  payload or idempotency key.
+- `Outbox:ProcessorEnabled` (default `true`) disables the worker. The in-memory
+  integration harness sets it to `false`; production must keep it enabled.
+- SQL Server rejects `OR`/`IN` in filtered-index predicates, so the v4 contract's
+  single `IX_outbox_status_retry` is implemented as the equivalent
+  `IX_outbox_status_retry_pending` and `IX_outbox_status_retry_failed` indexes.
+- Handlers must be idempotent: a crash after the handler commits but before the
+  `Processed` status is saved can cause a retry of the same event.
 
 ## Local development keys
 
