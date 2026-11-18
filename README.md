@@ -243,7 +243,13 @@ See `docs/SECURITY.md` for the enforced controls, role policies, rate limits,
 secret handling and threat-model summary. Do not commit secrets, role strings
 outside `RoleNames`, or audit-row updates.
 
-## 14. Dev 1 status notes
+## 14. Testing
+
+See `docs/TESTING.md` for the test layers, commands, coverage matrix, the
+end-to-end UAT loop and the manual regression checklist. The suite currently
+runs 94 backend tests with no SQL Server instance required.
+
+## 15. Dev 1 status notes
 
 - Identity, hardening, audit viewer and administration endpoints are implemented
   and covered by the integration harness.
