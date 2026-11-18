@@ -35,6 +35,13 @@ public static class AuditActions
     public const string VolunteerTaskAssigned = "Volunteer.TaskAssigned";
 
     // Donations (P2)
+    public const string DonorCreated = "Donor.Created";
+    public const string DonorUpdated = "Donor.Updated";
+    public const string CampaignCreated = "Campaign.Created";
+    public const string CampaignUpdated = "Campaign.Updated";
+    public const string CampaignExpenseRecorded = "Campaign.ExpenseRecorded";
     public const string DonationRecorded = "Donation.Recorded";
+    public const string DonationAllocated = "Donation.Allocated";
     public const string DonationFlagged = "Donation.Flagged";
+    public const string DonationAllocationFlagged = "Donation.AllocationFlagged";
 }

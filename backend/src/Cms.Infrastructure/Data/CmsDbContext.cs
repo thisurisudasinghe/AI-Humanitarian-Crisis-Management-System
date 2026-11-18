@@ -34,6 +34,17 @@ public class CmsDbContext : DbContext
 
     public DbSet<Notification> Notifications => Set<Notification>();
 
+    // Donation management (don schema), owned by Dev 1 (M8, P2).
+    public DbSet<Donor> Donors => Set<Donor>();
+
+    public DbSet<Campaign> Campaigns => Set<Campaign>();
+
+    public DbSet<Donation> Donations => Set<Donation>();
+
+    public DbSet<DonationAllocation> DonationAllocations => Set<DonationAllocation>();
+
+    public DbSet<CampaignExpense> CampaignExpenses => Set<CampaignExpense>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);

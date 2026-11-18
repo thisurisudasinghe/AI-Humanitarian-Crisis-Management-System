@@ -227,6 +227,7 @@ No SQL Server instance is required for `dotnet test`.
 | Configuration | `/api/v1/admin/config` (SystemAdmin) |
 | Audit | `/api/v1/audit-events` (SystemAdmin) |
 | KPIs | `/api/v1/kpis` (`KpiViewer`) |
+| Donations | `/api/v1/donations`, `/donors`, `/campaigns`, `/report` (`DonationViewer`; writes require `DonationManager`) |
 | Health | `/api/Health` (public) |
 
 Swagger is available at `/swagger` in Development. Every endpoint is authenticated
@@ -253,5 +254,9 @@ outside `RoleNames`, or audit-row updates.
   final cross-module table/column names; no guessed SQL is used.
 - `98_foreign_keys.sql` currently guards the `notifications` → `identity.users`
   relationship and documents the extension pattern for other cross-module FKs.
-- Donations (`D1-09`) is P2 and is not part of the P1 release unless the core
-  loop is green before feature freeze.
+- Donations (`D1-09`, P2) are implemented end to end: the idempotent
+  `08_don.sql` schema (`don` schema, five tables), donor and campaign
+  management, manual monetary/material donation entry, value-constrained
+  allocations, campaign expenditure and a currency-aggregated transparency
+  report that never exposes donor names. Suspicious values are flagged by a
+  rule and cleared only by a human reviewer.

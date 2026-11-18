@@ -13,12 +13,20 @@ const kpiRoles = [
   RoleNames.PartnerOfficer
 ];
 
+const donationRoles = [
+  RoleNames.SystemAdmin,
+  RoleNames.DonorOfficer,
+  RoleNames.EmergencyCoordinator,
+  RoleNames.PartnerOfficer
+];
+
 export function AppShell({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth();
   const router = useRouter();
 
   const admin = user?.roles.includes(RoleNames.SystemAdmin) ?? false;
   const kpis = user ? hasAnyRole(user.roles, kpiRoles) : false;
+  const donations = user ? hasAnyRole(user.roles, donationRoles) : false;
 
   async function onLogout() {
     await logout();
@@ -47,6 +55,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <nav className="sidebar" aria-label="Main navigation">
           <Link href="/dashboard">Dashboard</Link>
           {kpis ? <Link href="/kpis">KPIs</Link> : null}
+          {donations ? <Link href="/donations">Donations</Link> : null}
           {admin ? <span className="sidebar__heading">Administration</span> : null}
           {admin ? <Link href="/admin/users">Users</Link> : null}
           {admin ? <Link href="/admin/organisations">Organisations</Link> : null}

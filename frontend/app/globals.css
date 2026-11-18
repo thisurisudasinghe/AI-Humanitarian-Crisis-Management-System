@@ -304,6 +304,11 @@ h3 {
   color: var(--muted);
 }
 
+.badge--danger {
+  background: #fdeaea;
+  color: var(--danger);
+}
+
 .actions {
   display: flex;
   gap: 0.5rem;

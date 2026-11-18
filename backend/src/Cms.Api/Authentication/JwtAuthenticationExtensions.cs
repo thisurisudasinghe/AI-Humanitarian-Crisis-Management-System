@@ -104,6 +104,20 @@ public static class JwtAuthenticationExtensions
                     RoleNames.EmergencyCoordinator,
                     RoleNames.PartnerOfficer));
 
+            // Donation management (M8). Donor Officers record money and goods;
+            // coordinators and partner officers may read the transparency data.
+            options.AddPolicy("DonationManager", policy =>
+                policy.RequireRole(
+                    RoleNames.SystemAdmin,
+                    RoleNames.DonorOfficer));
+
+            options.AddPolicy("DonationViewer", policy =>
+                policy.RequireRole(
+                    RoleNames.SystemAdmin,
+                    RoleNames.DonorOfficer,
+                    RoleNames.EmergencyCoordinator,
+                    RoleNames.PartnerOfficer));
+
             // Endpoints must opt in to being public with [AllowAnonymous].
             options.FallbackPolicy = new AuthorizationPolicyBuilder()
                 .RequireAuthenticatedUser()

@@ -52,6 +52,7 @@ public static class DependencyInjection
         services.TryAddScoped<IAuditQueryService, AuditQueryService>();
         services.TryAddScoped<IAdminService, AdminService>();
         services.TryAddScoped<IKpiService, KpiService>();
+        services.TryAddScoped<IDonationService, DonationService>();
         services.TryAddScoped(typeof(IRepository<>), typeof(EfRepository<>));
 
         services.AddCmsHttpClient();

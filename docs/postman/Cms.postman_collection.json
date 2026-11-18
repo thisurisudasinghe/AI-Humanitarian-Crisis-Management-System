@@ -13,7 +13,10 @@
     { "key": "userId", "value": "" },
     { "key": "organisationId", "value": "" },
     { "key": "crisisEventId", "value": "" },
-    { "key": "areaId", "value": "" }
+    { "key": "areaId", "value": "" },
+    { "key": "donorId", "value": "" },
+    { "key": "campaignId", "value": "" },
+    { "key": "donationId", "value": "" }
   ],
   "item": [
     {
@@ -484,13 +487,193 @@
       ]
     },
     {
+      "name": "Donations",
+      "item": [
+        {
+          "name": "List donors",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/donations/donors?page=1&pageSize=50", "host": ["{{baseUrl}}"], "path": ["api", "v1", "donations", "donors"] }
+          }
+        },
+        {
+          "name": "Create donor",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201 || pm.response.code === 200) {",
+                  "  const body = pm.response.json();",
+                  "  pm.collectionVariables.set('donorId', body.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Demo Donor {{$randomInt}}\",\n  \"donorType\": \"Individual\",\n  \"contactEmail\": \"donor{{$randomInt}}@example.org\",\n  \"isAnonymous\": false\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/donations/donors", "host": ["{{baseUrl}}"], "path": ["api", "v1", "donations", "donors"] }
+          }
+        },
+        {
+          "name": "Create campaign",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201 || pm.response.code === 200) {",
+                  "  const body = pm.response.json();",
+                  "  pm.collectionVariables.set('campaignId', body.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Flood Relief {{$randomInt}}\",\n  \"description\": \"Emergency water and shelter support\",\n  \"goalAmount\": 50000,\n  \"currency\": \"USD\",\n  \"startsAt\": \"2026-11-01T00:00:00Z\",\n  \"endsAt\": \"2026-12-31T23:59:59Z\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/donations/campaigns", "host": ["{{baseUrl}}"], "path": ["api", "v1", "donations", "campaigns"] }
+          }
+        },
+        {
+          "name": "Activate campaign",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"status\": \"Active\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/v1/donations/campaigns/{{campaignId}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "donations", "campaigns", "{{campaignId}}"] }
+          }
+        },
+        {
+          "name": "Record monetary donation",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201 || pm.response.code === 200) {",
+                  "  const body = pm.response.json();",
+                  "  pm.collectionVariables.set('donationId', body.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"donorId\": \"{{donorId}}\",\n  \"donationType\": \"Monetary\",\n  \"amount\": 2500,\n  \"currency\": \"USD\",\n  \"receivedAt\": \"2026-11-15T10:00:00Z\",\n  \"notes\": \"Bank transfer reference 1234\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/donations", "host": ["{{baseUrl}}"], "path": ["api", "v1", "donations"] }
+          }
+        },
+        {
+          "name": "Allocate donation to campaign",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"campaignId\": \"{{campaignId}}\",\n  \"amount\": 1000,\n  \"note\": \"Initial allocation\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/donations/{{donationId}}/allocations", "host": ["{{baseUrl}}"], "path": ["api", "v1", "donations", "{{donationId}}", "allocations"] }
+          }
+        },
+        {
+          "name": "List donations",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/donations?page=1&pageSize=50", "host": ["{{baseUrl}}"], "path": ["api", "v1", "donations"] }
+          }
+        },
+        {
+          "name": "Flag donation for review",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"isSuspicious\": true,\n  \"reason\": \"Manual review requested\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/donations/{{donationId}}/flag", "host": ["{{baseUrl}}"], "path": ["api", "v1", "donations", "{{donationId}}", "flag"] }
+          }
+        },
+        {
+          "name": "Record campaign expense",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Water truck fuel\",\n  \"amount\": 300,\n  \"currency\": \"USD\",\n  \"spentAt\": \"2026-11-16T09:00:00Z\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/donations/campaigns/{{campaignId}}/expenses", "host": ["{{baseUrl}}"], "path": ["api", "v1", "donations", "campaigns", "{{campaignId}}", "expenses"] }
+          }
+        },
+        {
+          "name": "Get transparency report",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/donations/report?from=2026-11-01T00:00:00Z&to=2026-11-30T23:59:59Z",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "donations", "report"],
+              "query": [
+                { "key": "from", "value": "2026-11-01T00:00:00Z" },
+                { "key": "to", "value": "2026-11-30T23:59:59Z" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "Placeholder module folders",
       "item": [
         { "name": "Cases (Member 2)", "item": [] },
         { "name": "AI (Member 3)", "item": [] },
         { "name": "Governance (Member 3)", "item": [] },
-        { "name": "Resources/Shelter/Volunteers/Mapping (Member 4)", "item": [] },
-        { "name": "Donations (Dev 1 P2 - only if retained)", "item": [] }
+        { "name": "Resources/Shelter/Volunteers/Mapping (Member 4)", "item": [] }
       ]
     }
   ]

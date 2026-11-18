@@ -631,3 +631,14 @@ BEGIN
 END;
 GO
 
+IF NOT EXISTS (
+    SELECT 1 FROM [common].[system_settings]
+    WHERE [id] = '0c000000-0000-0000-0000-000000000003'
+       OR [key] = N'SuspiciousDonationAmount')
+BEGIN
+    INSERT INTO [common].[system_settings] ([id], [key], [value], [description], [created_at], [updated_at])
+    VALUES ('0c000000-0000-0000-0000-000000000003', N'SuspiciousDonationAmount', N'10000',
+            N'Donation value above which a human review flag is raised.', '2026-11-01T00:00:00', NULL);
+END;
+GO
+
