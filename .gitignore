@@ -23,3 +23,5 @@ appsettings.*.Local.json
 !backend/src/Cms.Api/appsettings.Development.json
 # Logs
 *.log
+# Local evidence storage
+backend/src/Cms.Api/App_Data/

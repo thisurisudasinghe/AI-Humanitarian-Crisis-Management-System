@@ -228,6 +228,7 @@ No SQL Server instance is required for `dotnet test`.
 | Audit | `/api/v1/audit-events` (SystemAdmin) |
 | KPIs | `/api/v1/kpis` (`KpiViewer`) |
 | Donations | `/api/v1/donations`, `/donors`, `/campaigns`, `/report` (`DonationViewer`; writes require `DonationManager`) |
+| Files | `/api/v1/files` (authenticated evidence upload; PNG/JPEG/WebP/PDF, 1 MB) |
 | Health | `/api/Health` (public) |
 
 Swagger is available at `/swagger` in Development. Every endpoint is authenticated
@@ -269,3 +270,9 @@ runs 94 backend tests with no SQL Server instance required.
   allocations, campaign expenditure and a currency-aggregated transparency
   report that never exposes donor names. Suspicious values are flagged by a
   rule and cleared only by a human reviewer.
+- Evidence storage is available to every module through `IFileStore`
+  (`LocalFileStore` writes under `FileStorage:RootPath`, `App_Data/uploads` by
+  default). `POST /api/v1/files` accepts PNG, JPEG, WebP and PDF up to 1 MB,
+  validates the magic bytes and records a `File.Uploaded` audit event. Reading
+  a file back is left to the owning module so it can authorise the caller
+  against the owning record.

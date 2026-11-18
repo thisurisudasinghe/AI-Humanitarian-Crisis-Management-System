@@ -12,6 +12,7 @@ team (NFR-SEC-01/02/03/04/05/08 and NFR-AUD-01).
 | Admin operations | Privilege escalation | Ten frozen roles, `RoleNames` constants only, role policies, default-deny fallback |
 | Public endpoints | Brute force / scraping | 60/min auth limiter, 30/min public read limiter, 100/min global limiter, 429 + `Retry-After` |
 | Request pipeline | Oversized/malformed payloads | 1 MiB body limit, central validation -> 422 ProblemDetails, JSON content type on writes |
+| Evidence uploads | Malicious file, path traversal, storage abuse | PNG/JPEG/WebP/PDF allowlist, magic-byte check, generated storage keys, 1 MB file cap, 20/min upload limiter, `File.Uploaded` audit row |
 | Browser clients | XSS/clickjacking/referrer leakage | Conservative CSP, `X-Frame-Options: DENY`, `nosniff`, `Referrer-Policy: no-referrer`, Permissions-Policy |
 | Audit trail | Tampering or sensitive-data leakage | Append-only EF guard, no `UpdatedAt`, explicit actor overload, recursive masking |
 | Secrets | Accidental commit | No real secrets in `appsettings.json`; fixed development-only keys are committed in `appsettings.Development.json`; production uses environment variables or a secret store; non-dev startup fails fast |
@@ -53,6 +54,9 @@ with `[AllowAnonymous]`. Use `RoleNames` constants, never raw role strings.
   `REQUEST_TOO_LARGE`.
 - Model-state errors return `422` with code `VALIDATION_FAILED` and per-field errors.
 - Rate-limit rejections return `429` with code `RATE_LIMITED` and `Retry-After: 60`.
+- `POST /api/v1/files` requires authentication, accepts one file field named
+  `file`, caps the file at 1 MB, derives the stored extension from the validated
+  content type and rejects content that does not match its declared type.
 - Controllers that accept bodies declare `[Consumes("application/json")]`.
 - Non-Development startup throws if `JWT_SECRET`, `EMAIL_ENCRYPTION_KEY`,
   `EMAIL_HASH_KEY` or `ConnectionStrings__DefaultConnection` are missing.

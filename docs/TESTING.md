@@ -58,7 +58,7 @@ Stop `Cms.Api` before rebuilding; the running process locks the output DLLs.
 
 ## 3. Current coverage
 
-- 94 backend tests, 0 skipped (unit + integration).
+- 109 backend tests, 0 skipped (unit + integration).
 - 13 frontend routes build statically, including `/donations` and `/kpis`.
 
 | Area | Covered by |
@@ -69,6 +69,7 @@ Stop `Cms.Api` before rebuilding; the running process locks the output DLLs.
 | Users, organisations, configuration, audit search | `AdminEndpointTests` |
 | Identity, audit and donation KPI sections | `KpiEndpointTests` |
 | Donor, campaign, donation, allocation, expense, flagging and transparency report | `DonationEndpointTests` |
+| Evidence upload validation, storage and audit | `FileUploadTests`, `LocalFileStoreTests` |
 | Cases, AI, governance, resources, shelter, volunteers, mapping, notifications | Pending other modules |
 
 ## 4. End-to-end UAT loop
@@ -137,6 +138,11 @@ Run this before every Dev 1 hand-off or demo.
    donor name or email.
 8. Frontend: `npm run typecheck` and `npm run build` must pass; `/donations` and
    `/kpis` must appear in the route list.
+9. Files: upload a PNG as `citizen@example.org`; confirm `201` with a 32-hex key
+   and that the file appears under `backend/src/Cms.Api/App_Data/uploads`.
+   Confirm a `.txt` upload, a PNG whose bytes are not a PNG, and a file over
+   1 MB are all rejected with `422`, and that `File.Uploaded` appears in the
+   audit viewer.
 
 ## 7. Accessibility checks (NFR-USA-02)
 

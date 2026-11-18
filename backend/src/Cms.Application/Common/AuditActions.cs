@@ -20,6 +20,9 @@ public static class AuditActions
     public const string OrganisationDeactivated = "Organisation.Deactivated";
     public const string ConfigUpdated = "Config.Updated";
 
+    // Evidence files
+    public const string FileUploaded = "File.Uploaded";
+
     // Cases
     public const string RequestSubmitted = "Request.Submitted";
     public const string RequestStatusChanged = "Request.StatusChanged";

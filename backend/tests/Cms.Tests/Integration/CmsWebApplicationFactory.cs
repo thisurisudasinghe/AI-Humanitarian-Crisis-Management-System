@@ -34,6 +34,10 @@ public static class TestSecrets
 public sealed class CmsWebApplicationFactory : WebApplicationFactory<Program>
 {
     private readonly string _databaseName = $"cms-tests-{Guid.NewGuid()}";
+    private readonly string _storageRoot = Path.Combine(
+        Path.GetTempPath(),
+        "cms-test-files",
+        Guid.NewGuid().ToString("N"));
     private readonly SemaphoreSlim _seedLock = new(1, 1);
     private bool _seeded;
 
@@ -41,6 +45,9 @@ public sealed class CmsWebApplicationFactory : WebApplicationFactory<Program>
     public const string OfficerEmail = "officer@tests.local";
     public const string CitizenEmail = "citizen@tests.local";
     public const string InactiveEmail = "inactive@tests.local";
+
+    /// <summary>Per-factory upload directory, isolated from the real content root.</summary>
+    public string StorageRoot => _storageRoot;
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -57,7 +64,8 @@ public sealed class CmsWebApplicationFactory : WebApplicationFactory<Program>
                 ["Jwt:AccessTokenExpirationMinutes"] = "15",
                 ["Jwt:RefreshTokenExpirationDays"] = "7",
                 ["EmailProtection:EncryptionKey"] = TestSecrets.EmailEncryptionKey,
-                ["EmailProtection:HashKey"] = TestSecrets.EmailHashKey
+                ["EmailProtection:HashKey"] = TestSecrets.EmailHashKey,
+                ["FileStorage:RootPath"] = _storageRoot
             });
         });
 
@@ -201,5 +209,31 @@ public sealed class CmsWebApplicationFactory : WebApplicationFactory<Program>
             .ToList();
 
         db.Users.Add(user);
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        base.Dispose(disposing);
+
+        if (!disposing)
+        {
+            return;
+        }
+
+        try
+        {
+            if (Directory.Exists(_storageRoot))
+            {
+                Directory.Delete(_storageRoot, recursive: true);
+            }
+        }
+        catch (IOException)
+        {
+            // Best effort cleanup of the per-factory upload directory.
+        }
+        catch (UnauthorizedAccessException)
+        {
+            // Best effort cleanup of the per-factory upload directory.
+        }
     }
 }

@@ -668,6 +668,27 @@
       ]
     },
     {
+      "name": "Files",
+      "item": [
+        {
+          "name": "Upload evidence file",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "file", "type": "file", "src": "C:/path/to/evidence.png" }
+              ]
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/files", "host": ["{{baseUrl}}"], "path": ["api", "v1", "files"] }
+          }
+        }
+      ]
+    },
+    {
       "name": "Placeholder module folders",
       "item": [
         { "name": "Cases (Member 2)", "item": [] },
