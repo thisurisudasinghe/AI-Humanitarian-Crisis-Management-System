@@ -127,6 +127,20 @@ public sealed class KpiEndpointTests : IClassFixture<CmsWebApplicationFactory>
         Assert.Empty(report.SheltersByArea);
     }
 
+    [Fact]
+    public async Task Kpi_report_is_available_on_the_contract_route()
+    {
+        using var admin = await _factory.CreateAuthenticatedClientAsync(
+            CmsWebApplicationFactory.AdminEmail);
+
+        var from = Uri.EscapeDataString(DateTime.UtcNow.AddHours(-1).ToString("o"));
+        var to = Uri.EscapeDataString(DateTime.UtcNow.AddHours(1).ToString("o"));
+
+        var response = await admin.GetAsync($"/api/v1/reports/kpis?from={from}&to={to}");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
     // -----------------------------------------------------------------------
     // Helpers
     // -----------------------------------------------------------------------

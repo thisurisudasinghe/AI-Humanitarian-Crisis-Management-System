@@ -8,6 +8,7 @@ namespace Cms.Api.Controllers;
 /// <summary>Reporting and KPI endpoint (M11).</summary>
 [ApiController]
 [Route("api/v1/kpis")]
+[Route("api/v1/reports/kpis")]
 [Authorize(Policy = "KpiViewer")]
 [Produces("application/json")]
 public sealed class KpiController : ControllerBase
