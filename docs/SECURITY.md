@@ -40,6 +40,8 @@ Policies registered in `JwtAuthenticationExtensions`:
 | `CoordinatorOnly` | `EmergencyCoordinator` |
 | `DataOfficer` | `EmergencyCoordinator`, `CaseManager` |
 | `KpiViewer` | `SystemAdmin`, `EmergencyCoordinator`, `PartnerOfficer` |
+| `DonationManager` | `SystemAdmin`, `DonorOfficer` |
+| `DonationViewer` | `SystemAdmin`, `DonorOfficer`, `EmergencyCoordinator`, `PartnerOfficer` |
 
 A fallback policy requires authentication on every endpoint unless it opts out
 with `[AllowAnonymous]`. Use `RoleNames` constants, never raw role strings.

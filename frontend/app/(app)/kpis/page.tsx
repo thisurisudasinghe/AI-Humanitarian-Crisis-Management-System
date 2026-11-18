@@ -10,6 +10,7 @@ import {
   type KpiAreaBreakdown,
   type KpiReportDto
 } from "@/lib/admin";
+import { formatMoney } from "@/lib/donations";
 import {
   RoleNames,
   hasAnyRole,
@@ -185,8 +186,11 @@ export default function KpiPage() {
 
             {report?.isPlaceholder ? (
               <section className="notice">
-                Aggregates are provisional until Members 2–4 publish their final
-                table and column names. No guessed SQL is used.
+                Identity and donation aggregates are live.
+                {report.pendingSections.length > 0
+                  ? ` Still provisional: ${report.pendingSections.join(", ")} — waiting on Members 2–4 to publish their table and column names.`
+                  : null}{" "}
+                No guessed SQL is used.
               </section>
             ) : null}
 
@@ -250,6 +254,121 @@ export default function KpiPage() {
                     </div>
                   </div>
                 </>
+              )}
+            </section>
+
+            <section className="card-grid" aria-label="Identity and donation KPIs">
+              {loading ? (
+                <Skeleton rows={3} />
+              ) : (
+                <>
+                  <div className="card">
+                    <div className="metric__label">Active / total users</div>
+                    <div className="metric__value">
+                      {report?.activeUserCount ?? "—"} / {report?.totalUserCount ?? "—"}
+                    </div>
+                  </div>
+                  <div className="card">
+                    <div className="metric__label">New registrations</div>
+                    <div className="metric__value">{report?.newUserCount ?? "—"}</div>
+                  </div>
+                  <div className="card">
+                    <div className="metric__label">Audit events</div>
+                    <div className="metric__value">{report?.auditEventCount ?? "—"}</div>
+                  </div>
+                  <div className="card">
+                    <div className="metric__label">Active campaigns</div>
+                    <div className="metric__value">
+                      {report?.activeCampaignCount ?? "—"}
+                    </div>
+                  </div>
+                  <div className="card">
+                    <div className="metric__label">Flagged donations</div>
+                    <div className="metric__value">
+                      {report?.suspiciousDonationCount ?? "—"}
+                    </div>
+                  </div>
+                  <div className="card">
+                    <div className="metric__label">Flagged allocations</div>
+                    <div className="metric__value">
+                      {report?.suspiciousAllocationCount ?? "—"}
+                    </div>
+                  </div>
+                </>
+              )}
+            </section>
+
+            <section className="card">
+              <h2>Donations by currency</h2>
+              <p className="metric__label">
+                Organisation-wide totals for the selected period. Amounts in
+                different currencies are never combined.
+              </p>
+              {loading ? (
+                <Skeleton rows={3} />
+              ) : report && report.donationTotals.length > 0 ? (
+                <div className="table-wrap">
+                  <table className="table">
+                    <thead>
+                      <tr>
+                        <th scope="col">Currency</th>
+                        <th scope="col">Monetary</th>
+                        <th scope="col">In-kind value</th>
+                        <th scope="col">Allocated</th>
+                        <th scope="col">Spent</th>
+                        <th scope="col">Donations</th>
+                        <th scope="col">Donors</th>
+                        <th scope="col">Flagged</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {report.donationTotals.map((total) => (
+                        <tr key={total.currency}>
+                          <td>{total.currency}</td>
+                          <td>{formatMoney(total.monetaryTotal, total.currency)}</td>
+                          <td>
+                            {formatMoney(total.materialEstimatedTotal, total.currency)}
+                          </td>
+                          <td>{formatMoney(total.allocatedTotal, total.currency)}</td>
+                          <td>{formatMoney(total.spentTotal, total.currency)}</td>
+                          <td>{total.donationCount}</td>
+                          <td>{total.donorCount}</td>
+                          <td>{total.suspiciousCount}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="metric__label">No donations in this period yet.</p>
+              )}
+            </section>
+
+            <section className="card">
+              <h2>Accounts by role</h2>
+              {loading ? (
+                <Skeleton rows={3} />
+              ) : report && report.usersByRole.length > 0 ? (
+                <div className="table-wrap">
+                  <table className="table">
+                    <thead>
+                      <tr>
+                        <th scope="col">Role</th>
+                        <th scope="col">Accounts</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {report.usersByRole.map((row) => (
+                        <tr key={row.role}>
+                          <td>{row.role}</td>
+                          <td>{row.count}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="metric__label">No accounts found.</p>
               )}
             </section>
 

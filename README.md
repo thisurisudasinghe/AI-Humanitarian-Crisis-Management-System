@@ -250,8 +250,11 @@ outside `RoleNames`, or audit-row updates.
 - `D1-02` is complete: the stale EF migrations and `00_foundation.sql` were
   replaced by the idempotent `00_common.sql`, `98_foreign_keys.sql` and
   `99_seed_users.sql`.
-- KPI endpoint returns a typed provisional report until Members 2–4 publish the
-  final cross-module table/column names; no guessed SQL is used.
+- KPI endpoint returns a typed report. The identity, audit and donation sections
+  are live aggregates over the `identity`, `common` and `don` schemas; the
+  cases, resources, shelter, AI and notification sections stay empty and are
+  listed in `pendingSections` until Members 2–4 publish their final
+  cross-module table/column names. No guessed SQL is used.
 - `98_foreign_keys.sql` currently guards the `notifications` → `identity.users`
   relationship and documents the extension pattern for other cross-module FKs.
 - Donations (`D1-09`, P2) are implemented end to end: the idempotent

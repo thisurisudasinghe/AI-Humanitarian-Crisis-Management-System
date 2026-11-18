@@ -53,6 +53,13 @@ export interface KpiAreaBreakdown {
   count: number;
 }
 
+import type { DonationCurrencyTotalDto } from "./donations";
+
+export interface KpiRoleCount {
+  role: string;
+  count: number;
+}
+
 export interface KpiReportDto {
   from: string;
   to: string;
@@ -69,6 +76,17 @@ export interface KpiReportDto {
   aiOverrideRatePercent?: number | null;
   failedNotifications?: number | null;
   deadLetterCount?: number | null;
+  totalUserCount: number;
+  activeUserCount: number;
+  newUserCount: number;
+  usersByRole: KpiRoleCount[];
+  auditEventCount: number;
+  activeCampaignCount: number;
+  donationTotals: DonationCurrencyTotalDto[];
+  suspiciousDonationCount: number;
+  suspiciousAllocationCount: number;
+  availableSections: string[];
+  pendingSections: string[];
   requestsByArea: KpiAreaBreakdown[];
   sheltersByArea: KpiAreaBreakdown[];
   isPlaceholder: boolean;
