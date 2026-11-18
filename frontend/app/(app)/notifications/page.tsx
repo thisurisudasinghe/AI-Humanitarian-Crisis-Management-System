@@ -31,11 +31,11 @@ export default function NotificationsPage() {
   const [markingAll, setMarkingAll] = useState(false);
   const [notice, setNotice] = useState<Notice>(null);
 
-  const load = useCallback(async (unreadOnly: boolean) => {
+  const load = useCallback(async () => {
     setLoading(true);
 
     try {
-      const result = await getInbox({ unreadOnly, limit: 100 });
+      const result = await getInbox({ limit: 100 });
       setInbox(result);
     } catch (error) {
       setNotice({ message: errorMessage(error), tone: "error" });
@@ -45,18 +45,20 @@ export default function NotificationsPage() {
   }, []);
 
   useEffect(() => {
-    void load(filter === "unread");
-  }, [filter, load]);
+    void load();
+  }, [load]);
 
   const items = inbox?.items ?? [];
   const unreadCount = inbox?.unreadCount ?? 0;
+  const visibleItems =
+    filter === "unread" ? items.filter((notification) => !notification.isRead) : items;
 
   async function handleMarkRead(notification: NotificationDto) {
     setBusyId(notification.id);
 
     try {
       await markRead(notification.id);
-      await load(filter === "unread");
+      await load();
     } catch (error) {
       setNotice({ message: errorMessage(error), tone: "error" });
     } finally {
@@ -76,7 +78,7 @@ export default function NotificationsPage() {
             : `Marked ${result.updated} notification${result.updated === 1 ? "" : "s"} as read.`,
         tone: "success"
       });
-      await load(filter === "unread");
+      await load();
     } catch (error) {
       setNotice({ message: errorMessage(error), tone: "error" });
     } finally {
@@ -137,14 +139,14 @@ export default function NotificationsPage() {
           <div style={{ padding: 24 }}>
             <Skeleton rows={4} />
           </div>
-        ) : items.length === 0 ? (
+        ) : visibleItems.length === 0 ? (
           <EmptyPanel title={filter === "unread" ? "You're all caught up" : "No notifications yet"}>
             {filter === "unread"
               ? "Every message has been read. New updates will appear here as they arrive."
               : "Account messages, report progress and assistance updates will appear here."}
           </EmptyPanel>
         ) : (
-          items.map((notification) => (
+          visibleItems.map((notification) => (
             <article className="notice" key={notification.id}>
               <i style={notification.isRead ? { background: "#b6c6d2" } : undefined} />
               <span style={{ flex: 1 }}>
