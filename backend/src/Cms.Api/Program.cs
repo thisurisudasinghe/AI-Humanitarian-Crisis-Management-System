@@ -1,9 +1,12 @@
 using Cms.Api.Authentication;
 using Cms.Application.Interfaces;
+using Cms.Application.Interfaces.AI;
+using Cms.Infrastructure.Authentication;
 using Cms.Infrastructure.Data;
 using Cms.Infrastructure.Services;
-using Cms.Infrastructure.Authentication;
+using Cms.Infrastructure.Services.AI;
 using Microsoft.EntityFrameworkCore;
+
 
 var builder = WebApplication.CreateBuilder(args);
 // Map V4 environment variables to application configuration keys
@@ -32,15 +35,33 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 builder.Services.AddHttpContextAccessor();
 
 builder.Services.AddScoped<IDateTimeService, DateTimeService>();
-builder.Services.AddScoped<IAuditService, AuditService>();
+builder.Services.AddScoped<IAuditService, Cms.Infrastructure.Services.AuditService>();
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
-builder.Services.AddScoped<INotificationService, NotificationService>();
+builder.Services.AddScoped<
+    INotificationService,
+    Cms.Infrastructure.Services.Notifications.NotificationService>();
+
+builder.Services.AddScoped<
+    Cms.Application.Interfaces.Notifications.INotificationChannelFactory,
+    Cms.Infrastructure.Services.Notifications.NotificationChannelFactory>();
+
+builder.Services.AddScoped<Cms.Infrastructure.Services.Notifications.EmailChannel>();
+builder.Services.AddScoped<Cms.Infrastructure.Services.Notifications.InAppChannel>();
 builder.Services.AddScoped<JwtTokenService>();
 builder.Services.AddScoped<Cms.Infrastructure.Security.EmailProtectionService>();
 builder.Services.AddScoped<Cms.Infrastructure.Security.PasswordHashingService>();
+builder.Services.AddScoped<IRecommendationService, RecommendationService>();
+builder.Services.AddScoped<
+    IOutbox,
+    Cms.Infrastructure.Services.Outbox.OutboxService>();
+builder.Services.AddScoped<
+    Cms.Application.Interfaces.IOutboxHandler,
+    Cms.Infrastructure.Services.Outbox.OutboxHandler>();
+builder.Services.AddHostedService<
+    Cms.Infrastructure.Services.Outbox.OutboxProcessor>();
 
-// Register JWT Authentication and Authorization
+// Register JWT Authentication and =
 builder.Services.AddJwtAuthentication(builder.Configuration);
 
 var app = builder.Build();
