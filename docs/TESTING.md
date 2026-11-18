@@ -73,7 +73,7 @@ for local development; do not re-add them to User Secrets.
 
 ## 3. Current coverage
 
-- 140 backend tests, 0 skipped (unit + integration).
+- 141 backend tests, 0 skipped (unit + integration).
 - 30 frontend routes build statically, including `/notifications`, `/donations`
   and `/kpis`.
 
@@ -83,7 +83,7 @@ for local development; do not re-add them to User Secrets.
 | Default-deny, security headers, body limit, validation shape | `SecurityBaselineTests` |
 | Rate limits and `429` + `Retry-After` | `RateLimitingTests` |
 | Users, organisations, configuration, audit search | `AdminEndpointTests` |
-| Identity, audit, donation and notification KPI sections, both KPI routes | `KpiEndpointTests` |
+| Identity, audit, donation and notification KPI sections, both KPI routes, CSV export | `KpiEndpointTests` |
 | Donor, campaign, donation, allocation, expense, flagging and transparency report | `DonationEndpointTests` |
 | Evidence upload validation, storage and audit | `FileUploadTests`, `LocalFileStoreTests` |
 | Outbox enqueue, idempotency, dispatch, retry, dead-letter, stale recovery and admin view | `OutboxServiceTests`, `OutboxProcessorTests`, `OutboxEndpointTests` |
@@ -151,7 +151,9 @@ Run this before every Dev 1 hand-off or demo.
    `GET /api/v1/reports/kpis` must return the same report) and confirm identity,
    audit, donation and notification sections are populated, `pendingSections`
    lists only `cases`, `resources`, `shelter` and `ai`, and the remaining
-   cross-module values stay empty.
+   cross-module values stay empty. `GET /api/v1/kpis/export` must return a
+   `text/csv` attachment whose rows include `Total users` and
+   `Total notifications`; the `/kpis` page's Export CSV button downloads it.
 7. Donations: create a donor, a campaign (Draft → Active), a monetary donation,
    an allocation and an expense. Confirm over-value and cross-currency
    allocations are rejected, a donation above `SuspiciousDonationAmount` is

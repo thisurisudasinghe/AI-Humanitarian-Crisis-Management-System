@@ -141,6 +141,29 @@ public sealed class KpiEndpointTests : IClassFixture<CmsWebApplicationFactory>
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
+    [Fact]
+    public async Task Kpi_export_returns_a_csv_attachment()
+    {
+        using var admin = await _factory.CreateAuthenticatedClientAsync(
+            CmsWebApplicationFactory.AdminEmail);
+
+        var from = Uri.EscapeDataString(DateTime.UtcNow.AddHours(-1).ToString("o"));
+        var to = Uri.EscapeDataString(DateTime.UtcNow.AddHours(1).ToString("o"));
+
+        var response = await admin.GetAsync($"/api/v1/kpis/export?from={from}&to={to}");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("text/csv", response.Content.Headers.ContentType?.MediaType);
+        Assert.Equal("attachment", response.Content.Headers.ContentDisposition?.DispositionType);
+
+        var csv = await response.Content.ReadAsStringAsync();
+
+        Assert.Contains("Metric,Value", csv);
+        Assert.Contains("Total users", csv);
+        Assert.Contains("Total notifications", csv);
+        Assert.Contains("Available sections", csv);
+    }
+
     // -----------------------------------------------------------------------
     // Helpers
     // -----------------------------------------------------------------------
