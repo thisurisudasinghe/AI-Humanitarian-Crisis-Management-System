@@ -1,8 +1,11 @@
+using System.Linq.Expressions;
 using Cms.Application.Cases.Common;
 using Cms.Application.Cases.DTOs;
 using Cms.Application.Cases.Interfaces;
 using Cms.Application.Interfaces;
+using Cms.Domain.Cases;
 using Cms.Domain.Entities.Cases;
+using Cms.Domain.Enums.Cases;
 using Cms.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,6 +13,14 @@ namespace Cms.Infrastructure.Cases;
 
 public class RequestRepository : IRequestRepository
 {
+    private static readonly RequestStatus[] OpenStatuses =
+        Enum.GetValues<RequestStatus>().Where(RequestStateMachine.IsOpen).ToArray();
+
+    private static readonly Expression<Func<Request, int>> UrgencyRank = r =>
+        r.Urgency == Urgency.Critical ? 4 :
+        r.Urgency == Urgency.High ? 3 :
+        r.Urgency == Urgency.Medium ? 2 : 1;
+
     private readonly ApplicationDbContext _context;
     private readonly IOverduePolicy _overduePolicy;
     private readonly IDateTimeService _dateTimeService;
@@ -85,11 +96,11 @@ public class RequestRepository : IRequestRepository
 
         if (filter.Overdue == true)
         {
-            source = source.Where(r => r.SubmittedAt < cutoff);
+            source = source.Where(r => OpenStatuses.Contains(r.Status) && r.SubmittedAt < cutoff);
         }
         else if (filter.Overdue == false)
         {
-            source = source.Where(r => r.SubmittedAt >= cutoff);
+            source = source.Where(r => !OpenStatuses.Contains(r.Status) || r.SubmittedAt >= cutoff);
         }
 
         if (!string.IsNullOrWhiteSpace(filter.Q))
@@ -101,8 +112,8 @@ public class RequestRepository : IRequestRepository
         source = query.SortBy?.ToLowerInvariant() switch
         {
             "urgency" => query.SortDescending
-                ? source.OrderByDescending(r => r.Urgency).ThenByDescending(r => r.SubmittedAt)
-                : source.OrderBy(r => r.Urgency).ThenBy(r => r.SubmittedAt),
+                ? source.OrderByDescending(UrgencyRank).ThenByDescending(r => r.SubmittedAt)
+                : source.OrderBy(UrgencyRank).ThenBy(r => r.SubmittedAt),
             "age" => query.SortDescending
                 ? source.OrderBy(r => r.SubmittedAt)
                 : source.OrderByDescending(r => r.SubmittedAt),

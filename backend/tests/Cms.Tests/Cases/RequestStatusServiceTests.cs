@@ -145,6 +145,63 @@ public class RequestStatusServiceTests
         Assert.All(await context.OutboxMessages.ToListAsync(), m => Assert.Equal("Notification.Send", m.Type));
     }
 
+    [Fact]
+    public async Task Merge_rejects_self()
+    {
+        using var context = TestContext.Create();
+        var request = TestContext.NewRequest(Guid.NewGuid(), RequestStatus.Verified);
+        await context.Set<Request>().AddAsync(request);
+        await context.SaveChangesAsync();
+        var service = CreateService(context, new FakeCurrentUser(), DateTime.UtcNow);
+
+        var ex = await Assert.ThrowsAsync<ConflictException>(
+            () => service.MergeAsync(request.Id, request.Id));
+
+        Assert.Equal("SELF_MERGE", ex.Code);
+        Assert.Equal(0, await context.Set<RequestLink>().CountAsync());
+    }
+
+    [Fact]
+    public async Task Merge_rejects_terminal_target()
+    {
+        using var context = TestContext.Create();
+        var source = TestContext.NewRequest(Guid.NewGuid(), RequestStatus.Verified);
+        var target = TestContext.NewRequest(Guid.NewGuid(), RequestStatus.Closed);
+        await context.Set<Request>().AddRangeAsync(source, target);
+        await context.SaveChangesAsync();
+        var service = CreateService(context, new FakeCurrentUser(), DateTime.UtcNow);
+
+        var ex = await Assert.ThrowsAsync<ConflictException>(
+            () => service.MergeAsync(source.Id, target.Id));
+
+        Assert.Equal("TERMINAL_MERGE_TARGET", ex.Code);
+        Assert.Equal(0, await context.Set<RequestLink>().CountAsync());
+    }
+
+    [Fact]
+    public async Task Repeated_outbox_key_is_ignored()
+    {
+        using var context = TestContext.Create();
+        var now = DateTime.UtcNow;
+        var date = new FixedDateTimeService(now);
+        var writer = new CaseWriteHelper(context, date, TestContext.Options());
+        var entityId = Guid.NewGuid();
+
+        await writer.AddOutboxAsync("Test.Event", entityId, new { value = 1 }, $"Test.Event:{entityId}:1", default);
+        await writer.AddOutboxAsync("Test.Event", entityId, new { value = 1 }, $"Test.Event:{entityId}:1", default);
+        await context.SaveChangesAsync();
+
+        Assert.Single(await context.OutboxMessages.ToListAsync());
+    }
+
+    [Fact]
+    public async Task Unavailable_decision_gate_denies_by_default()
+    {
+        var gate = new UnavailableCloseCaseDecisionGate();
+
+        Assert.False(await gate.IsApprovedAsync(Guid.NewGuid(), Guid.NewGuid()));
+    }
+
     private static RequestStatusService CreateService(
         ApplicationDbContext context,
         FakeCurrentUser user,

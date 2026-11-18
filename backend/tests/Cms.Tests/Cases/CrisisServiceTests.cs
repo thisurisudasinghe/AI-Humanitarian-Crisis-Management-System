@@ -128,7 +128,12 @@ public class CrisisServiceTests
         recent.AreaId = areaId;
         var overdue = TestContext.NewRequest(Guid.NewGuid(), submittedAt: now.AddHours(-25));
         overdue.CrisisId = crisisId;
-        await context.Set<Cms.Domain.Entities.Cases.Request>().AddRangeAsync(recent, overdue);
+        var closedOld = TestContext.NewRequest(
+            Guid.NewGuid(),
+            RequestStatus.Closed,
+            submittedAt: now.AddHours(-25));
+        closedOld.CrisisId = crisisId;
+        await context.Set<Cms.Domain.Entities.Cases.Request>().AddRangeAsync(recent, overdue, closedOld);
         await context.SaveChangesAsync();
         var service = CreateService(context, Coordinator(), now);
 
@@ -137,7 +142,7 @@ public class CrisisServiceTests
         Assert.Equal(2, summary.OpenTotal);
         Assert.Equal(1, summary.OverdueTotal);
         Assert.Equal(1, summary.ByArea["Colombo"]);
-        Assert.Equal(1, summary.ByArea["Unassigned"]);
+        Assert.Equal(2, summary.ByArea["Unassigned"]);
     }
 
     private static FakeCurrentUser Coordinator() =>

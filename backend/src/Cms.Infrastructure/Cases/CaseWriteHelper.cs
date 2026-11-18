@@ -15,6 +15,7 @@ public sealed class CaseWriteHelper
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase
     };
 
+    private readonly HashSet<string> _pendingOutboxKeys = new(StringComparer.Ordinal);
     private readonly ApplicationDbContext _context;
     private readonly IDateTimeService _dateTimeService;
     private readonly CasesOptions _options;
@@ -78,6 +79,11 @@ public sealed class CaseWriteHelper
             idempotencyKey
         };
         var serialized = JsonSerializer.Serialize(envelope, JsonOptions);
+
+        if (!_pendingOutboxKeys.Add($"{type}:{idempotencyKey}"))
+        {
+            return;
+        }
 
         var duplicate = await _context.OutboxMessages.AnyAsync(
             m => m.Type == type && m.Payload == serialized,

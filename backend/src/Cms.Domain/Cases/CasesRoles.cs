@@ -17,7 +17,10 @@ public static class CasesRoles
     public const string PartnerOfficer = "PartnerOfficer";
     public const string SystemAdmin = "SystemAdmin";
 
-    public const string Staff = EmergencyCoordinator + "," + CaseManager + "," + SystemAdmin;
+    // D2-07/D2-08 restrict case workflow and crisis writes to these exact roles.
+    public const string CaseStaff = EmergencyCoordinator + "," + CaseManager;
+    public const string CoordinatorOnly = EmergencyCoordinator;
+
+    public const string Staff = CaseStaff;
     public const string RequestReaders = Citizen + "," + Staff;
-    public const string EmergencyCoordinators = EmergencyCoordinator + "," + SystemAdmin;
 }

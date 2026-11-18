@@ -46,7 +46,7 @@ public class RequestsController : ControllerBase
     }
 
     [HttpGet("mine")]
-    [Authorize(Roles = CasesRoles.RequestReaders)]
+    [Authorize(Roles = CasesRoles.Citizen)]
     public async Task<IActionResult> Mine([FromQuery] PagedQuery query, CancellationToken cancellationToken)
     {
         try

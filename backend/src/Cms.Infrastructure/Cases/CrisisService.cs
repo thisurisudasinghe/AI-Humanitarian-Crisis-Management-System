@@ -13,7 +13,7 @@ namespace Cms.Infrastructure.Cases;
 public sealed class CrisisService : ICrisisService
 {
     private static readonly HashSet<string> CoordinatorRoles =
-        CasesRoles.EmergencyCoordinators.Split(',', StringSplitOptions.RemoveEmptyEntries).ToHashSet();
+        CasesRoles.CoordinatorOnly.Split(',', StringSplitOptions.RemoveEmptyEntries).ToHashSet();
 
     private readonly ApplicationDbContext _context;
     private readonly ICurrentUserService _currentUser;
@@ -304,7 +304,8 @@ public sealed class CrisisService : ICrisisService
                     g => g.Key.HasValue && areaNames.TryGetValue(g.Key.Value, out var name) ? name : "Unassigned",
                     g => g.Count()),
             OpenTotal = requests.Count(r => RequestStateMachine.IsOpen(r.Status)),
-            OverdueTotal = requests.Count(r => _overduePolicy.IsOverdue(r.SubmittedAt, now))
+            OverdueTotal = requests.Count(r =>
+                RequestStateMachine.IsOpen(r.Status) && _overduePolicy.IsOverdue(r.SubmittedAt, now))
         };
     }
 

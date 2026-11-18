@@ -57,6 +57,29 @@ public class AttachmentServiceTests
     }
 
     [Fact]
+    public async Task File_larger_than_five_megabytes_is_rejected()
+    {
+        using var context = TestContext.Create();
+        var userId = Guid.NewGuid();
+        var request = TestContext.NewRequest(userId);
+        await context.Set<Request>().AddAsync(request);
+        await context.SaveChangesAsync();
+        var bytes = new byte[(5 * 1024 * 1024) + 1];
+        PngMagic.CopyTo(bytes, 0);
+        var service = CreateService(context, new MemoryFileStore(), userId);
+
+        var ex = await Assert.ThrowsAsync<ValidationException>(() => service.UploadAsync(request.Id, new UploadedFile
+        {
+            Content = new MemoryStream(bytes),
+            FileName = "large.png",
+            ContentType = "image/png"
+        }));
+
+        Assert.Equal("INVALID_ATTACHMENT_SIZE", ex.Code);
+        Assert.Empty(await context.Set<Attachment>().ToListAsync());
+    }
+
+    [Fact]
     public async Task Another_citizen_cannot_download_attachment()
     {
         using var context = TestContext.Create();

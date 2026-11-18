@@ -18,7 +18,7 @@ public class AlertsController : ControllerBase
     }
 
     [HttpPatch("{id:guid}")]
-    [Authorize(Roles = CasesRoles.EmergencyCoordinators)]
+    [Authorize(Roles = CasesRoles.CoordinatorOnly)]
     public async Task<IActionResult> Update(
         Guid id,
         [FromBody] UpdateAlertDto request,

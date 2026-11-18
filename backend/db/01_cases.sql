@@ -2,6 +2,11 @@
 -- Run order: after 00_common.sql (Member 1), before 98_foreign_keys.sql.
 -- Schema: cases. D-01: hand-written plain SQL; no EF migration.
 -- Safe to re-run where practical. Cross-module FKs are intentionally omitted.
+-- Handoff for Member 1's 98_foreign_keys.sql:
+--   cases.requests.requester_user_id     -> identity.users.id
+--   cases.requests.assigned_to_user_id   -> identity.users.id
+--   cases.households.user_id             -> identity.users.id
+--   cases.partner_shares.organisation_id -> common.organisations.id
 
 IF SCHEMA_ID(N'cases') IS NULL
 BEGIN

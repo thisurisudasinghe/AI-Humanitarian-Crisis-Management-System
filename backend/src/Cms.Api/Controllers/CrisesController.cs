@@ -32,7 +32,7 @@ public class CrisesController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = CasesRoles.EmergencyCoordinators)]
+    [Authorize(Roles = CasesRoles.CoordinatorOnly)]
     public async Task<IActionResult> Create(
         [FromBody] CreateCrisisDto request,
         CancellationToken cancellationToken)
@@ -49,7 +49,7 @@ public class CrisesController : ControllerBase
     }
 
     [HttpPatch("{id:guid}")]
-    [Authorize(Roles = CasesRoles.EmergencyCoordinators)]
+    [Authorize(Roles = CasesRoles.CoordinatorOnly)]
     public async Task<IActionResult> Update(
         Guid id,
         [FromBody] UpdateCrisisDto request,
@@ -67,7 +67,7 @@ public class CrisesController : ControllerBase
     }
 
     [HttpPost("{id:guid}/areas")]
-    [Authorize(Roles = CasesRoles.EmergencyCoordinators)]
+    [Authorize(Roles = CasesRoles.CoordinatorOnly)]
     public async Task<IActionResult> CreateArea(
         Guid id,
         [FromBody] CreateAreaDto request,
@@ -85,7 +85,7 @@ public class CrisesController : ControllerBase
     }
 
     [HttpPost("{id:guid}/alerts")]
-    [Authorize(Roles = CasesRoles.EmergencyCoordinators)]
+    [Authorize(Roles = CasesRoles.CoordinatorOnly)]
     public async Task<IActionResult> CreateAlert(
         Guid id,
         [FromBody] CreateAlertDto request,
