@@ -6,9 +6,9 @@
 -- relationship is skipped instead of failing the whole database setup.
 --
 -- Ownership reminder:
---   Dev 1: identity, common, don
+--   Dev 1: identity, common, don, notif
 --   Dev 2: cases
---   Dev 3: ai, notif
+--   Dev 3: ai
 --   Dev 4: res, shelter, vol, geo
 --
 -- A foreign key that references another module's table belongs here, not in the
@@ -21,29 +21,30 @@ SET QUOTED_IDENTIFIER ON;
 GO
 
 -- ----------------------------------------------------------------------------
--- notifications.user_id -> identity.users.id
--- The notifications table is owned by Dev 3 (notif module). Dev 1 owns the
--- identity table. The block runs only when the table and column exist and no
--- relationship on user_id is already present.
+-- common.notifications.recipient_user_id -> identity.users.id
+-- Both tables are Dev 1-owned, so 00_common.sql normally creates this foreign
+-- key inline. This guarded block repairs databases created before the
+-- notification table gained its recipient foreign key, and is a no-op when the
+-- relationship is already present.
 -- ----------------------------------------------------------------------------
-IF OBJECT_ID(N'[dbo].[notifications]', N'U') IS NOT NULL
+IF OBJECT_ID(N'[common].[notifications]', N'U') IS NOT NULL
    AND OBJECT_ID(N'[identity].[users]', N'U') IS NOT NULL
-   AND COL_LENGTH(N'[dbo].[notifications]', N'user_id') IS NOT NULL
+   AND COL_LENGTH(N'[common].[notifications]', N'recipient_user_id') IS NOT NULL
    AND NOT EXISTS (
        SELECT 1
        FROM sys.foreign_keys AS fk
        INNER JOIN sys.foreign_key_columns AS fkc
            ON fkc.constraint_object_id = fk.object_id
-       WHERE fk.parent_object_id = OBJECT_ID(N'[dbo].[notifications]')
+       WHERE fk.parent_object_id = OBJECT_ID(N'[common].[notifications]')
          AND fk.referenced_object_id = OBJECT_ID(N'[identity].[users]')
-         AND COL_NAME(fkc.parent_object_id, fkc.parent_column_id) = N'user_id')
+         AND COL_NAME(fkc.parent_object_id, fkc.parent_column_id) = N'recipient_user_id')
 BEGIN
-    ALTER TABLE [dbo].[notifications] WITH CHECK
+    ALTER TABLE [common].[notifications] WITH CHECK
         ADD CONSTRAINT [FK_notifications_users]
-        FOREIGN KEY ([user_id]) REFERENCES [identity].[users] ([id])
+        FOREIGN KEY ([recipient_user_id]) REFERENCES [identity].[users] ([id])
         ON DELETE CASCADE;
 
-    ALTER TABLE [dbo].[notifications]
+    ALTER TABLE [common].[notifications]
         CHECK CONSTRAINT [FK_notifications_users];
 END;
 GO

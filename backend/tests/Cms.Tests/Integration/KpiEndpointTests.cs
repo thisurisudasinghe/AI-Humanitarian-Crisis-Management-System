@@ -47,8 +47,9 @@ public sealed class KpiEndpointTests : IClassFixture<CmsWebApplicationFactory>
         Assert.True(report.IsPlaceholder);
         Assert.Contains("identity", report.AvailableSections);
         Assert.Contains("donations", report.AvailableSections);
+        Assert.Contains("notifications", report.AvailableSections);
         Assert.Contains("cases", report.PendingSections);
-        Assert.Contains("notifications", report.PendingSections);
+        Assert.DoesNotContain("notifications", report.PendingSections);
 
         Assert.True(report.TotalUserCount >= 4);
         Assert.True(report.ActiveUserCount >= 3);
@@ -117,8 +118,10 @@ public sealed class KpiEndpointTests : IClassFixture<CmsWebApplicationFactory>
         Assert.Null(report.ShelterOccupancyPercent);
         Assert.Null(report.SheltersAtCapacity);
         Assert.Null(report.AiOverrideRatePercent);
-        Assert.Null(report.FailedNotifications);
-        Assert.Null(report.DeadLetterCount);
+        Assert.Equal(0, report.FailedNotifications);
+        Assert.Equal(0, report.DeadLetterCount);
+        Assert.Equal(0, report.TotalNotificationCount);
+        Assert.Equal(0, report.SentNotificationCount);
         Assert.Equal(0, report.UnresolvedRequestCount);
         Assert.Empty(report.RequestsByArea);
         Assert.Empty(report.SheltersByArea);

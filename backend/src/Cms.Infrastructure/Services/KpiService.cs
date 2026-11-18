@@ -17,10 +17,11 @@ namespace Cms.Infrastructure.Services;
 /// </summary>
 public sealed class KpiService : IKpiService
 {
-    private static readonly string[] LiveSections = ["identity", "donations"];
+    private static readonly string[] LiveSections =
+        ["identity", "donations", "notifications"];
 
     private static readonly string[] PendingModuleSections =
-        ["cases", "resources", "shelter", "ai", "notifications"];
+        ["cases", "resources", "shelter", "ai"];
 
     private readonly CmsDbContext _db;
     private readonly IDonationService _donationService;
@@ -94,6 +95,28 @@ public sealed class KpiService : IKpiService
                 campaign => campaign.Status == CampaignStatus.Active,
                 cancellationToken);
 
+        var totalNotificationCount = await _db.Notifications
+            .AsNoTracking()
+            .CountAsync(cancellationToken);
+
+        var sentNotificationCount = await _db.Notifications
+            .AsNoTracking()
+            .CountAsync(
+                notification => notification.Status == NotificationStatus.Sent,
+                cancellationToken);
+
+        var failedNotificationCount = await _db.Notifications
+            .AsNoTracking()
+            .CountAsync(
+                notification => notification.Status == NotificationStatus.Failed,
+                cancellationToken);
+
+        var deadLetterCount = await _db.OutboxMessages
+            .AsNoTracking()
+            .CountAsync(
+                message => message.Status == OutboxMessageStatus.DeadLettered,
+                cancellationToken);
+
         // Reuse the donation report so KPI totals follow exactly the same
         // currency grouping and cancellation rules as the transparency report.
         var donationReport = await _donationService.GetReportAsync(
@@ -114,6 +137,10 @@ public sealed class KpiService : IKpiService
             UsersByRole = usersByRole,
             AuditEventCount = auditEventCount,
             ActiveCampaignCount = activeCampaignCount,
+            TotalNotificationCount = totalNotificationCount,
+            SentNotificationCount = sentNotificationCount,
+            FailedNotifications = failedNotificationCount,
+            DeadLetterCount = deadLetterCount,
             DonationTotals = donationReport.CurrencyTotals,
             SuspiciousDonationCount = donationReport.SuspiciousDonationCount,
             SuspiciousAllocationCount = donationReport.SuspiciousAllocationCount,

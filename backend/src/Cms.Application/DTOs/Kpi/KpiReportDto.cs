@@ -30,9 +30,21 @@ public class KpiReportDto
 
     public double? AiOverrideRatePercent { get; set; }
 
-    public int? FailedNotifications { get; set; }
+    // -----------------------------------------------------------------------
+    // Notification delivery (common.notifications, owned by Dev 1 / M9).
+    // -----------------------------------------------------------------------
 
-    public int? DeadLetterCount { get; set; }
+    /// <summary>Total notification rows, including in-app and email channels.</summary>
+    public int TotalNotificationCount { get; set; }
+
+    /// <summary>Notification rows whose delivery status is <c>Sent</c>.</summary>
+    public int SentNotificationCount { get; set; }
+
+    /// <summary>Notification rows whose delivery status is <c>Failed</c>.</summary>
+    public int FailedNotifications { get; set; }
+
+    /// <summary>Outbox messages dead-lettered after exhausting their retries.</summary>
+    public int DeadLetterCount { get; set; }
 
     // -----------------------------------------------------------------------
     // Dev 1 owned sections (identity, common and don schemas).

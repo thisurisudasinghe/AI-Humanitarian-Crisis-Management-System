@@ -194,6 +194,34 @@ END;
 GO
 
 -- ----------------------------------------------------------------------------
+-- common.notifications (delivery records, owned by Dev 1 / M9)
+-- One row per (outbox message, channel). The in-app row is the recipient's
+-- inbox entry; the email row records SMTP delivery status.
+-- ----------------------------------------------------------------------------
+IF OBJECT_ID(N'[common].[notifications]', N'U') IS NULL
+BEGIN
+    CREATE TABLE [common].[notifications] (
+        [id] uniqueidentifier NOT NULL,
+        [recipient_user_id] uniqueidentifier NOT NULL,
+        [outbox_message_id] uniqueidentifier NULL,
+        [channel] nvarchar(50) NOT NULL,
+        [template_key] nvarchar(100) NOT NULL,
+        [subject] nvarchar(500) NULL,
+        [body] nvarchar(max) NULL,
+        [status] nvarchar(50) NOT NULL,
+        [sent_at] datetime2 NULL,
+        [read_at] datetime2 NULL,
+        [request_id] uniqueidentifier NULL,
+        [created_at] datetime2 NOT NULL,
+        [updated_at] datetime2 NULL,
+        CONSTRAINT [PK_notifications] PRIMARY KEY ([id]),
+        CONSTRAINT [FK_notifications_users] FOREIGN KEY ([recipient_user_id])
+            REFERENCES [identity].[users] ([id]) ON DELETE CASCADE
+    );
+END;
+GO
+
+-- ----------------------------------------------------------------------------
 -- Indexes
 -- ----------------------------------------------------------------------------
 IF NOT EXISTS (
@@ -320,4 +348,32 @@ IF NOT EXISTS (
       AND [object_id] = OBJECT_ID(N'[identity].[user_roles]'))
     CREATE INDEX [IX_user_roles_role_id]
         ON [identity].[user_roles] ([role_id]);
+GO
+
+IF NOT EXISTS (
+    SELECT 1 FROM sys.indexes
+    WHERE [name] = N'IX_notifications_recipient'
+      AND [object_id] = OBJECT_ID(N'[common].[notifications]'))
+    CREATE INDEX [IX_notifications_recipient]
+        ON [common].[notifications] ([recipient_user_id], [created_at]);
+GO
+
+IF NOT EXISTS (
+    SELECT 1 FROM sys.indexes
+    WHERE [name] = N'IX_notifications_status'
+      AND [object_id] = OBJECT_ID(N'[common].[notifications]'))
+    CREATE INDEX [IX_notifications_status]
+        ON [common].[notifications] ([status])
+        WHERE [status] = 'Pending';
+GO
+
+-- FR-COM-07: a retried outbox event must update its existing delivery row
+-- rather than create a duplicate, so (outbox_message_id, channel) is unique.
+IF NOT EXISTS (
+    SELECT 1 FROM sys.indexes
+    WHERE [name] = N'UX_notifications_outbox_channel'
+      AND [object_id] = OBJECT_ID(N'[common].[notifications]'))
+    CREATE UNIQUE INDEX [UX_notifications_outbox_channel]
+        ON [common].[notifications] ([outbox_message_id], [channel])
+        WHERE [outbox_message_id] IS NOT NULL;
 GO

@@ -4,6 +4,7 @@ using Cms.Application.Interfaces;
 using Cms.Infrastructure.Authentication;
 using Cms.Infrastructure.Data;
 using Cms.Infrastructure.Http;
+using Cms.Infrastructure.Notifications;
 using Cms.Infrastructure.Security;
 using Cms.Infrastructure.Services;
 using Cms.Infrastructure.Storage;
@@ -58,6 +59,7 @@ public static class DependencyInjection
         services.TryAddScoped<IDonationService, DonationService>();
         services.TryAddScoped<IOutbox, OutboxService>();
         services.TryAddScoped<IOutboxAdminService, OutboxAdminService>();
+        services.TryAddScoped<INotificationService, NotificationService>();
         services.TryAddScoped(typeof(IRepository<>), typeof(EfRepository<>));
 
         // Local evidence storage. The root is configuration-driven so tests and
@@ -81,6 +83,22 @@ public static class DependencyInjection
         services.TryAddScoped<IFileService, FileService>();
 
         services.AddCmsHttpClient();
+
+        // M9 notification delivery. The SMTP sender is used only when a host is
+        // configured; otherwise the log sender keeps a fresh checkout working.
+        services.Configure<SmtpOptions>(configuration.GetSection("Smtp"));
+        services.TryAddScoped<INotificationSender>(provider =>
+        {
+            var options = provider
+                .GetRequiredService<Microsoft.Extensions.Options.IOptions<SmtpOptions>>()
+                .Value;
+
+            return string.IsNullOrWhiteSpace(options.Host)
+                ? ActivatorUtilities.CreateInstance<LogNotificationSender>(provider)
+                : ActivatorUtilities.CreateInstance<SmtpNotificationSender>(provider);
+        });
+        services.TryAddEnumerable(
+            ServiceDescriptor.Scoped<IOutboxHandler, EmailNotificationHandler>());
 
         // Transactional outbox dispatcher. Modules register IOutboxHandler
         // implementations; the processor resolves them per message.
