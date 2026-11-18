@@ -248,7 +248,7 @@ outside `RoleNames`, or audit-row updates.
 
 See `docs/TESTING.md` for the test layers, commands, coverage matrix, the
 end-to-end UAT loop and the manual regression checklist. The suite currently
-runs 94 backend tests with no SQL Server instance required.
+runs 109 backend tests with no SQL Server instance required.
 
 ## 15. Dev 1 status notes
 
