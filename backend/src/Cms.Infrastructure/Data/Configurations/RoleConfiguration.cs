@@ -57,7 +57,7 @@ public class RoleConfiguration : IEntityTypeConfiguration<Role>
             new Role
             {
                 Id = Guid.Parse("10000000-0000-0000-0000-000000000005"),
-                Name = "ShelterAdministrator",
+                Name = "ShelterAdmin",
                 Description = "Shelter operations and capacity management",
                 CreatedAt = seedDate
             },
@@ -78,14 +78,14 @@ public class RoleConfiguration : IEntityTypeConfiguration<Role>
             new Role
             {
                 Id = Guid.Parse("10000000-0000-0000-0000-000000000008"),
-                Name = "PartnerOrganisationOfficer",
+                Name = "PartnerOfficer",
                 Description = "Partner organisation operations",
                 CreatedAt = seedDate
             },
             new Role
             {
                 Id = Guid.Parse("10000000-0000-0000-0000-000000000009"),
-                Name = "SystemAdministrator",
+                Name = "SystemAdmin",
                 Description = "Platform administration",
                 CreatedAt = seedDate
             },

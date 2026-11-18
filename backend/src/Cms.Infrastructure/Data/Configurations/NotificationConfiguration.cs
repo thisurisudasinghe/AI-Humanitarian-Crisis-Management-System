@@ -9,7 +9,7 @@ public class NotificationConfiguration : IEntityTypeConfiguration<Notification>
 {
     public void Configure(EntityTypeBuilder<Notification> builder)
     {
-        builder.ToTable("Notifications");
+        builder.ToTable("Notifications", "notif");
 
         builder.HasKey(n => n.Id);
 
@@ -24,6 +24,13 @@ public class NotificationConfiguration : IEntityTypeConfiguration<Notification>
         builder.Property(n => n.Channel)
             .IsRequired()
             .HasMaxLength(50);
+
+        builder.Property(n => n.IdempotencyKey)
+            .IsRequired()
+            .HasMaxLength(200);
+
+        builder.HasIndex(n => n.IdempotencyKey)
+            .IsUnique();
 
         builder.Property(n => n.Status)
             .HasConversion<string>()
