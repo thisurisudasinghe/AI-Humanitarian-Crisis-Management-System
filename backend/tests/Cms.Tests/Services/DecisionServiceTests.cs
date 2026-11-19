@@ -1,4 +1,5 @@
 ﻿
+using Cms.Application.Contracts;
 using Cms.Application.Interfaces;
 using Cms.Domain.Entities;
 using Cms.Domain.Enums;
@@ -12,17 +13,17 @@ namespace Cms.Tests.Services;
 
 public class DecisionServiceTests
 {
-    private readonly Mock<ICurrentUserService> _currentUserMock = new();
-    private readonly Mock<IAuditService> _auditMock = new();
+    private readonly Mock<ICurrentUser> _currentUserMock = new();
+    private readonly Mock<IAuditLogger> _auditMock = new();
     private readonly Mock<IDateTimeService> _dateTimeMock = new();
 
-    private ApplicationDbContext CreateContext()
+    private CmsDbContext CreateContext()
     {
-        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+        var options = new DbContextOptionsBuilder<CmsDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
 
-        return new ApplicationDbContext(options);
+        return new CmsDbContext(options);
     }
 
     [Fact]
@@ -74,7 +75,7 @@ public class DecisionServiceTests
 
         _auditMock.Verify(x => x.LogAsync(
             userId,
-            "Recommendation.Approve",
+            "Recommendation.Approved",
             nameof(Recommendation),
             recommendation.Id.ToString(),
             It.IsAny<string>(),

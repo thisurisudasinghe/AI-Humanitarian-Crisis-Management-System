@@ -11,11 +11,17 @@ node_modules/
 .next/
 dist/
 coverage/
+*.tsbuildinfo
 # Secrets
 .env
 .env.*
 !.env.example
 appsettings.Development.json
 appsettings.*.Local.json
+# The canonical Development config is intentionally committed: it contains only
+# fixed, public, development-only demo keys needed by backend/db/99_seed_users.sql.
+!backend/src/Cms.Api/appsettings.Development.json
 # Logs
 *.log
+# Local evidence storage
+backend/src/Cms.Api/App_Data/

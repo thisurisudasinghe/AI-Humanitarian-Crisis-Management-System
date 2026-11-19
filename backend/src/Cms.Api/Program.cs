@@ -1,15 +1,23 @@
+using System.Security.Cryptography;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Threading.RateLimiting;
 using Cms.Api.Authentication;
-using Cms.Application.Interfaces;
-using Cms.Application.Interfaces.AI;
-using Cms.Infrastructure.Authentication;
-using Cms.Infrastructure.Data;
-using Cms.Infrastructure.Services;
-using Cms.Infrastructure.Services.AI;
-using Microsoft.EntityFrameworkCore;
-
+using Cms.Api.Middleware;
+using Cms.Api.Modules;
+using Cms.Infrastructure;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.OpenApi;
 
 var builder = WebApplication.CreateBuilder(args);
-// Map V4 environment variables to application configuration keys
+var isDevelopment = builder.Environment.IsDevelopment();
+
+static string GenerateKey() =>
+    Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
+
+// Environment variables win over appsettings/user-secrets. In Development only,
+// missing keys become ephemeral process keys so a fresh checkout still runs.
 builder.Configuration["EmailProtection:EncryptionKey"] =
     Environment.GetEnvironmentVariable("EMAIL_ENCRYPTION_KEY")
     ?? builder.Configuration["EmailProtection:EncryptionKey"];
@@ -22,62 +30,209 @@ builder.Configuration["Jwt:SecretKey"] =
     Environment.GetEnvironmentVariable("JWT_SECRET")
     ?? builder.Configuration["Jwt:SecretKey"];
 
-// Register API services
-builder.Services.AddControllers();
-builder.Services.AddOpenApi();
+builder.Configuration["ConnectionStrings:DefaultConnection"] =
+    Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
+    ?? builder.Configuration["ConnectionStrings:DefaultConnection"];
 
-// Register SQL Server Database
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(
-        builder.Configuration.GetConnectionString("DefaultConnection")));
+if (isDevelopment)
+{
+    builder.Configuration["EmailProtection:EncryptionKey"] ??= GenerateKey();
+    builder.Configuration["EmailProtection:HashKey"] ??= GenerateKey();
+    builder.Configuration["Jwt:SecretKey"] ??= GenerateKey();
+    builder.Configuration["ConnectionStrings:DefaultConnection"] ??=
+        "Server=(localdb)\\mssqllocaldb;Database=CmsDb;Trusted_Connection=True;TrustServerCertificate=True;";
+}
+else
+{
+    var missingSecrets = new List<string>();
 
-// Register Shared Infrastructure Services
-builder.Services.AddHttpContextAccessor();
+    if (string.IsNullOrWhiteSpace(builder.Configuration["Jwt:SecretKey"]))
+    {
+        missingSecrets.Add("JWT_SECRET");
+    }
 
-builder.Services.AddScoped<IDateTimeService, DateTimeService>();
-builder.Services.AddScoped<IAuditService, Cms.Infrastructure.Services.AuditService>();
-builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
-builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
-builder.Services.AddScoped<
-    INotificationService,
-    Cms.Infrastructure.Services.Notifications.NotificationService>();
+    if (string.IsNullOrWhiteSpace(builder.Configuration["EmailProtection:EncryptionKey"]))
+    {
+        missingSecrets.Add("EMAIL_ENCRYPTION_KEY");
+    }
 
-builder.Services.AddScoped<
-    Cms.Application.Interfaces.Notifications.INotificationChannelFactory,
-    Cms.Infrastructure.Services.Notifications.NotificationChannelFactory>();
+    if (string.IsNullOrWhiteSpace(builder.Configuration["EmailProtection:HashKey"]))
+    {
+        missingSecrets.Add("EMAIL_HASH_KEY");
+    }
 
-builder.Services.AddScoped<Cms.Infrastructure.Services.Notifications.EmailChannel>();
-builder.Services.AddScoped<Cms.Infrastructure.Services.Notifications.InAppChannel>();
-builder.Services.AddScoped<JwtTokenService>();
-builder.Services.AddScoped<Cms.Infrastructure.Security.EmailProtectionService>();
-builder.Services.AddScoped<Cms.Infrastructure.Security.PasswordHashingService>();
-builder.Services.AddScoped<IRecommendationService, RecommendationService>();
-builder.Services.AddScoped<IDecisionService, DecisionService>();
-builder.Services.AddScoped<
-    IOutbox,
-    Cms.Infrastructure.Services.Outbox.OutboxService>();
-builder.Services.AddScoped<
-    Cms.Application.Interfaces.IOutboxHandler,
-    Cms.Infrastructure.Services.Outbox.OutboxHandler>();
-builder.Services.AddHostedService<
-    Cms.Infrastructure.Services.Outbox.OutboxProcessor>();
+    if (string.IsNullOrWhiteSpace(builder.Configuration["ConnectionStrings:DefaultConnection"]))
+    {
+        missingSecrets.Add("ConnectionStrings__DefaultConnection");
+    }
 
-// Register JWT Authentication and =
+    if (missingSecrets.Count > 0)
+    {
+        throw new InvalidOperationException(
+            $"Missing required configuration outside Development: {string.Join(", ", missingSecrets)}");
+    }
+}
+
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.Limits.MaxRequestBodySize = RequestBodyLimitMiddleware.MaxBodyBytes;
+});
+
+builder.Services.AddControllers(options =>
+{
+    options.Filters.Add(new ProducesAttribute("application/json"));
+})
+.AddJsonOptions(options =>
+    options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()))
+.ConfigureApiBehaviorOptions(options =>
+{
+    options.InvalidModelStateResponseFactory = ValidationProblemResponse.Create;
+});
+
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "AI-Powered Humanitarian Crisis Management API",
+        Version = "v1",
+        Description = "Crisis response, aid coordination, resources, shelters and notifications."
+    });
+
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        In = ParameterLocation.Header,
+        Description = "Paste the JWT access token from /api/v1/auth/login."
+    });
+
+    var xmlPath = Path.Combine(AppContext.BaseDirectory, "Cms.Api.xml");
+    if (File.Exists(xmlPath))
+    {
+        options.IncludeXmlComments(xmlPath, includeControllerXmlComments: true);
+    }
+});
+
+builder.Services.AddProblemDetails();
+
+// Platform foundation: DbContext, current user, audit trail, repository, stubs, HTTP client.
+builder.Services.AddFoundation(builder.Configuration);
+
+// Authentication and authorisation (JWT bearer, role claim "role", default deny).
 builder.Services.AddJwtAuthentication(builder.Configuration);
+
+// Every feature module registers itself here.
+builder.Services.AddCmsModules();
+
+var allowedOrigins = builder.Configuration
+    .GetSection("Cors:AllowedOrigins")
+    .Get<string[]>()
+    ?? ["http://localhost:3000"];
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("Default", policy =>
+        policy
+            .WithOrigins(allowedOrigins)
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials());
+});
+
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    options.OnRejected = async (context, token) =>
+    {
+        context.HttpContext.Response.Headers.RetryAfter = "60";
+
+        await ProblemDetailsResponses.WriteAsync(
+            context.HttpContext,
+            StatusCodes.Status429TooManyRequests,
+            "Too many requests",
+            "The rate limit for this endpoint has been reached. Retry after 60 seconds.",
+            "RATE_LIMITED");
+    };
+
+    // Baseline protection for every endpoint: 100 requests per minute per client IP.
+    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
+    {
+        var key = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        return RateLimitPartition.GetFixedWindowLimiter(key, _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 100,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0
+        });
+    });
+
+    // Stricter policy for credential endpoints.
+    options.AddPolicy("auth", httpContext =>
+    {
+        var key = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        return RateLimitPartition.GetFixedWindowLimiter(key, _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 60,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0
+        });
+    });
+
+    // Public read-only endpoints (for example health checks) get a tighter budget.
+    options.AddPolicy("public", httpContext =>
+    {
+        var key = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        return RateLimitPartition.GetFixedWindowLimiter(key, _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 30,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0
+        });
+    });
+
+    // Evidence uploads are heavier than JSON calls, so cap them per client IP.
+    options.AddPolicy("uploads", httpContext =>
+    {
+        var key = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        return RateLimitPartition.GetFixedWindowLimiter(key, _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 20,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0
+        });
+    });
+});
 
 var app = builder.Build();
 
-// Configure HTTP pipeline
-if (app.Environment.IsDevelopment())
+app.UseMiddleware<ExceptionHandlingMiddleware>();
+app.UseMiddleware<SecurityHeadersMiddleware>();
+app.UseMiddleware<RequestBodyLimitMiddleware>();
+
+if (isDevelopment)
 {
-    app.MapOpenApi();
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+else
+{
+    app.UseHsts();
+    app.UseHttpsRedirection();
 }
 
-app.UseHttpsRedirection();
-
+app.UseCors("Default");
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapCmsModules();
 
 app.Run();
+
+/// <summary>Exposed so the integration test harness can reference the API assembly.</summary>
+public partial class Program;

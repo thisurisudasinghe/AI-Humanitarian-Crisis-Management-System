@@ -1,5 +1,4 @@
-﻿
-using Cms.Domain.Enums;
+﻿using Cms.Domain.Enums;
 using Cms.Infrastructure.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -7,14 +6,20 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Cms.Api.Controllers;
 
-[ApiController][Authorize(Roles = "SystemAdministrator")]
-
+/// <summary>
+/// Dead-letter view and retry for the shared transactional outbox (M9/M4).
+/// Kept alongside <see cref="OutboxController"/> so the Member 3 route remains
+/// available while both modules share the same <see cref="CmsDbContext"/>.
+/// </summary>
+[ApiController]
+[Authorize(Roles = "SystemAdministrator")]
 [Route("api/v1/admin/dead-letters")]
+[Produces("application/json")]
 public class DeadLetterController : ControllerBase
 {
-    private readonly ApplicationDbContext _context;
+    private readonly CmsDbContext _context;
 
-    public DeadLetterController(ApplicationDbContext context)
+    public DeadLetterController(CmsDbContext context)
     {
         _context = context;
     }
@@ -46,13 +51,14 @@ public class DeadLetterController : ControllerBase
                 cancellationToken);
 
         if (message == null)
+        {
             return NotFound();
+        }
 
         message.Status = OutboxMessageStatus.Pending;
-        message.Attempts = 0;
+        message.RetryCount = 0;
         message.NextRetryAt = null;
         message.ErrorMessage = null;
-        message.ProcessingStartedAt = null;
 
         await _context.SaveChangesAsync(cancellationToken);
 

@@ -23,7 +23,8 @@ public class JwtTokenService
     public (string Token, DateTime ExpiresAt) GenerateAccessToken(
         Guid userId,
         string email,
-        IEnumerable<string> roles)
+        IEnumerable<string> roles,
+        Guid? organisationId = null)
     {
         var jwtSettings = _configuration.GetSection("Jwt");
 
@@ -49,6 +50,11 @@ public class JwtTokenService
         foreach (var role in roles.Distinct())
         {
             claims.Add(new Claim("role", role));
+        }
+
+        if (organisationId.HasValue)
+        {
+            claims.Add(new Claim("orgId", organisationId.Value.ToString()));
         }
 
         var key = new SymmetricSecurityKey(
