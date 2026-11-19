@@ -21,12 +21,12 @@ public class RequestRepository : IRequestRepository
         r.Urgency == Urgency.High ? 3 :
         r.Urgency == Urgency.Medium ? 2 : 1;
 
-    private readonly ApplicationDbContext _context;
+    private readonly CmsDbContext _context;
     private readonly IOverduePolicy _overduePolicy;
     private readonly IDateTimeService _dateTimeService;
 
     public RequestRepository(
-        ApplicationDbContext context,
+        CmsDbContext context,
         IOverduePolicy overduePolicy,
         IDateTimeService dateTimeService)
     {

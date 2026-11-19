@@ -149,7 +149,7 @@ public class CrisisServiceTests
         new() { Roles = new[] { CasesRoles.EmergencyCoordinator } };
 
     private static CrisisService CreateService(
-        ApplicationDbContext context,
+        CmsDbContext context,
         FakeCurrentUser user,
         DateTime now)
     {

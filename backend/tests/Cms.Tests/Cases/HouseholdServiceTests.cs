@@ -33,7 +33,7 @@ public class HouseholdServiceTests
         Assert.DoesNotContain("771234567", stored.ContactPhone!);
         Assert.DoesNotContain(Needs, stored.AccessibilityNeeds!);
 
-        var audit = await context.AuditLogs.SingleAsync();
+        var audit = await context.AuditEvents.SingleAsync();
         Assert.DoesNotContain("771234567", audit.Details!);
         Assert.DoesNotContain("Wheelchair", audit.Details!);
         Assert.Contains("***", audit.Details!);
@@ -66,7 +66,7 @@ public class HouseholdServiceTests
     }
 
     private static HouseholdService CreateService(
-        ApplicationDbContext context,
+        CmsDbContext context,
         FakeCurrentUser user,
         DateTime now,
         Cms.Application.Cases.Interfaces.ISensitiveDataProtector protector)

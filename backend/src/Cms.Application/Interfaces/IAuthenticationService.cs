@@ -1,3 +1,4 @@
+using Cms.Application.DTOs;
 using Cms.Application.DTOs.Authentication;
 
 namespace Cms.Application.Interfaces;
@@ -14,5 +15,12 @@ public interface IAuthenticationService
 
     Task<AuthResponseDto> RefreshTokenAsync(
         string refreshToken,
+        CancellationToken cancellationToken = default);
+
+    Task LogoutAsync(
+        string refreshToken,
+        CancellationToken cancellationToken = default);
+
+    Task<CurrentUserDto> GetCurrentUserAsync(
         CancellationToken cancellationToken = default);
 }

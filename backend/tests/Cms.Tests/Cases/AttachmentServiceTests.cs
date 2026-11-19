@@ -105,7 +105,7 @@ public class AttachmentServiceTests
     }
 
     private static AttachmentService CreateService(
-        ApplicationDbContext context,
+        CmsDbContext context,
         MemoryFileStore store,
         Guid userId)
     {

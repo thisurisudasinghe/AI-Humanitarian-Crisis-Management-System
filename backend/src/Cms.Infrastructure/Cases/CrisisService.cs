@@ -1,6 +1,7 @@
 using Cms.Application.Cases.DTOs;
 using Cms.Application.Cases.Interfaces;
 using Cms.Application.Interfaces;
+using ICurrentUser = Cms.Application.Contracts.ICurrentUser;
 using Cms.Domain.Cases;
 using Cms.Domain.Entities.Cases;
 using Cms.Domain.Enums.Cases;
@@ -15,15 +16,15 @@ public sealed class CrisisService : ICrisisService
     private static readonly HashSet<string> CoordinatorRoles =
         CasesRoles.CoordinatorOnly.Split(',', StringSplitOptions.RemoveEmptyEntries).ToHashSet();
 
-    private readonly ApplicationDbContext _context;
-    private readonly ICurrentUserService _currentUser;
+    private readonly CmsDbContext _context;
+    private readonly ICurrentUser _currentUser;
     private readonly IDateTimeService _dateTimeService;
     private readonly IOverduePolicy _overduePolicy;
     private readonly CaseWriteHelper _writer;
 
     public CrisisService(
-        ApplicationDbContext context,
-        ICurrentUserService currentUser,
+        CmsDbContext context,
+        ICurrentUser currentUser,
         IDateTimeService dateTimeService,
         IOverduePolicy overduePolicy,
         CaseWriteHelper writer)

@@ -11,11 +11,19 @@ node_modules/
 .next/
 dist/
 coverage/
+*.tsbuildinfo
 # Secrets
 .env
 .env.*
 !.env.example
 appsettings.Development.json
 appsettings.*.Local.json
+*.pfx
+*.pem
+*.key
+*.p12
+*.snk
 # Logs
 *.log
+# Local evidence storage
+backend/src/Cms.Api/App_Data/

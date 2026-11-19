@@ -36,7 +36,7 @@ public class RequestWorkflowServiceTests
         var stored = await context.Set<Request>().SingleAsync(r => r.Id == request.Id);
         Assert.Equal(RequestStatus.Closed, stored.Status);
         Assert.Equal(1, await context.Set<RequestStatusHistory>().CountAsync());
-        Assert.Equal(1, await context.AuditLogs.CountAsync());
+        Assert.Equal(1, await context.AuditEvents.CountAsync());
         Assert.Equal(1, await context.OutboxMessages.CountAsync());
     }
 

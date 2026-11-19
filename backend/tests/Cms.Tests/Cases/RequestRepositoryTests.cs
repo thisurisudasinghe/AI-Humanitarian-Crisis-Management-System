@@ -53,7 +53,7 @@ public class RequestRepositoryTests
     }
 
     private static RequestRepository CreateRepository(
-        ApplicationDbContext context,
+        CmsDbContext context,
         DateTime now)
     {
         var options = TestContext.Options();

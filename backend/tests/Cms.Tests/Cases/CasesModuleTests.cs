@@ -1,6 +1,7 @@
 using Cms.Application.Cases.Interfaces;
 using Cms.Application.DTOs;
 using Cms.Application.Interfaces;
+using ICurrentUser = Cms.Application.Contracts.ICurrentUser;
 using Cms.Infrastructure.Cases;
 using Cms.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -23,9 +24,9 @@ public class CasesModuleTests
             })
             .Build();
         var services = new ServiceCollection();
-        services.AddDbContext<ApplicationDbContext>(options =>
+        services.AddDbContext<CmsDbContext>(options =>
             options.UseInMemoryDatabase($"cases-module-{Guid.NewGuid():N}"));
-        services.AddScoped<ICurrentUserService, FakeCurrentUser>();
+        services.AddScoped<ICurrentUser, FakeCurrentUser>();
         services.AddScoped<IDateTimeService>(_ => new FixedDateTimeService(DateTime.UtcNow));
         services.AddScoped<IRequestReader, StubRequestReader>();
 

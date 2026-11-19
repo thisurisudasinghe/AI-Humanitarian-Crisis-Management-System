@@ -27,7 +27,7 @@ public class RequestStatusServiceTests
         Assert.Equal(RequestStatus.Verified, stored.Status);
         Assert.Equal(now, stored.VerifiedAt);
         Assert.Equal(1, await context.Set<RequestStatusHistory>().CountAsync());
-        Assert.Equal(1, await context.AuditLogs.CountAsync());
+        Assert.Equal(1, await context.AuditEvents.CountAsync());
         Assert.Equal(1, await context.OutboxMessages.CountAsync());
         var outbox = await context.OutboxMessages.SingleAsync();
         Assert.Equal("Notification.Send", outbox.Type);
@@ -49,7 +49,7 @@ public class RequestStatusServiceTests
         await service.TransitionAsync(request.Id, RequestStatus.Verified);
 
         Assert.Equal(1, await context.Set<RequestStatusHistory>().CountAsync());
-        Assert.Equal(1, await context.AuditLogs.CountAsync());
+        Assert.Equal(1, await context.AuditEvents.CountAsync());
         Assert.Equal(1, await context.OutboxMessages.CountAsync());
     }
 
@@ -140,7 +140,7 @@ public class RequestStatusServiceTests
         Assert.Equal(target.Id, storedSource.MergedIntoRequestId);
         Assert.Equal(2, await context.Set<RequestStatusHistory>().CountAsync());
         Assert.Equal(1, await context.Set<RequestLink>().CountAsync());
-        Assert.Equal(2, await context.AuditLogs.CountAsync());
+        Assert.Equal(2, await context.AuditEvents.CountAsync());
         Assert.Equal(2, await context.OutboxMessages.CountAsync());
         Assert.All(await context.OutboxMessages.ToListAsync(), m => Assert.Equal("Notification.Send", m.Type));
     }
@@ -203,7 +203,7 @@ public class RequestStatusServiceTests
     }
 
     private static RequestStatusService CreateService(
-        ApplicationDbContext context,
+        CmsDbContext context,
         FakeCurrentUser user,
         DateTime now,
         NoOpDecisionGate? decisionGate = null) =>

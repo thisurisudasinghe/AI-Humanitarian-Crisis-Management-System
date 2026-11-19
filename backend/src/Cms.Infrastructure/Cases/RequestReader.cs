@@ -8,10 +8,10 @@ namespace Cms.Infrastructure.Cases;
 
 public class RequestReader : IRequestReader
 {
-    private readonly ApplicationDbContext _context;
+    private readonly CmsDbContext _context;
     private readonly ISensitiveDataProtector _protector;
 
-    public RequestReader(ApplicationDbContext context, ISensitiveDataProtector protector)
+    public RequestReader(CmsDbContext context, ISensitiveDataProtector protector)
     {
         _context = context;
         _protector = protector;

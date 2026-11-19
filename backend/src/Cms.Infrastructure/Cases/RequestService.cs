@@ -2,6 +2,7 @@ using Cms.Application.Cases.Common;
 using Cms.Application.Cases.DTOs;
 using Cms.Application.Cases.Interfaces;
 using Cms.Application.Interfaces;
+using ICurrentUser = Cms.Application.Contracts.ICurrentUser;
 using Cms.Domain.Cases;
 using Cms.Domain.Entities.Cases;
 using Cms.Domain.Enums.Cases;
@@ -16,9 +17,9 @@ public sealed class RequestService : IRequestService
     private static readonly HashSet<string> StaffRoles =
         CasesRoles.Staff.Split(',', StringSplitOptions.RemoveEmptyEntries).ToHashSet();
 
-    private readonly ApplicationDbContext _context;
+    private readonly CmsDbContext _context;
     private readonly IRequestRepository _repository;
-    private readonly ICurrentUserService _currentUser;
+    private readonly ICurrentUser _currentUser;
     private readonly IDateTimeService _dateTimeService;
     private readonly IOverduePolicy _overduePolicy;
     private readonly ISensitiveDataProtector _protector;
@@ -26,9 +27,9 @@ public sealed class RequestService : IRequestService
     private readonly CaseWriteHelper _writer;
 
     public RequestService(
-        ApplicationDbContext context,
+        CmsDbContext context,
         IRequestRepository repository,
-        ICurrentUserService currentUser,
+        ICurrentUser currentUser,
         IDateTimeService dateTimeService,
         IOverduePolicy overduePolicy,
         ISensitiveDataProtector protector,

@@ -1,6 +1,7 @@
 using Cms.Application.Cases.DTOs;
 using Cms.Application.Cases.Interfaces;
 using Cms.Application.Interfaces;
+using ICurrentUser = Cms.Application.Contracts.ICurrentUser;
 using Cms.Domain.Entities.Cases;
 using Cms.Domain.Exceptions;
 using Cms.Infrastructure.Data;
@@ -10,15 +11,15 @@ namespace Cms.Infrastructure.Cases;
 
 public sealed class HouseholdService : IHouseholdService
 {
-    private readonly ApplicationDbContext _context;
-    private readonly ICurrentUserService _currentUser;
+    private readonly CmsDbContext _context;
+    private readonly ICurrentUser _currentUser;
     private readonly IDateTimeService _dateTimeService;
     private readonly ISensitiveDataProtector _protector;
     private readonly CaseWriteHelper _writer;
 
     public HouseholdService(
-        ApplicationDbContext context,
-        ICurrentUserService currentUser,
+        CmsDbContext context,
+        ICurrentUser currentUser,
         IDateTimeService dateTimeService,
         ISensitiveDataProtector protector,
         CaseWriteHelper writer)

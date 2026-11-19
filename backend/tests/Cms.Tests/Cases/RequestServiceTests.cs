@@ -52,7 +52,7 @@ public class RequestServiceTests
         Assert.Equal("Wheelchair access", protector.Unprotect(request.AccessibilityNeeds));
 
         Assert.Equal(1, await context.Set<RequestStatusHistory>().CountAsync());
-        Assert.Equal(1, await context.AuditLogs.CountAsync());
+        Assert.Equal(1, await context.AuditEvents.CountAsync());
         var outbox = await context.OutboxMessages.SingleAsync();
         Assert.Equal("Request.Submitted", outbox.Type);
         Assert.Contains($"Request.Submitted:{id}:1", outbox.Payload);
@@ -92,7 +92,7 @@ public class RequestServiceTests
             options,
             writer);
 
-        var ex = await Assert.ThrowsAsync<Domain.Exceptions.ValidationException>(() =>
+        var ex = await Assert.ThrowsAsync<Cms.Domain.Exceptions.ValidationException>(() =>
             service.SubmitAsync(new CreateRequestDto
             {
                 Category = Category.Food,
@@ -135,7 +135,7 @@ public class RequestServiceTests
 
         var stored = await context.Set<Request>().SingleAsync(r => r.Id == request.Id);
         Assert.Equal(assignee, stored.AssignedToUserId);
-        Assert.Equal("Request.Assigned", (await context.AuditLogs.SingleAsync()).Action);
+        Assert.Equal("Request.Assigned", (await context.AuditEvents.SingleAsync()).Action);
 
         var detail = await service.GetDetailAsync(request.Id);
         Assert.NotNull(detail);
@@ -187,7 +187,7 @@ public class RequestServiceTests
     }
 
     private static RequestService CreateService(
-        ApplicationDbContext context,
+        CmsDbContext context,
         FakeCurrentUser user,
         DateTime now)
     {

@@ -16,12 +16,12 @@ public sealed class CaseWriteHelper
     };
 
     private readonly HashSet<string> _pendingOutboxKeys = new(StringComparer.Ordinal);
-    private readonly ApplicationDbContext _context;
+    private readonly CmsDbContext _context;
     private readonly IDateTimeService _dateTimeService;
     private readonly CasesOptions _options;
 
     public CaseWriteHelper(
-        ApplicationDbContext context,
+        CmsDbContext context,
         IDateTimeService dateTimeService,
         CasesOptions options)
     {
@@ -52,18 +52,18 @@ public sealed class CaseWriteHelper
         Guid? userId,
         CancellationToken cancellationToken)
     {
-        var audit = new AuditLog
+        var audit = new AuditEvent
         {
             Id = Guid.NewGuid(),
-            UserId = userId,
+            ActorUserId = userId,
             Action = action,
-            EntityName = entityType,
+            EntityType = entityType,
             EntityId = entityId.ToString(),
             Details = details is null ? null : JsonSerializer.Serialize(details, JsonOptions),
             CreatedAt = _dateTimeService.UtcNow
         };
 
-        await _context.AuditLogs.AddAsync(audit, cancellationToken);
+        await _context.AuditEvents.AddAsync(audit, cancellationToken);
     }
 
     public async Task AddOutboxAsync(

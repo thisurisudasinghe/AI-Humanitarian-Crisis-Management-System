@@ -1,6 +1,7 @@
 using Cms.Application.Cases.Common;
 using Cms.Application.Cases.Interfaces;
 using Cms.Application.Interfaces;
+using ICurrentUser = Cms.Application.Contracts.ICurrentUser;
 using Cms.Domain.Cases;
 using Cms.Domain.Entities.Cases;
 using Cms.Domain.Enums.Cases;
@@ -21,12 +22,15 @@ internal sealed class FixedDateTimeService : IDateTimeService
     public DateTime UtcNow { get; }
 }
 
-internal sealed class FakeCurrentUser : ICurrentUserService
+internal sealed class FakeCurrentUser : ICurrentUser
 {
     public Guid? UserId { get; set; } = Guid.NewGuid();
+    public Guid? OrgId { get; set; }
     public string? Email { get; set; } = "test@example.invalid";
     public IReadOnlyCollection<string> Roles { get; set; } = new[] { CasesRoles.Citizen };
     public bool IsAuthenticated => UserId.HasValue;
+    public bool IsInRole(string role) =>
+        !string.IsNullOrWhiteSpace(role) && Roles.Contains(role, StringComparer.Ordinal);
 }
 
 internal sealed class NoOpDecisionGate : ICloseCaseDecisionGate
@@ -54,8 +58,8 @@ internal sealed class MemoryFileStore : IFileStore
 
 internal static class TestContext
 {
-    public static ApplicationDbContext Create() =>
-        new(new DbContextOptionsBuilder<ApplicationDbContext>()
+    public static CmsDbContext Create() =>
+        new(new DbContextOptionsBuilder<CmsDbContext>()
             .UseInMemoryDatabase($"cases-tests-{Guid.NewGuid():N}")
             .Options);
 
@@ -71,8 +75,8 @@ internal static class TestContext
         new(DataProtectionProvider.Create("Cms.Tests.Cases"));
 
     public static RequestStatusService CreateStatusService(
-        ApplicationDbContext context,
-        ICurrentUserService user,
+        CmsDbContext context,
+        ICurrentUser user,
         DateTime now,
         ICloseCaseDecisionGate? decisionGate = null)
     {
