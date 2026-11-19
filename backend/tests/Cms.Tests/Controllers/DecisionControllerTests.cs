@@ -26,7 +26,7 @@ public class DecisionControllerTests
         _decisionServiceMock
             .Setup(x => x.RecordDecisionAsync(
                 recommendationId,
-                DecisionOutcome.Approve,
+                DecisionOutcome.Approved,
                 "Approved",
                 null,
                 It.IsAny<CancellationToken>()))
@@ -36,7 +36,7 @@ public class DecisionControllerTests
 
         var request = new DecisionController.RecordDecisionRequest(
             recommendationId,
-            DecisionOutcome.Approve,
+            DecisionOutcome.Approved,
             "Approved");
 
         var result = await controller.RecordDecision(
@@ -71,7 +71,7 @@ public class DecisionControllerTests
 
         var request = new DecisionController.RecordDecisionRequest(
             Guid.NewGuid(),
-            DecisionOutcome.Approve,
+            DecisionOutcome.Approved,
             "Approved");
 
         var result = await controller.RecordDecision(
@@ -92,7 +92,7 @@ public class DecisionControllerTests
         {
             Id = Guid.NewGuid(),
             RecommendationId = recommendationId,
-            Outcome = DecisionOutcome.Approve,
+            Outcome = DecisionOutcome.Approved,
             Reason = "Approved",
             DecidedByUserId = Guid.NewGuid(),
             DecidedAt = DateTime.UtcNow
@@ -118,7 +118,7 @@ public class DecisionControllerTests
                 okResult.Value);
 
         Assert.Single(returnedDecisions);
-        Assert.Equal(DecisionOutcome.Approve, returnedDecisions[0].Outcome);
+        Assert.Equal(DecisionOutcome.Approved, returnedDecisions[0].Outcome);
     }
 
     [Fact]
