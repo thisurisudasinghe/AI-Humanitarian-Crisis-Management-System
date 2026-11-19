@@ -1,0 +1,84 @@
+-- ============================================================================
+-- 03_ai.sql - Dev 3 AI decision support and governance schema (M3/M4)
+-- ============================================================================
+-- Creates the AI tables owned by Dev 3:
+--   ai.recommendations, ai.decision_records
+--
+-- Run after 00_common.sql and before 98_foreign_keys.sql. The script is
+-- idempotent: missing schemas, tables, indexes and foreign keys are created;
+-- existing objects are left untouched. It never drops data.
+--
+-- The EF model (CmsDbContext + Configurations/AI) maps the same tables and
+-- columns through NamingConventions.ApplySnakeCase.
+-- ============================================================================
+
+SET NOCOUNT ON;
+SET XACT_ABORT ON;
+SET QUOTED_IDENTIFIER ON;
+GO
+
+IF SCHEMA_ID(N'ai') IS NULL
+    EXEC(N'CREATE SCHEMA [ai] AUTHORIZATION [dbo];');
+GO
+
+-- ----------------------------------------------------------------------------
+-- ai.recommendations
+-- ----------------------------------------------------------------------------
+IF OBJECT_ID(N'[ai].[recommendations]', N'U') IS NULL
+BEGIN
+    CREATE TABLE [ai].[recommendations] (
+        [id] uniqueidentifier NOT NULL,
+        [type] nvarchar(100) NOT NULL,
+        [target_id] uniqueidentifier NOT NULL,
+        [payload_json] nvarchar(max) NOT NULL,
+        [confidence] decimal(5, 4) NOT NULL,
+        [rationale] nvarchar(max) NOT NULL,
+        [source] nvarchar(100) NOT NULL,
+        [created_at] datetime2 NOT NULL,
+        [updated_at] datetime2 NULL,
+        CONSTRAINT [PK_recommendations] PRIMARY KEY ([id])
+    );
+END;
+GO
+
+-- ----------------------------------------------------------------------------
+-- ai.decision_records
+-- ----------------------------------------------------------------------------
+IF OBJECT_ID(N'[ai].[decision_records]', N'U') IS NULL
+BEGIN
+    CREATE TABLE [ai].[decision_records] (
+        [id] uniqueidentifier NOT NULL,
+        [recommendation_id] uniqueidentifier NOT NULL,
+        [outcome] nvarchar(20) NOT NULL,
+        [final_payload_json] nvarchar(max) NULL,
+        [reason] nvarchar(2000) NOT NULL,
+        [decided_by_user_id] uniqueidentifier NOT NULL,
+        [decided_at] datetime2 NOT NULL,
+        [created_at] datetime2 NOT NULL,
+        [updated_at] datetime2 NULL,
+        CONSTRAINT [PK_decision_records] PRIMARY KEY ([id]),
+        CONSTRAINT [FK_decision_records_recommendations]
+            FOREIGN KEY ([recommendation_id])
+            REFERENCES [ai].[recommendations] ([id]) ON DELETE NO ACTION
+    );
+END;
+GO
+
+-- ----------------------------------------------------------------------------
+-- Indexes
+-- ----------------------------------------------------------------------------
+IF NOT EXISTS (
+    SELECT 1 FROM sys.indexes
+    WHERE [name] = N'IX_recommendations_target_type'
+      AND [object_id] = OBJECT_ID(N'[ai].[recommendations]'))
+    CREATE INDEX [IX_recommendations_target_type]
+        ON [ai].[recommendations] ([target_id], [type]);
+GO
+
+IF NOT EXISTS (
+    SELECT 1 FROM sys.indexes
+    WHERE [name] = N'IX_decision_records_recommendation_id'
+      AND [object_id] = OBJECT_ID(N'[ai].[decision_records]'))
+    CREATE INDEX [IX_decision_records_recommendation_id]
+        ON [ai].[decision_records] ([recommendation_id]);
+GO

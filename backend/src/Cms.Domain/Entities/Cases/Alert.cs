@@ -14,7 +14,7 @@ public class Alert : BaseEntity
 
     public string Severity { get; set; } = string.Empty;
 
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public new DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public DateTime? ExpiryDate { get; set; }
 

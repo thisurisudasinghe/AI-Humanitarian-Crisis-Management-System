@@ -8,7 +8,7 @@ public class OrganisationConfiguration : IEntityTypeConfiguration<Organisation>
 {
     public void Configure(EntityTypeBuilder<Organisation> builder)
     {
-        builder.ToTable("Organisations");
+        builder.ToTable("Organisations", "common");
 
         builder.HasKey(o => o.Id);
 
@@ -36,6 +36,6 @@ public class OrganisationConfiguration : IEntityTypeConfiguration<Organisation>
         builder.Property(o => o.IsActive)
             .IsRequired();
 
-        builder.HasIndex(o => o.Name);
+        builder.HasIndex(o => o.Name, "IX_organisations_name");
     }
 }

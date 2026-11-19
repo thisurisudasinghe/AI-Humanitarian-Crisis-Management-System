@@ -1,0 +1,722 @@
+{
+  "info": {
+    "name": "CMS Master - Dev 1",
+    "description": "Master collection for identity, administration, audit, outbox, KPIs and health. Other members add their module folders. Set baseUrl, adminEmail and password variables before running. Run 'Login admin' first so accessToken and refreshToken are populated.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5210" },
+    { "key": "adminEmail", "value": "admin@example.org" },
+    { "key": "password", "value": "Demo1234!" },
+    { "key": "accessToken", "value": "" },
+    { "key": "refreshToken", "value": "" },
+    { "key": "userId", "value": "" },
+    { "key": "organisationId", "value": "" },
+    { "key": "crisisEventId", "value": "" },
+    { "key": "areaId", "value": "" },
+    { "key": "donorId", "value": "" },
+    { "key": "campaignId", "value": "" },
+    { "key": "donationId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/Health", "host": ["{{baseUrl}}"], "path": ["api", "Health"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register citizen",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"New Citizen\",\n  \"email\": \"citizen{{$randomInt}}@example.org\",\n  \"password\": \"{{password}}\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/auth/register", "host": ["{{baseUrl}}"], "path": ["api", "v1", "auth", "register"] }
+          }
+        },
+        {
+          "name": "Login admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const body = pm.response.json();",
+                  "  pm.collectionVariables.set('accessToken', body.accessToken);",
+                  "  pm.collectionVariables.set('refreshToken', body.refreshToken);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{password}}\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "v1", "auth", "login"] }
+          }
+        },
+        {
+          "name": "Refresh",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const body = pm.response.json();",
+                  "  pm.collectionVariables.set('accessToken', body.accessToken);",
+                  "  pm.collectionVariables.set('refreshToken', body.refreshToken);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/v1/auth/refresh", "host": ["{{baseUrl}}"], "path": ["api", "v1", "auth", "refresh"] }
+          }
+        },
+        {
+          "name": "Me",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/auth/me", "host": ["{{baseUrl}}"], "path": ["api", "v1", "auth", "me"] }
+          }
+        },
+        {
+          "name": "Role check (requires EmergencyCoordinator + CaseManager)",
+          "request": {
+            "description": "Returns 200 only when the current access token belongs to a user holding both EmergencyCoordinator and CaseManager. Admin tokens correctly return 403.",
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/auth/role-check", "host": ["{{baseUrl}}"], "path": ["api", "v1", "auth", "role-check"] }
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/v1/auth/logout", "host": ["{{baseUrl}}"], "path": ["api", "v1", "auth", "logout"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "List users",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const body = pm.response.json();",
+                  "  if (body.items && body.items.length > 0) {",
+                  "    pm.collectionVariables.set('userId', body.items[0].id);",
+                  "  }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users?page=1&pageSize=50",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "users"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "pageSize", "value": "50" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "List users by exact email",
+          "request": {
+            "description": "Exact email lookup uses the deterministic email hash; name searches use a substring match.",
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users?search={{adminEmail}}&page=1&pageSize=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "users"],
+              "query": [
+                { "key": "search", "value": "{{adminEmail}}" },
+                { "key": "page", "value": "1" },
+                { "key": "pageSize", "value": "20" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get user by ID",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/users/{{userId}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "users", "{{userId}}"] }
+          }
+        },
+        {
+          "name": "Create user",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201 || pm.response.code === 200) {",
+                  "  const body = pm.response.json();",
+                  "  pm.collectionVariables.set('userId', body.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Case Manager\",\n  \"email\": \"manager{{$randomInt}}@example.org\",\n  \"password\": \"{{password}}\",\n  \"roles\": [\"CaseManager\"]\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/users", "host": ["{{baseUrl}}"], "path": ["api", "v1", "users"] }
+          }
+        },
+        {
+          "name": "Update user",
+          "request": {
+            "description": "Updates names and status. Send organisationId as 00000000-0000-0000-0000-000000000000 to clear the organisation.",
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Case\",\n  \"lastName\": \"Manager\",\n  \"status\": \"Active\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/users/{{userId}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "users", "{{userId}}"] }
+          }
+        },
+        {
+          "name": "Replace user roles",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"roles\": [\"CaseManager\", \"EmergencyCoordinator\"]\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/users/{{userId}}/roles", "host": ["{{baseUrl}}"], "path": ["api", "v1", "users", "{{userId}}", "roles"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Organisations",
+      "item": [
+        {
+          "name": "List organisations",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const body = pm.response.json();",
+                  "  if (body.items && body.items.length > 0) {",
+                  "    pm.collectionVariables.set('organisationId', body.items[0].id);",
+                  "  }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/organisations", "host": ["{{baseUrl}}"], "path": ["api", "v1", "organisations"] }
+          }
+        },
+        {
+          "name": "Get organisation by ID",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/organisations/{{organisationId}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "organisations", "{{organisationId}}"] }
+          }
+        },
+        {
+          "name": "Create organisation",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201 || pm.response.code === 200) {",
+                  "  const body = pm.response.json();",
+                  "  pm.collectionVariables.set('organisationId', body.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Partner Org {{$randomInt}}\",\n  \"organisationType\": \"NonGovernmentalOrganisation\",\n  \"contactEmail\": \"partner{{$randomInt}}@example.org\",\n  \"contactPhone\": \"+94770000000\",\n  \"address\": \"Colombo\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/organisations", "host": ["{{baseUrl}}"], "path": ["api", "v1", "organisations"] }
+          }
+        },
+        {
+          "name": "Update organisation",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"contactEmail\": \"contact@example.org\",\n  \"address\": \"123 Test Street\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/organisations/{{organisationId}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "organisations", "{{organisationId}}"] }
+          }
+        },
+        {
+          "name": "Deactivate organisation",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"isActive\": false\n}" },
+            "url": { "raw": "{{baseUrl}}/api/v1/organisations/{{organisationId}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "organisations", "{{organisationId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin config",
+      "item": [
+        {
+          "name": "Get config",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/admin/config", "host": ["{{baseUrl}}"], "path": ["api", "v1", "admin", "config"] }
+          }
+        },
+        {
+          "name": "Patch config",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"settings\": [\n    { \"key\": \"SlaHours\", \"value\": \"24\" },\n    { \"key\": \"ReorderThreshold\", \"value\": \"10\" }\n  ]\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/admin/config", "host": ["{{baseUrl}}"], "path": ["api", "v1", "admin", "config"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Audit events",
+      "item": [
+        {
+          "name": "Query audit events",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/audit-events?page=1&pageSize=50",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "audit-events"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "pageSize", "value": "50" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Filter audit by action",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/audit-events?action=Config.Updated&page=1&pageSize=50",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "audit-events"],
+              "query": [
+                { "key": "action", "value": "Config.Updated" },
+                { "key": "page", "value": "1" },
+                { "key": "pageSize", "value": "50" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Filter audit by actor",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/audit-events?actorUserId={{userId}}&page=1&pageSize=50",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "audit-events"],
+              "query": [
+                { "key": "actorUserId", "value": "{{userId}}" },
+                { "key": "page", "value": "1" },
+                { "key": "pageSize", "value": "50" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Filter audit by date range",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/audit-events?from=2026-11-01T00:00:00Z&to=2026-11-30T23:59:59Z&page=1&pageSize=50",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "audit-events"],
+              "query": [
+                { "key": "from", "value": "2026-11-01T00:00:00Z" },
+                { "key": "to", "value": "2026-11-30T23:59:59Z" },
+                { "key": "page", "value": "1" },
+                { "key": "pageSize", "value": "50" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Outbox",
+      "item": [
+        {
+          "name": "List dead-lettered messages",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/outbox/dead?page=1&pageSize=50",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "admin", "outbox", "dead"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "pageSize", "value": "50" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "KPIs",
+      "item": [
+        {
+          "name": "Get KPI report",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/kpis?from=2026-11-01T00:00:00Z&to=2026-11-30T00:00:00Z",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "kpis"],
+              "query": [
+                { "key": "from", "value": "2026-11-01T00:00:00Z" },
+                { "key": "to", "value": "2026-11-30T00:00:00Z" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get KPI report filtered by crisis and area",
+          "request": {
+            "description": "Set crisisEventId and areaId collection variables to real GUIDs. Blank values are omitted.",
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/kpis?from=2026-11-01T00:00:00Z&to=2026-11-30T00:00:00Z&crisisEventId={{crisisEventId}}&areaId={{areaId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "kpis"],
+              "query": [
+                { "key": "from", "value": "2026-11-01T00:00:00Z" },
+                { "key": "to", "value": "2026-11-30T00:00:00Z" },
+                { "key": "crisisEventId", "value": "{{crisisEventId}}" },
+                { "key": "areaId", "value": "{{areaId}}" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Donations",
+      "item": [
+        {
+          "name": "List donors",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/donations/donors?page=1&pageSize=50", "host": ["{{baseUrl}}"], "path": ["api", "v1", "donations", "donors"] }
+          }
+        },
+        {
+          "name": "Create donor",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201 || pm.response.code === 200) {",
+                  "  const body = pm.response.json();",
+                  "  pm.collectionVariables.set('donorId', body.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Demo Donor {{$randomInt}}\",\n  \"donorType\": \"Individual\",\n  \"contactEmail\": \"donor{{$randomInt}}@example.org\",\n  \"isAnonymous\": false\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/donations/donors", "host": ["{{baseUrl}}"], "path": ["api", "v1", "donations", "donors"] }
+          }
+        },
+        {
+          "name": "Create campaign",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201 || pm.response.code === 200) {",
+                  "  const body = pm.response.json();",
+                  "  pm.collectionVariables.set('campaignId', body.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Flood Relief {{$randomInt}}\",\n  \"description\": \"Emergency water and shelter support\",\n  \"goalAmount\": 50000,\n  \"currency\": \"USD\",\n  \"startsAt\": \"2026-11-01T00:00:00Z\",\n  \"endsAt\": \"2026-12-31T23:59:59Z\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/donations/campaigns", "host": ["{{baseUrl}}"], "path": ["api", "v1", "donations", "campaigns"] }
+          }
+        },
+        {
+          "name": "Activate campaign",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"status\": \"Active\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/v1/donations/campaigns/{{campaignId}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "donations", "campaigns", "{{campaignId}}"] }
+          }
+        },
+        {
+          "name": "Record monetary donation",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201 || pm.response.code === 200) {",
+                  "  const body = pm.response.json();",
+                  "  pm.collectionVariables.set('donationId', body.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"donorId\": \"{{donorId}}\",\n  \"donationType\": \"Monetary\",\n  \"amount\": 2500,\n  \"currency\": \"USD\",\n  \"receivedAt\": \"2026-11-15T10:00:00Z\",\n  \"notes\": \"Bank transfer reference 1234\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/donations", "host": ["{{baseUrl}}"], "path": ["api", "v1", "donations"] }
+          }
+        },
+        {
+          "name": "Allocate donation to campaign",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"campaignId\": \"{{campaignId}}\",\n  \"amount\": 1000,\n  \"note\": \"Initial allocation\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/donations/{{donationId}}/allocations", "host": ["{{baseUrl}}"], "path": ["api", "v1", "donations", "{{donationId}}", "allocations"] }
+          }
+        },
+        {
+          "name": "List donations",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/donations?page=1&pageSize=50", "host": ["{{baseUrl}}"], "path": ["api", "v1", "donations"] }
+          }
+        },
+        {
+          "name": "Flag donation for review",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"isSuspicious\": true,\n  \"reason\": \"Manual review requested\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/donations/{{donationId}}/flag", "host": ["{{baseUrl}}"], "path": ["api", "v1", "donations", "{{donationId}}", "flag"] }
+          }
+        },
+        {
+          "name": "Record campaign expense",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Water truck fuel\",\n  \"amount\": 300,\n  \"currency\": \"USD\",\n  \"spentAt\": \"2026-11-16T09:00:00Z\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/donations/campaigns/{{campaignId}}/expenses", "host": ["{{baseUrl}}"], "path": ["api", "v1", "donations", "campaigns", "{{campaignId}}", "expenses"] }
+          }
+        },
+        {
+          "name": "Get transparency report",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/donations/report?from=2026-11-01T00:00:00Z&to=2026-11-30T23:59:59Z",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "donations", "report"],
+              "query": [
+                { "key": "from", "value": "2026-11-01T00:00:00Z" },
+                { "key": "to", "value": "2026-11-30T23:59:59Z" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Files",
+      "item": [
+        {
+          "name": "Upload evidence file",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "file", "type": "file", "src": "C:/path/to/evidence.png" }
+              ]
+            },
+            "url": { "raw": "{{baseUrl}}/api/v1/files", "host": ["{{baseUrl}}"], "path": ["api", "v1", "files"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Placeholder module folders",
+      "item": [
+        { "name": "Cases (Member 2)", "item": [] },
+        { "name": "AI (Member 3)", "item": [] },
+        { "name": "Governance (Member 3)", "item": [] },
+        { "name": "Resources/Shelter/Volunteers/Mapping (Member 4)", "item": [] }
+      ]
+    }
+  ]
+}

@@ -1,4 +1,4 @@
-﻿using Cms.Application.DTOs.AI;
+using Cms.Application.DTOs.AI;
 using Cms.Application.Interfaces.AI;
 using Cms.Domain.Entities;
 using Cms.Infrastructure.Data;
@@ -8,9 +8,9 @@ namespace Cms.Infrastructure.Services.AI;
 
 public class RecommendationService : IRecommendationService
 {
-    private readonly ApplicationDbContext _context;
+    private readonly CmsDbContext _context;
 
-    public RecommendationService(ApplicationDbContext context)
+    public RecommendationService(CmsDbContext context)
     {
         _context = context;
     }
