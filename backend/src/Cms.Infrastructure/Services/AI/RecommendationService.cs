@@ -1,6 +1,8 @@
-﻿using Cms.Application.DTOs.AI;
+﻿using System.Text.Json;
+using Cms.Application.DTOs.AI;
 using Cms.Application.Interfaces.AI;
 using Cms.Domain.Entities;
+using Cms.Domain.Entities.Cases;
 using Cms.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -53,4 +55,79 @@ public class RecommendationService : IRecommendationService
                 x => x.Id == recommendationId,
                 cancellationToken);
     }
+
+    public async Task<Guid> GenerateForCrisisAsync(
+        Guid crisisId,
+        CancellationToken cancellationToken = default)
+    {
+        var crisis = await _context.Set<Crisis>()
+            .Include(c => c.Areas)
+            .FirstOrDefaultAsync(
+                c => c.Id == crisisId,
+                cancellationToken);
+
+        if (crisis is null)
+        {
+            throw new KeyNotFoundException(
+                $"Crisis with ID {crisisId} was not found.");
+        }
+
+        var activeAreas = crisis.Areas
+            .Where(a => a.IsActive)
+            .Select(a => a.Name)
+            .ToList();
+
+        var suggestedActions = crisis.Severity.ToLowerInvariant() switch
+        {
+            "critical" or "high" => new[]
+            {
+                "Prioritize emergency response.",
+                "Assess evacuation requirements.",
+                "Coordinate urgent assistance for affected areas."
+            },
+
+            "medium" => new[]
+            {
+                "Prepare emergency response resources.",
+                "Monitor affected areas.",
+                "Coordinate assistance where required."
+            },
+
+            _ => new[]
+            {
+                "Monitor the crisis situation.",
+                "Review local preparedness.",
+                "Update response plans when necessary."
+            }
+        };
+
+        var payload = new
+        {
+            CrisisId = crisis.Id,
+            CrisisName = crisis.Name,
+            CrisisType = crisis.CrisisType,
+            Severity = crisis.Severity,
+            ActiveAreas = activeAreas,
+            SuggestedActions = suggestedActions,
+            HumanReviewRequired = true
+        };
+
+        var recommendation = new Recommendation
+        {
+            Type = "CrisisResponse",
+            TargetId = crisis.Id,
+            PayloadJson = JsonSerializer.Serialize(payload),
+            Confidence = 0.70m,
+            Rationale = "Rule-based recommendation generated using crisis severity and active area information. Human review is required.",
+            Source = "RuleBased"
+        };
+
+        await _context.Recommendations.AddAsync(
+            recommendation, cancellationToken);
+
+        await _context.SaveChangesAsync(cancellationToken);
+
+        return recommendation.Id;
+    }
+
 }

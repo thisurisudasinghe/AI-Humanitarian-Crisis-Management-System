@@ -12,4 +12,8 @@ public interface IRecommendationService
     Task<Recommendation?> GetByIdAsync(
         Guid recommendationId,
         CancellationToken cancellationToken = default);
+
+    Task<Guid> GenerateForCrisisAsync(
+        Guid crisisId,
+        CancellationToken cancellationToken = default);
 }

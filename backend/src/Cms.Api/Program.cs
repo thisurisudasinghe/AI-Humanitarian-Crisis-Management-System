@@ -52,6 +52,7 @@ builder.Services.AddScoped<JwtTokenService>();
 builder.Services.AddScoped<Cms.Infrastructure.Security.EmailProtectionService>();
 builder.Services.AddScoped<Cms.Infrastructure.Security.PasswordHashingService>();
 builder.Services.AddScoped<IRecommendationService, RecommendationService>();
+builder.Services.AddScoped<IDecisionService, DecisionService>();
 builder.Services.AddScoped<
     IOutbox,
     Cms.Infrastructure.Services.Outbox.OutboxService>();
