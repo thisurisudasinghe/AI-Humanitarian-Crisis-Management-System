@@ -2,6 +2,7 @@ using System.Text.Json;
 using Cms.Application.Interfaces;
 using Cms.Domain.Entities;
 using Cms.Domain.Enums;
+using Cms.Domain.Enums.Cases;
 using Cms.Infrastructure.Data;
 using Cms.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;

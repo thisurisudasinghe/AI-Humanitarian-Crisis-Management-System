@@ -6,7 +6,7 @@
 -- relationship is skipped instead of failing the whole database setup.
 --
 -- Ownership reminder:
---   Dev 1: identity, common, don, notif
+--   Dev 1: identity, common, don
 --   Dev 2: cases
 --   Dev 3: ai
 --   Dev 4: res, shelter, vol, geo

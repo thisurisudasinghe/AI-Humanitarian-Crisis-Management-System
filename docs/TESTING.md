@@ -39,9 +39,11 @@ Database (canonical order, every script is idempotent — run each one twice to
 prove it):
 
 ```powershell
-# 00_common.sql -> 01_cases.sql ... 08_don.sql -> 98_foreign_keys.sql
-# -> 99_seed_users.sql -> 90_seed_scenario.sql, 91_seed_ops.sql
+# 00_common.sql -> 03_ai.sql -> 01_cases.sql ... 08_don.sql
+# -> 98_foreign_keys.sql -> 99_seed_users.sql
+# -> 90_seed_scenario.sql, 91_seed_ops.sql
 sqlcmd -S "(localdb)\mssqllocaldb" -d CmsDb -I -b -i backend/db/00_common.sql
+sqlcmd -S "(localdb)\mssqllocaldb" -d CmsDb -I -b -i backend/db/03_ai.sql
 sqlcmd -S "(localdb)\mssqllocaldb" -d CmsDb -I -b -i backend/db/08_don.sql
 sqlcmd -S "(localdb)\mssqllocaldb" -d CmsDb -I -b -i backend/db/98_foreign_keys.sql
 sqlcmd -S "(localdb)\mssqllocaldb" -d CmsDb -I -b -i backend/db/99_seed_users.sql

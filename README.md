@@ -101,15 +101,17 @@ used and `dotnet ef database update` is not part of the workflow.
 Run the scripts in this canonical order:
 
 1. `backend/db/00_common.sql` — identity and common tables (Dev 1)
-2. `backend/db/01_cases.sql` … `backend/db/08_don.sql` — module scripts (owners)
-3. `backend/db/98_foreign_keys.sql` — guarded cross-module foreign keys
-4. `backend/db/99_seed_users.sql` — roles, demo organisation, demo users, settings
-5. `backend/db/90_seed_scenario.sql`, `backend/db/91_seed_ops.sql` — optional demo data
+2. `backend/db/03_ai.sql` — AI recommendations and decision records (Dev 3)
+3. `backend/db/01_cases.sql` … `backend/db/08_don.sql` — module scripts (owners)
+4. `backend/db/98_foreign_keys.sql` — guarded cross-module foreign keys
+5. `backend/db/99_seed_users.sql` — roles, demo organisation, demo users, settings
+6. `backend/db/90_seed_scenario.sql`, `backend/db/91_seed_ops.sql` — optional demo data
 
 Example with `sqlcmd` (the `-I` flag is required for filtered indexes):
 
 ```powershell
 sqlcmd -S "(localdb)\mssqllocaldb" -d CmsDb -I -b -i backend/db/00_common.sql
+sqlcmd -S "(localdb)\mssqllocaldb" -d CmsDb -I -b -i backend/db/03_ai.sql
 sqlcmd -S "(localdb)\mssqllocaldb" -d CmsDb -I -b -i backend/db/98_foreign_keys.sql
 sqlcmd -S "(localdb)\mssqllocaldb" -d CmsDb -I -b -i backend/db/99_seed_users.sql
 ```
@@ -265,6 +267,11 @@ runs 129 backend tests with no SQL Server instance required.
   cross-module table/column names. No guessed SQL is used.
 - `98_foreign_keys.sql` currently guards the `notifications` → `identity.users`
   relationship and documents the extension pattern for other cross-module FKs.
+- AI decision support (`ai.recommendations`, `ai.decision_records`) is integrated
+  from Dev 3 on the shared foundation: `RecommendationService` uses `CmsDbContext`,
+  `03_ai.sql` creates the `ai` schema, and `IRecommendationService` is registered
+  in `AiModule`. The fail-closed `DenyAllDecisionGate` remains until the
+  governance endpoints land.
 - Donations (`D1-09`, P2) are implemented end to end: the idempotent
   `08_don.sql` schema (`don` schema, five tables), donor and campaign
   management, manual monetary/material donation entry, value-constrained

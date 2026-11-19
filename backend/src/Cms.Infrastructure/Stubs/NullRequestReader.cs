@@ -1,5 +1,6 @@
-using Cms.Application.Contracts;
-using Cms.Domain.Enums;
+using Cms.Application.DTOs;
+using Cms.Application.Interfaces;
+using Cms.Domain.Enums.Cases;
 
 namespace Cms.Infrastructure.Stubs;
 

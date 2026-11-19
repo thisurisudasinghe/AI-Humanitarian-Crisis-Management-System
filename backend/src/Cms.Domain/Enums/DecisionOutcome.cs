@@ -1,3 +1,4 @@
+﻿
 namespace Cms.Domain.Enums;
 
 public enum DecisionOutcome

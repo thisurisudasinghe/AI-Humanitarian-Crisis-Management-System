@@ -46,6 +46,11 @@ public class CmsDbContext : DbContext
 
     public DbSet<CampaignExpense> CampaignExpenses => Set<CampaignExpense>();
 
+    // AI decision support and governance (ai schema), owned by Dev 3 (M3/M4).
+    public DbSet<Recommendation> Recommendations => Set<Recommendation>();
+
+    public DbSet<DecisionRecord> DecisionRecords => Set<DecisionRecord>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);

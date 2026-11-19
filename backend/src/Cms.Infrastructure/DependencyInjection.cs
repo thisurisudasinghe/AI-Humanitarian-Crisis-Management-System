@@ -108,7 +108,6 @@ public static class DependencyInjection
         // because it registers after the foundation.
         services.TryAddScoped<IRequestReader, NullRequestReader>();
         services.TryAddScoped<IRequestStatusService, NoOpRequestStatusService>();
-        services.TryAddScoped<IRecommendationService, NullRecommendationService>();
         services.TryAddScoped<IDecisionGate, DenyAllDecisionGate>();
         services.TryAddScoped<IGeoService, HaversineOnlyGeoService>();
         services.TryAddScoped<IResourceMatcher, EmptyResourceMatcher>();
