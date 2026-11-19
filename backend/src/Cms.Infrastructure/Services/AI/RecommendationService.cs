@@ -61,7 +61,7 @@ public class RecommendationService : IRecommendationService
         CancellationToken cancellationToken = default)
     {
         var crisis = await _context.Set<Crisis>()
-            .Include(c => c.Areas)
+            .AsNoTracking()
             .FirstOrDefaultAsync(
                 c => c.Id == crisisId,
                 cancellationToken);
@@ -72,12 +72,16 @@ public class RecommendationService : IRecommendationService
                 $"Crisis with ID {crisisId} was not found.");
         }
 
-        var activeAreas = crisis.Areas
-            .Where(a => a.IsActive)
+        // D2-01/D2-02 own the canonical Crisis/Area shape: areas have no
+        // IsActive flag, and crisis severity/type are carried by Crisis.Type.
+        var activeAreas = await _context.Set<Area>()
+            .AsNoTracking()
+            .Where(a => a.CrisisId == crisisId)
+            .OrderBy(a => a.Name)
             .Select(a => a.Name)
-            .ToList();
+            .ToListAsync(cancellationToken);
 
-        var suggestedActions = crisis.Severity.ToLowerInvariant() switch
+        var suggestedActions = crisis.Type.ToLowerInvariant() switch
         {
             "critical" or "high" => new[]
             {
@@ -105,8 +109,8 @@ public class RecommendationService : IRecommendationService
         {
             CrisisId = crisis.Id,
             CrisisName = crisis.Name,
-            CrisisType = crisis.CrisisType,
-            Severity = crisis.Severity,
+            CrisisType = crisis.Type,
+            Severity = crisis.Type,
             ActiveAreas = activeAreas,
             SuggestedActions = suggestedActions,
             HumanReviewRequired = true
