@@ -114,8 +114,8 @@ control rather than a separate user action.
 
 ## 5. Demo accounts
 
-All demo accounts use the password `Demo1234!` and are seeded by
-`backend/db/99_seed_users.sql`.
+All demo accounts use the password `Demo1234!` and are created/updated at API
+startup by `DevelopmentDemoSeeder` after the SQL schema scripts have run.
 
 | Email | Role(s) | Purpose |
 |---|---|---|
@@ -138,7 +138,8 @@ Run this before every Dev 1 hand-off or demo.
 
 1. Run `00_common.sql`, `08_don.sql`, `98_foreign_keys.sql` and
    `99_seed_users.sql` twice. Both passes must succeed; `common.system_settings`
-   must contain three rows.
+   must contain three rows. Then start the API once in Development so
+   `DevelopmentDemoSeeder` creates the demo users.
 2. Log in as each active demo account and confirm `GET /api/v1/auth/me` returns
    the expected roles. `inactive@example.org` must return `401`.
 3. Confirm the authorization matrix:
