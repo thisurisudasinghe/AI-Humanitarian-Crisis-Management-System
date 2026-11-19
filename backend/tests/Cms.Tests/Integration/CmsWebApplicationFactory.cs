@@ -66,7 +66,8 @@ public sealed class CmsWebApplicationFactory : WebApplicationFactory<Program>
                 ["EmailProtection:EncryptionKey"] = TestSecrets.EmailEncryptionKey,
                 ["EmailProtection:HashKey"] = TestSecrets.EmailHashKey,
                 ["FileStorage:RootPath"] = _storageRoot,
-                ["Outbox:ProcessorEnabled"] = "false"
+                ["Outbox:ProcessorEnabled"] = "false",
+                ["DemoSeed:Enabled"] = "false"
             });
         });
 

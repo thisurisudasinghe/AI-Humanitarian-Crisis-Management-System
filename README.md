@@ -104,7 +104,7 @@ Run the scripts in this canonical order:
 2. `backend/db/03_ai.sql` — AI recommendations and decision records (Dev 3)
 3. `backend/db/01_cases.sql` … `backend/db/08_don.sql` — module scripts (owners)
 4. `backend/db/98_foreign_keys.sql` — guarded cross-module foreign keys
-5. `backend/db/99_seed_users.sql` — roles, demo organisation, demo users, settings
+5. `backend/db/99_seed_users.sql` — roles, demo organisation, settings (demo users are created by the API at startup)
 6. `backend/db/90_seed_scenario.sql`, `backend/db/91_seed_ops.sql` — optional demo data
 
 Example with `sqlcmd` (the `-I` flag is required for filtered indexes):
@@ -117,15 +117,15 @@ sqlcmd -S "(localdb)\mssqllocaldb" -d CmsDb -I -b -i backend/db/99_seed_users.sq
 ```
 
 Every Dev 1 script is idempotent: re-running it skips existing tables, indexes,
-roles, users and settings instead of failing.
+roles and settings instead of failing.
 
-Demo users are seeded with the password `Demo1234!`. See
-`backend/db/99_seed_users.sql` for the full list of demo accounts and roles.
+Demo users are created/updated at API startup by `DevelopmentDemoSeeder` and all
+use the password `Demo1234!`. See `docs/TESTING.md` for the full list of demo
+accounts and roles.
 
 ## 7. Secret Management
 
-Never commit real secrets, passwords, or credentials to Git. The only exception
-is the fixed, public, development-only configuration described below.
+Never commit real secrets, passwords, or credentials to Git.
 
 The application may require the following environment variables:
 
@@ -139,30 +139,29 @@ The application may require the following environment variables:
 
 ### Local Development
 
-`backend/src/Cms.Api/appsettings.Development.json` already provides fixed
-development-only keys and a LocalDB connection string, so a fresh checkout can
-run the SQL-seeded demo users without extra setup. These keys are public and
-must never be used outside local development.
+`backend/src/Cms.Api/appsettings.Development.json` contains only non-secret
+local defaults: a LocalDB connection string, logging, and `DemoSeed:Enabled`.
+Provide secrets through `dotnet user-secrets` or environment variables.
 
-To override only the connection string (for example, to use a different SQL
-Server instance):
+In Development, missing `Jwt:SecretKey`, `EmailProtection:EncryptionKey` and
+`EmailProtection:HashKey` are replaced with ephemeral process keys so a fresh
+checkout can start. Those keys are not persisted, so tokens do not survive a
+restart.
+
+To set persistent local keys (do not print or commit the values):
 
 ```powershell
 cd backend/src/Cms.Api
-dotnet user-secrets init
+dotnet user-secrets set "Jwt:SecretKey" "<new random value>"
+dotnet user-secrets set "EmailProtection:EncryptionKey" "<32-byte base64 value>"
+dotnet user-secrets set "EmailProtection:HashKey" "<32-byte base64 value>"
 dotnet user-secrets set "ConnectionStrings:DefaultConnection" "<local SQL connection>"
 ```
 
-If you replace the email or JWT keys with your own values, the demo users seeded
-by `99_seed_users.sql` will no longer be found by email until you reseed them
-with the new keys. User-secrets override `appsettings.Development.json`, so
-remove any old values before using the committed demo keys:
-
-```powershell
-dotnet user-secrets remove "EmailProtection:EncryptionKey"
-dotnet user-secrets remove "EmailProtection:HashKey"
-dotnet user-secrets remove "Jwt:SecretKey"
-```
+The demo users are upserted on every Development startup using the current
+keys, so changing keys does not break demo login. Run the SQL schema scripts
+first; if the database is not ready, the seeder logs a warning and the API still
+starts.
 
 For deployment, configure `JWT_SECRET`, `EMAIL_ENCRYPTION_KEY`,
 `EMAIL_HASH_KEY` and `ConnectionStrings__DefaultConnection` securely through
