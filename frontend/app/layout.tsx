@@ -4,8 +4,10 @@ import { AuthProvider } from "@/lib/auth";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Crisis Management",
-  description: "AI-powered humanitarian crisis coordination"
+  title: "SAFEWAY · Humanitarian response network",
+  description:
+    "Report a crisis, find verified assistance and coordinate humanitarian response with human oversight.",
+  applicationName: "SAFEWAY"
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

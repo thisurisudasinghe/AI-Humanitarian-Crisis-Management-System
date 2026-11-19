@@ -74,8 +74,10 @@ export interface KpiReportDto {
   shelterOccupancyPercent?: number | null;
   sheltersAtCapacity?: number | null;
   aiOverrideRatePercent?: number | null;
-  failedNotifications?: number | null;
-  deadLetterCount?: number | null;
+  totalNotificationCount: number;
+  sentNotificationCount: number;
+  failedNotifications: number;
+  deadLetterCount: number;
   totalUserCount: number;
   activeUserCount: number;
   newUserCount: number;
@@ -90,6 +92,26 @@ export interface KpiReportDto {
   requestsByArea: KpiAreaBreakdown[];
   sheltersByArea: KpiAreaBreakdown[];
   isPlaceholder: boolean;
+}
+
+export type OutboxMessageStatus =
+  | "Pending"
+  | "Processing"
+  | "Processed"
+  | "Failed"
+  | "DeadLettered";
+
+export interface OutboxMessageDto {
+  id: string;
+  type: string;
+  entityId: string;
+  status: OutboxMessageStatus;
+  retryCount: number;
+  nextRetryAt?: string | null;
+  processedAt?: string | null;
+  errorMessage?: string | null;
+  createdAt: string;
+  updatedAt?: string | null;
 }
 
 export const OrganisationTypes = [
