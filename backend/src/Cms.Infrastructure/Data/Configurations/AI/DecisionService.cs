@@ -52,7 +52,7 @@ public class DecisionService : IDecisionService
             throw new ArgumentException(
                 "Decision reason cannot exceed 2000 characters.");
 
-        if (outcome == DecisionOutcome.Modify &&
+        if (outcome == DecisionOutcome.Modified &&
             string.IsNullOrWhiteSpace(finalPayloadJson))
         {
             throw new ArgumentException(
@@ -69,7 +69,7 @@ public class DecisionService : IDecisionService
         {
             RecommendationId = recommendationId,
             Outcome = outcome,
-            FinalPayloadJson = outcome == DecisionOutcome.Modify
+            FinalPayloadJson = outcome == DecisionOutcome.Modified
                 ? finalPayloadJson
                 : null,
             Reason = reason.Trim(),

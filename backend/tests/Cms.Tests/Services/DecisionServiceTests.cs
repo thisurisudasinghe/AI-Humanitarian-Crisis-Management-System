@@ -60,7 +60,7 @@ public class DecisionServiceTests
         // Act
         var decisionId = await service.RecordDecisionAsync(
             recommendation.Id,
-            DecisionOutcome.Approve,
+            DecisionOutcome.Approved,
             "Approved for implementation");
 
         // Assert
@@ -68,7 +68,7 @@ public class DecisionServiceTests
             .FirstOrDefaultAsync(x => x.Id == decisionId);
 
         Assert.NotNull(savedDecision);
-        Assert.Equal(DecisionOutcome.Approve, savedDecision.Outcome);
+        Assert.Equal(DecisionOutcome.Approved, savedDecision.Outcome);
         Assert.Equal(userId, savedDecision.DecidedByUserId);
         Assert.Equal(expectedDate, savedDecision.DecidedAt);
 
@@ -101,7 +101,7 @@ public class DecisionServiceTests
         await Assert.ThrowsAsync<UnauthorizedAccessException>(
             () => service.RecordDecisionAsync(
                 Guid.NewGuid(),
-                DecisionOutcome.Approve,
+                DecisionOutcome.Approved,
                 "Test reason"));
     }
 
@@ -124,7 +124,7 @@ public class DecisionServiceTests
         await Assert.ThrowsAsync<ArgumentException>(
             () => service.RecordDecisionAsync(
                 Guid.NewGuid(),
-                DecisionOutcome.Approve,
+                DecisionOutcome.Approved,
                 ""));
     }
 
@@ -147,7 +147,7 @@ public class DecisionServiceTests
         await Assert.ThrowsAsync<ArgumentException>(
             () => service.RecordDecisionAsync(
                 Guid.NewGuid(),
-                DecisionOutcome.Modify,
+                DecisionOutcome.Modified,
                 "Modified recommendation",
                 null));
     }
@@ -169,7 +169,7 @@ public class DecisionServiceTests
         await Assert.ThrowsAsync<KeyNotFoundException>(
             () => service.RecordDecisionAsync(
                 Guid.NewGuid(),
-                DecisionOutcome.Approve,
+                DecisionOutcome.Approved,
                 "Test reason"));
     }
 
@@ -193,7 +193,7 @@ public class DecisionServiceTests
         var decision = new DecisionRecord
         {
             RecommendationId = recommendation.Id,
-            Outcome = DecisionOutcome.Approve,
+            Outcome = DecisionOutcome.Approved,
             Reason = "Approved",
             DecidedByUserId = Guid.NewGuid(),
             DecidedAt = DateTime.UtcNow
@@ -211,7 +211,7 @@ public class DecisionServiceTests
         var result = await service.GetDecisionsAsync(recommendation.Id);
 
         Assert.Single(result);
-        Assert.Equal(DecisionOutcome.Approve, result[0].Outcome);
+        Assert.Equal(DecisionOutcome.Approved, result[0].Outcome);
         Assert.Equal("Approved", result[0].Reason);
     }
 
@@ -246,7 +246,7 @@ public class DecisionServiceTests
 
         var decisionId = await service.RecordDecisionAsync(
             recommendation.Id,
-            DecisionOutcome.Modify,
+            DecisionOutcome.Modified,
             "Updated recommendation",
             payload);
 
@@ -254,13 +254,13 @@ public class DecisionServiceTests
             .FirstOrDefaultAsync(x => x.Id == decisionId);
 
         Assert.NotNull(savedDecision);
-        Assert.Equal(DecisionOutcome.Modify, savedDecision.Outcome);
+        Assert.Equal(DecisionOutcome.Modified, savedDecision.Outcome);
         Assert.Equal(payload, savedDecision.FinalPayloadJson);
     }
 
     [Theory]
-    [InlineData(DecisionOutcome.Reject)]
-    [InlineData(DecisionOutcome.Defer)]
+    [InlineData(DecisionOutcome.Rejected)]
+    [InlineData(DecisionOutcome.Deferred)]
     public async Task RecordDecisionAsync_RejectOrDefer_SavesDecision(
     DecisionOutcome outcome)
     {
@@ -319,7 +319,7 @@ public class DecisionServiceTests
         await Assert.ThrowsAsync<ArgumentException>(
             () => service.RecordDecisionAsync(
                 Guid.NewGuid(),
-                DecisionOutcome.Approve,
+                DecisionOutcome.Approved,
                 longReason));
     }
 
