@@ -5,6 +5,7 @@ using System.Threading.RateLimiting;
 using Cms.Api.Authentication;
 using Cms.Api.Middleware;
 using Cms.Api.Modules;
+using Cms.Api.Seeding;
 using Cms.Infrastructure;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -126,6 +127,13 @@ builder.Services.AddJwtAuthentication(builder.Configuration);
 
 // Every feature module registers itself here.
 builder.Services.AddCmsModules();
+
+// Development-only demo users. This keeps the documented demo accounts usable
+// with the developer's own keys (user-secrets or ephemeral process keys).
+if (isDevelopment)
+{
+    builder.Services.AddHostedService<DevelopmentDemoSeeder>();
+}
 
 var allowedOrigins = builder.Configuration
     .GetSection("Cors:AllowedOrigins")

@@ -16,7 +16,7 @@ team (NFR-SEC-01/02/03/04/05/08 and NFR-AUD-01).
 | Browser clients | XSS/clickjacking/referrer leakage | Conservative CSP, `X-Frame-Options: DENY`, `nosniff`, `Referrer-Policy: no-referrer`, Permissions-Policy |
 | Audit trail | Tampering or sensitive-data leakage | Append-only EF guard, no `UpdatedAt`, explicit actor overload, recursive masking |
 | Outbox | Lost or duplicated events, poison messages | Event row shares the caller's transaction, unique idempotency key, retry backoff, dead-letter after three attempts, `AdminOnly` dead-letter view with no payload |
-| Secrets | Accidental commit | No real secrets in `appsettings.json`; fixed development-only keys are committed in `appsettings.Development.json`; production uses environment variables or a secret store; non-dev startup fails fast |
+| Secrets | Accidental commit | No secrets in any committed config; Development uses user-secrets/environment variables or ephemeral process keys; demo users are seeded at runtime; production uses environment variables or a secret store; non-dev startup fails fast |
 
 ## Authentication
 
@@ -101,32 +101,31 @@ with `[AllowAnonymous]`. Use `RoleNames` constants, never raw role strings.
 - Handlers must be idempotent: a crash after the handler commits but before the
   `Processed` status is saved can cause a retry of the same event.
 
-## Local development keys
+## Local development secrets
 
-`backend/src/Cms.Api/appsettings.Development.json` intentionally contains fixed,
-public, development-only keys. They exist so the SQL-seeded demo users in
-`backend/db/99_seed_users.sql` keep working across process restarts: the seed
-stores an HMAC of each email and an AES-GCM ciphertext produced with these exact
-keys.
+No secrets are committed to the repository. `backend/src/Cms.Api/appsettings.Development.json`
+contains only non-secret defaults: a LocalDB connection string, logging, and
+`DemoSeed:Enabled`.
 
-These keys are not secrets and must never be used outside local development.
-Production and any shared environment must supply `JWT_SECRET`,
-`EMAIL_ENCRYPTION_KEY`, `EMAIL_HASH_KEY` and `ConnectionStrings__DefaultConnection`
-through environment variables or a secret store; non-Development startup fails
-fast when they are missing.
+Development and test secrets must be supplied through `dotnet user-secrets` or
+environment variables. If `Jwt:SecretKey`, `EmailProtection:EncryptionKey` or
+`EmailProtection:HashKey` are missing in Development, the API generates
+ephemeral process keys so a fresh checkout can start. Those keys are not
+persisted, so tokens do not survive a restart.
 
-If the committed file is removed or the keys are blank, Development still falls
-back to ephemeral process keys so a fresh checkout can start. Those keys are not
-persisted and tokens do not survive a restart.
+Demo users are created/updated at API startup by `DevelopmentDemoSeeder` using
+the current keys. This means changing keys does not break demo login, and no
+key-derived ciphertext or hashes need to be committed. Run the SQL schema
+scripts first; if the database is not ready, the seeder logs a warning and the
+API still starts.
 
-If you replace the development keys with your own user-secrets, the demo users
-will no longer be found by email until you reseed or register them again.
-User-secrets take precedence over `appsettings.Development.json`; remove old
-values with `dotnet user-secrets remove "<key>"` if you want the committed demo
-keys. To override the connection string only:
+To set persistent local keys (do not print or commit the values):
 
 ```powershell
 cd backend/src/Cms.Api
+dotnet user-secrets set "Jwt:SecretKey" "<new random value>"
+dotnet user-secrets set "EmailProtection:EncryptionKey" "<32-byte base64 value>"
+dotnet user-secrets set "EmailProtection:HashKey" "<32-byte base64 value>"
 dotnet user-secrets set "ConnectionStrings:DefaultConnection" "<local SQL connection>"
 ```
 
