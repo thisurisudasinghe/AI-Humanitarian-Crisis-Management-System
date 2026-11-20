@@ -1,0 +1,27 @@
+-- Member 4 operations demonstration data. Idempotent fixed identifiers.
+-- Coordinate the limited inventory quantity/type with Member 2's 90_seed_scenario.sql before UAT.
+IF NOT EXISTS (SELECT 1 FROM res.ResourceTypes WHERE Id='41000000-0000-0000-0000-000000000001')
+ INSERT res.ResourceTypes(Id,Name,Unit,Description,CreatedAt) VALUES
+ ('41000000-0000-0000-0000-000000000001','Emergency food pack','packs','Deliberately limited demo stock',SYSUTCDATETIME()),
+ ('41000000-0000-0000-0000-000000000002','Medical kit','kits','General first aid kit',SYSUTCDATETIME()),
+ ('41000000-0000-0000-0000-000000000003','Clean water','litres','Drinking water supply',SYSUTCDATETIME());
+IF NOT EXISTS (SELECT 1 FROM res.Inventories WHERE Id='42000000-0000-0000-0000-000000000001')
+ INSERT res.Inventories(Id,ResourceTypeId,OrgId,Quantity,Available,Reserved,Allocated,Dispatched,Utilised,ReorderThreshold,Lat,Lng,AccessibilityCapable,CreatedAt)
+ VALUES
+ ('42000000-0000-0000-0000-000000000001','41000000-0000-0000-0000-000000000001','43000000-0000-0000-0000-000000000001',5,5,0,0,0,0,2,7.2088,79.8358,0,SYSUTCDATETIME()),
+ ('42000000-0000-0000-0000-000000000002','41000000-0000-0000-0000-000000000002','43000000-0000-0000-0000-000000000001',30,30,0,0,0,0,5,7.2088,79.8358,1,SYSUTCDATETIME()),
+ ('42000000-0000-0000-0000-000000000003','41000000-0000-0000-0000-000000000003','43000000-0000-0000-0000-000000000001',100,100,0,0,0,0,20,7.2088,79.8358,1,SYSUTCDATETIME());
+IF NOT EXISTS (SELECT 1 FROM shelter.Shelters WHERE Id='44000000-0000-0000-0000-000000000001')
+ INSERT shelter.Shelters(Id,Name,Capacity,Occupancy,Facilities,AccessibilityFeatures,Services,Lat,Lng,OrgId,Approved,CreatedAt)
+ VALUES
+ ('44000000-0000-0000-0000-000000000001','Negombo Community Hall',120,40,'["Water","Sanitation"]','["Wheelchair access"]','["Food","First aid"]',7.2088,79.8358,'43000000-0000-0000-0000-000000000001',1,SYSUTCDATETIME()),
+ ('44000000-0000-0000-0000-000000000002','Ja-Ela Relief Centre',80,22,'["Water","Power"]','["Accessible toilets"]','["Food","Shelter"]',7.0744,79.8919,'43000000-0000-0000-0000-000000000001',1,SYSUTCDATETIME()),
+ ('44000000-0000-0000-0000-000000000003','Wattala Temporary Shelter',60,60,'["Water"]','[]','["Shelter"]',6.9890,79.8910,'43000000-0000-0000-0000-000000000001',1,SYSUTCDATETIME());
+
+IF NOT EXISTS (SELECT 1 FROM vol.Volunteers WHERE Id='45000000-0000-0000-0000-000000000001')
+ INSERT vol.Volunteers(Id,UserId,SkillsJson,LanguagesJson,VerificationStatus,Active,Lat,Lng,CreatedAt) VALUES
+ ('45000000-0000-0000-0000-000000000001','45100000-0000-0000-0000-000000000001','["First aid","Driving"]','["English","Sinhala"]','Verified',1,7.2088,79.8358,SYSUTCDATETIME()),
+ ('45000000-0000-0000-0000-000000000002','45100000-0000-0000-0000-000000000002','["Food distribution"]','["Sinhala"]','Verified',1,7.0744,79.8919,SYSUTCDATETIME()),
+ ('45000000-0000-0000-0000-000000000003','45100000-0000-0000-0000-000000000003','["Medical support"]','["English"]','Verified',1,6.9890,79.8910,SYSUTCDATETIME()),
+ ('45000000-0000-0000-0000-000000000004','45100000-0000-0000-0000-000000000004','["Logistics"]','["Sinhala","Tamil"]','Pending',1,7.2088,79.8358,SYSUTCDATETIME()),
+ ('45000000-0000-0000-0000-000000000005','45100000-0000-0000-0000-000000000005','["Shelter support"]','["Tamil"]','Verified',1,7.0744,79.8919,SYSUTCDATETIME());
