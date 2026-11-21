@@ -48,7 +48,8 @@ public sealed class LlmProvider : IAiProvider
         {
             category = request.Category.ToString(),
             urgency = request.Urgency.ToString(),
-            text = RuleBasedProvider.ScrubPii($"{request.Title} {request.Description}")
+            text = RuleBasedProvider.ScrubPii(
+                $"{request.Category} {request.Urgency} {request.Description}")
         });
 
         using var content = new StringContent(body, Encoding.UTF8, "application/json");

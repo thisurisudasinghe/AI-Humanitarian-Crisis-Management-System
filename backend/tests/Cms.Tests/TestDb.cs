@@ -5,12 +5,12 @@ namespace Cms.Tests;
 
 internal static class TestDb
 {
-    public static ApplicationDbContext Create(string? databaseName = null)
+    public static CmsDbContext Create(string? databaseName = null)
     {
-        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+        var options = new DbContextOptionsBuilder<CmsDbContext>()
             .UseInMemoryDatabase(databaseName ?? Guid.NewGuid().ToString())
             .Options;
 
-        return new ApplicationDbContext(options);
+        return new CmsDbContext(options);
     }
 }

@@ -15,7 +15,6 @@ public class RuleBasedProviderTests
         var request = new Request
         {
             Id = Guid.NewGuid(),
-            Title = "Need food and water",
             Description = "Urgent, no water since yesterday",
             Category = Category.Other,
             Urgency = Urgency.Low
@@ -52,7 +51,6 @@ public class RuleBasedProviderTests
         var request = new Request
         {
             Id = Guid.NewGuid(),
-            Title = "Trapped and bleeding after collapse",
             Description = "Critical emergency, unconscious person",
             Category = Category.Shelter,
             Urgency = Urgency.Low
@@ -70,7 +68,6 @@ public class RuleBasedProviderTests
         var request = new Request
         {
             Id = Guid.NewGuid(),
-            Title = "Need medicine for injured people",
             Description = "Doctor requested urgent medical help",
             Category = Category.Medicine,
             Urgency = Urgency.High
@@ -78,7 +75,6 @@ public class RuleBasedProviderTests
         var duplicateCandidate = new Request
         {
             Id = Guid.NewGuid(),
-            Title = "Need medicine for injured people",
             Description = "Doctor requested urgent medical help",
             Category = Category.Medicine,
             Urgency = Urgency.High

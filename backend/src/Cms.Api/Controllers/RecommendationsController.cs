@@ -21,9 +21,13 @@ public class RecommendationsController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetAll(
         [FromQuery] string? type = null,
+        [FromQuery] Guid? targetId = null,
         CancellationToken cancellationToken = default)
     {
-        var items = await _recommendationService.GetAllAsync(type, cancellationToken);
+        var items = targetId.HasValue
+            ? await _recommendationService.GetByTargetAsync(targetId.Value, type, cancellationToken)
+            : await _recommendationService.GetAllAsync(type, cancellationToken);
+
         return Ok(items.Select(Map));
     }
 
@@ -63,6 +67,10 @@ public class RecommendationsController : ControllerBase
         {
             return BadRequest(new { detail = ex.Message });
         }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { detail = ex.Message });
+        }
     }
 
     [HttpPost("matches")]
@@ -84,6 +92,28 @@ public class RecommendationsController : ControllerBase
         catch (ValidationException ex)
         {
             return BadRequest(new { detail = ex.Message });
+        }
+    }
+
+    [HttpPost("crisis/{crisisId:guid}/generate")]
+    public async Task<IActionResult> GenerateForCrisis(
+        Guid crisisId,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var id = await _recommendationService.GenerateForCrisisAsync(
+                crisisId, cancellationToken);
+
+            return Ok(new
+            {
+                recommendationId = id,
+                message = "Crisis recommendation generated successfully."
+            });
+        }
+        catch (NotFoundException ex)
+        {
+            return NotFound(new { detail = ex.Message });
         }
     }
 

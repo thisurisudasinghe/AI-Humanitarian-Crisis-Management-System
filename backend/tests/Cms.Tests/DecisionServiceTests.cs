@@ -6,9 +6,11 @@ using Cms.Application.Interfaces.AI;
 using Cms.Domain.Constants;
 using Cms.Domain.Entities;
 using Cms.Domain.Enums;
+using Cms.Infrastructure.Data;
 using Cms.Infrastructure.Services;
 using Cms.Infrastructure.Services.Governance;
 using Moq;
+using CurrentUserContract = Cms.Application.Contracts.ICurrentUser;
 
 namespace Cms.Tests;
 
@@ -114,23 +116,21 @@ public class DecisionServiceTests
         Source = RecommendationSources.Rule
     };
 
-    private static DecisionService MakeService(
-        Cms.Infrastructure.Data.ApplicationDbContext context,
-        string role)
+    private static DecisionService MakeService(CmsDbContext context, string role)
     {
         var userId = Guid.NewGuid();
 
-        var currentUser = new Mock<ICurrentUserService>();
+        var currentUser = new Mock<CurrentUserContract>();
         currentUser.SetupGet(u => u.UserId).Returns(userId);
         currentUser.SetupGet(u => u.Roles).Returns(new[] { role });
 
-        var audit = new Mock<IAuditService>();
+        var audit = new Mock<Cms.Application.Contracts.IAuditLogger>();
         audit.Setup(a => a.LogAsync(
                 It.IsAny<Guid?>(),
                 It.IsAny<string>(),
                 It.IsAny<string>(),
                 It.IsAny<string?>(),
-                It.IsAny<string?>(),
+                It.IsAny<object?>(),
                 It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 

@@ -13,9 +13,9 @@ namespace Cms.Infrastructure.Services.Governance;
 /// </summary>
 public sealed class PostIncidentReviewService : IPostIncidentReviewService
 {
-    private readonly ApplicationDbContext _context;
+    private readonly CmsDbContext _context;
 
-    public PostIncidentReviewService(ApplicationDbContext context)
+    public PostIncidentReviewService(CmsDbContext context)
     {
         _context = context;
     }
@@ -37,7 +37,9 @@ public sealed class PostIncidentReviewService : IPostIncidentReviewService
             join decision in _context.DecisionRecords.AsNoTracking()
                 on recommendation.Id equals decision.RecommendationId into decisions
             from decision in decisions.DefaultIfEmpty()
-            where crisisId == null || (request != null && request.CrisisId == crisisId.Value)
+            where crisisId == null ||
+                  (request != null && request.CrisisId == crisisId.Value) ||
+                  recommendation.TargetId == crisisId.Value
             orderby recommendation.CreatedAt descending
             select new ReviewEntryDto
             {

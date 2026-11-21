@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Cms.Application.Contracts;
 using Cms.Application.DTOs.Announcements;
 using Cms.Application.DTOs.Common;
 using Cms.Application.DTOs.Notifications;
@@ -11,6 +12,7 @@ using Cms.Domain.Entities;
 using Cms.Domain.Enums;
 using Cms.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using CurrentUserContract = Cms.Application.Contracts.ICurrentUser;
 
 namespace Cms.Infrastructure.Services.Announcements;
 
@@ -21,16 +23,16 @@ public sealed class AnnouncementService : IAnnouncementService
         PropertyNameCaseInsensitive = true
     };
 
-    private readonly ApplicationDbContext _context;
-    private readonly ICurrentUserService _currentUser;
-    private readonly IAuditService _auditService;
+    private readonly CmsDbContext _context;
+    private readonly CurrentUserContract _currentUser;
+    private readonly IAuditLogger _auditService;
     private readonly IDateTimeService _dateTimeService;
     private readonly IOutbox _outbox;
 
     public AnnouncementService(
-        ApplicationDbContext context,
-        ICurrentUserService currentUser,
-        IAuditService auditService,
+        CmsDbContext context,
+        CurrentUserContract currentUser,
+        IAuditLogger auditService,
         IDateTimeService dateTimeService,
         IOutbox outbox)
     {
@@ -211,6 +213,8 @@ public sealed class AnnouncementService : IAnnouncementService
                 RecipientUserId = recipientId,
                 TemplateKey = "Announcement.Approved",
                 Channel = announcement.Channel,
+                Subject = announcement.Title,
+                Body = announcement.Message,
                 Language = "en",
                 Data = new Dictionary<string, string>
                 {
@@ -221,13 +225,10 @@ public sealed class AnnouncementService : IAnnouncementService
             };
 
             await _outbox.EnqueueAsync(
-                new OutboxMessage
-                {
-                    Type = OutboxTypes.NotificationSend,
-                    Payload = JsonSerializer.Serialize(payload),
-                    EntityId = id,
-                    IdempotencyKey = deliveryKey
-                },
+                OutboxEventTypes.NotificationSend,
+                id,
+                payload,
+                deliveryKey,
                 cancellationToken);
         }
 

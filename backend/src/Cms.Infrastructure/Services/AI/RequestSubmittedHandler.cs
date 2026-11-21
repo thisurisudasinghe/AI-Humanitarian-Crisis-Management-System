@@ -1,6 +1,6 @@
 using System.Text.Json;
+using Cms.Application.Contracts;
 using Cms.Application.DTOs.AI;
-using Cms.Application.Interfaces;
 using Cms.Application.Interfaces.AI;
 using Cms.Domain.Constants;
 using Cms.Domain.Entities;
@@ -21,13 +21,13 @@ public sealed class RequestSubmittedHandler : IOutboxHandler
         PropertyNameCaseInsensitive = true
     };
 
-    private readonly ApplicationDbContext _context;
+    private readonly CmsDbContext _context;
     private readonly IAiProvider _aiProvider;
     private readonly IRecommendationService _recommendationService;
     private readonly ILogger<RequestSubmittedHandler> _logger;
 
     public RequestSubmittedHandler(
-        ApplicationDbContext context,
+        CmsDbContext context,
         IAiProvider aiProvider,
         IRecommendationService recommendationService,
         ILogger<RequestSubmittedHandler> logger)
@@ -38,7 +38,7 @@ public sealed class RequestSubmittedHandler : IOutboxHandler
         _logger = logger;
     }
 
-    public string MessageType => OutboxTypes.RequestSubmitted;
+    public string Type => OutboxEventTypes.RequestSubmitted;
 
     public async Task HandleAsync(
         OutboxMessage message,
@@ -79,7 +79,7 @@ public sealed class RequestSubmittedHandler : IOutboxHandler
 
             var candidates = await _context.Requests
                 .AsNoTracking()
-                .Where(r => r.Id != request.Id && !r.IsDeleted)
+                .Where(r => r.Id != request.Id && r.Status != Cms.Domain.Enums.Cases.RequestStatus.Closed)
                 .OrderByDescending(r => r.SubmittedAt)
                 .Take(50)
                 .ToListAsync(cancellationToken);

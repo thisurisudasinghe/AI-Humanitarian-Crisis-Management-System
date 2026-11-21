@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace Cms.Infrastructure.Data.Migrations
 {
-    [DbContext(typeof(ApplicationDbContext))]
+    [DbContext(typeof(CmsDbContext))]
     [Migration("20261119131000_FixFrozenRoleNames")]
     partial class FixFrozenRoleNames
     {

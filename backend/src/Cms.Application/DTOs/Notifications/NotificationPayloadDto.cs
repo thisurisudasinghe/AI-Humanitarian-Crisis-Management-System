@@ -1,32 +1,28 @@
 namespace Cms.Application.DTOs.Notifications;
 
-/// <summary>
-/// Payload of the frozen <c>Notification.Send</c> outbox event.
-/// TemplateKey + Data is the preferred (PII-safe) shape. Title/Message are
-/// retained for backwards compatibility with events already in the outbox.
-/// </summary>
+/// <summary>Notification payload carried by a <c>Notification.Send</c> outbox event.</summary>
 public class NotificationPayloadDto
 {
     public Guid RecipientUserId { get; set; }
 
-    // Legacy alias used by early events.
-    public Guid UserId
-    {
-        get => RecipientUserId;
-        set => RecipientUserId = value;
-    }
-
     public string TemplateKey { get; set; } = string.Empty;
 
-    public string Language { get; set; } = "en";
+    /// <summary>Reserved for the P2 multilingual template work.</summary>
+    public string? Language { get; set; }
 
-    public Dictionary<string, string> Data { get; set; } = new();
+    /// <summary>
+    /// Optional delivery channel (InApp or Email). Null means every supported
+    /// channel, preserving the behaviour of existing notification producers.
+    /// </summary>
+    public string? Channel { get; set; }
 
-    public string Channel { get; set; } = "InApp";
+    /// <summary>Optional override; otherwise the template registry supplies a subject.</summary>
+    public string? Subject { get; set; }
 
-    public string Title { get; set; } = string.Empty;
-
-    public string Message { get; set; } = string.Empty;
+    /// <summary>Optional override; otherwise the template registry supplies a body.</summary>
+    public string? Body { get; set; }
 
     public Guid? RequestId { get; set; }
+
+    public Dictionary<string, string> Data { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 }

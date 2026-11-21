@@ -1,5 +1,4 @@
-﻿
-namespace Cms.Domain.Enums;
+﻿namespace Cms.Domain.Enums;
 
 public enum DecisionOutcome
 {

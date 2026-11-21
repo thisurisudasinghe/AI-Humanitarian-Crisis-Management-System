@@ -4,58 +4,64 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Cms.Infrastructure.Data.Configurations;
 
-public class OutboxMessageConfiguration
-    : IEntityTypeConfiguration<OutboxMessage>
+/// <summary>
+/// Maps <see cref="OutboxMessage"/> to the Dev 1-owned <c>common.outbox_messages</c>
+/// table created by <c>00_common.sql</c>.
+/// </summary>
+public class OutboxMessageConfiguration : IEntityTypeConfiguration<OutboxMessage>
 {
     public void Configure(EntityTypeBuilder<OutboxMessage> builder)
     {
-        builder.ToTable("OutboxMessages", "notif");
+        builder.ToTable("OutboxMessages", "common");
 
         builder.HasKey(o => o.Id);
 
         builder.Property(o => o.Type)
             .IsRequired()
-            .HasMaxLength(200);
+            .HasMaxLength(100);
+
+        builder.Property(o => o.EntityId)
+            .IsRequired();
 
         builder.Property(o => o.Payload)
-            .HasColumnName("PayloadJson")
             .IsRequired()
             .HasColumnType("nvarchar(max)");
 
         builder.Property(o => o.IdempotencyKey)
             .IsRequired()
-            .HasMaxLength(200);
-
-        builder.Property(o => o.EntityId)
-            .IsRequired();
-        builder.Property(o => o.ProcessingStartedAt);
-
-        builder.Property(o => o.Attempts)
-            .IsRequired();
-
-        builder.Ignore(o => o.RetryCount);
+            .HasMaxLength(256);
 
         builder.Property(o => o.Status)
             .HasConversion<string>()
             .IsRequired()
-            .HasMaxLength(30);
+            .HasMaxLength(50);
 
-        builder.Property(o => o.NextRetryAt)
-            .HasColumnName("NextAttemptAt");
-
-        builder.Ignore(o => o.NextAttemptAt);
+        builder.Property(o => o.RetryCount)
+            .IsRequired();
 
         builder.Property(o => o.ErrorMessage)
-            .HasColumnName("LastError")
-            .HasMaxLength(2000);
+            .HasColumnType("nvarchar(max)");
 
-        builder.Ignore(o => o.LastError);
+        builder.Property(o => o.CreatedAt)
+            .IsRequired();
 
-        builder.HasIndex(o => o.IdempotencyKey)
+        builder.HasIndex(o => o.IdempotencyKey, "UX_outbox_idempotency_key")
             .IsUnique();
 
-        builder.HasIndex(o => new { o.Status, o.NextRetryAt });
+        // SQL Server filtered-index predicates support simple equality but not
+        // OR/IN. The v4 contract's single OR index is therefore split into two
+        // equivalent filtered indexes. Raw filter text is not rewritten by
+        // NamingConventions, so it uses the snake_case column name.
+        builder.HasIndex(
+                o => new { o.Status, o.NextRetryAt },
+                "IX_outbox_status_retry_pending")
+            .HasFilter("[status] = 'Pending'");
 
-        builder.HasIndex(o => o.CreatedAt);
+        builder.HasIndex(
+                o => new { o.Status, o.NextRetryAt },
+                "IX_outbox_status_retry_failed")
+            .HasFilter("[status] = 'Failed'");
+
+        builder.HasIndex(o => o.CreatedAt, "IX_outbox_created_at");
     }
 }

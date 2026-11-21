@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Cms.Application.DTOs.Announcements;
 using Cms.Application.Exceptions;
 using Cms.Application.Interfaces;
@@ -7,8 +8,8 @@ using Cms.Domain.Enums;
 using Cms.Infrastructure.Data;
 using Cms.Infrastructure.Services;
 using Cms.Infrastructure.Services.Announcements;
-using Cms.Infrastructure.Services.Outbox;
 using Moq;
+using CurrentUserContract = Cms.Application.Contracts.ICurrentUser;
 
 namespace Cms.Tests;
 
@@ -61,6 +62,11 @@ public class AnnouncementServiceTests
         {
             Assert.Equal(OutboxTypes.NotificationSend, message.Type);
             Assert.StartsWith($"announcement:{created.Id}:", message.IdempotencyKey);
+
+            using var payload = JsonDocument.Parse(message.Payload);
+            Assert.Equal(
+                NotificationChannels.InApp,
+                payload.RootElement.GetProperty("channel").GetString());
         });
         Assert.Equal(2, db.OutboxMessages
             .Select(message => message.IdempotencyKey)
@@ -88,7 +94,7 @@ public class AnnouncementServiceTests
             }));
     }
 
-    private static async Task SeedUsersAsync(ApplicationDbContext db, int count)
+    private static async Task SeedUsersAsync(CmsDbContext db, int count)
     {
         var role = new Role { Name = Roles.Citizen };
         db.Roles.Add(role);
@@ -114,19 +120,19 @@ public class AnnouncementServiceTests
         await db.SaveChangesAsync();
     }
 
-    private static AnnouncementService MakeService(ApplicationDbContext db, string role)
+    private static AnnouncementService MakeService(CmsDbContext db, string role)
     {
-        var currentUser = new Mock<ICurrentUserService>();
+        var currentUser = new Mock<CurrentUserContract>();
         currentUser.SetupGet(u => u.UserId).Returns(Guid.NewGuid());
         currentUser.SetupGet(u => u.Roles).Returns(new[] { role });
 
-        var audit = new Mock<IAuditService>();
+        var audit = new Mock<Cms.Application.Contracts.IAuditLogger>();
         audit.Setup(a => a.LogAsync(
                 It.IsAny<Guid?>(),
                 It.IsAny<string>(),
                 It.IsAny<string>(),
                 It.IsAny<string?>(),
-                It.IsAny<string?>(),
+                It.IsAny<object?>(),
                 It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
@@ -135,6 +141,6 @@ public class AnnouncementServiceTests
             currentUser.Object,
             audit.Object,
             new DateTimeService(),
-            new OutboxService(db));
+            new OutboxService(db, new DateTimeService()));
     }
 }

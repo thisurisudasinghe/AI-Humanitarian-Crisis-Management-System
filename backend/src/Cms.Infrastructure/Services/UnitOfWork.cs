@@ -5,9 +5,9 @@ namespace Cms.Infrastructure.Services;
 
 public class UnitOfWork : IUnitOfWork
 {
-    private readonly ApplicationDbContext _context;
+    private readonly CmsDbContext _context;
 
-    public UnitOfWork(ApplicationDbContext context)
+    public UnitOfWork(CmsDbContext context)
     {
         _context = context;
     }

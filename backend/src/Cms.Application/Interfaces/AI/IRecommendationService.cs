@@ -25,4 +25,8 @@ public interface IRecommendationService
     Task<IReadOnlyList<MatchCandidateDto>> GetMatchesAsync(
         MatchRequestDto request,
         CancellationToken cancellationToken = default);
+
+    Task<Guid> GenerateForCrisisAsync(
+        Guid crisisId,
+        CancellationToken cancellationToken = default);
 }

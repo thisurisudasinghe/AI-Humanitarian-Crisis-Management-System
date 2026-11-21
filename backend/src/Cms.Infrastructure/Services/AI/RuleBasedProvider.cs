@@ -50,7 +50,7 @@ public sealed class RuleBasedProvider : IAiProvider
         ArgumentNullException.ThrowIfNull(request);
         cancellationToken.ThrowIfCancellationRequested();
 
-        var text = ScrubPii($"{request.Title} {request.Description}");
+        var text = ScrubPii($"{request.Category} {request.Urgency} {request.Description}");
         var suggestions = new List<AiSuggestionDto>();
 
         var detectedCategory = DetectCategory(text, request.Category, out var categoryHits);
@@ -138,7 +138,8 @@ public sealed class RuleBasedProvider : IAiProvider
                 continue;
             }
 
-            var candidateTokens = Tokenize(ScrubPii($"{candidate.Title} {candidate.Description}"));
+            var candidateTokens = Tokenize(ScrubPii(
+                $"{candidate.Category} {candidate.Urgency} {candidate.Description}"));
             if (candidateTokens.Count == 0)
             {
                 continue;

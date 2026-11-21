@@ -8,28 +8,34 @@ using Cms.Domain.Entities;
 using Cms.Domain.Enums;
 using Cms.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using CurrentUserContract = Cms.Application.Contracts.ICurrentUser;
+using IAuditLogger = Cms.Application.Contracts.IAuditLogger;
 
 namespace Cms.Infrastructure.Services.Governance;
 
-public sealed class DecisionService : IDecisionService
+/// <summary>
+/// Records immutable human decisions on AI recommendations and exposes the
+/// read model used by the decision gate and post-incident review.
+/// </summary>
+public sealed class DecisionService : Cms.Application.Interfaces.Governance.IDecisionService
 {
-    private readonly ApplicationDbContext _context;
-    private readonly IRecommendationService _recommendationService;
-    private readonly ICurrentUserService _currentUser;
-    private readonly IAuditService _auditService;
+    private readonly CmsDbContext _context;
+    private readonly IRecommendationService _recommendations;
+    private readonly CurrentUserContract _currentUser;
+    private readonly IAuditLogger _auditLogger;
     private readonly IDateTimeService _dateTimeService;
 
     public DecisionService(
-        ApplicationDbContext context,
-        IRecommendationService recommendationService,
-        ICurrentUserService currentUser,
-        IAuditService auditService,
+        CmsDbContext context,
+        IRecommendationService recommendations,
+        CurrentUserContract currentUser,
+        IAuditLogger auditLogger,
         IDateTimeService dateTimeService)
     {
         _context = context;
-        _recommendationService = recommendationService;
+        _recommendations = recommendations;
         _currentUser = currentUser;
-        _auditService = auditService;
+        _auditLogger = auditLogger;
         _dateTimeService = dateTimeService;
     }
 
@@ -54,7 +60,7 @@ public sealed class DecisionService : IDecisionService
                 "A reason is required for Modified, Rejected and Deferred decisions.");
         }
 
-        var recommendation = await _recommendationService.GetByIdAsync(
+        var recommendation = await _recommendations.GetByIdAsync(
             recommendationId,
             cancellationToken);
 
@@ -63,9 +69,7 @@ public sealed class DecisionService : IDecisionService
             throw new NotFoundException("Recommendation was not found.");
         }
 
-        if (!DecisionRolePolicy.CanDecide(
-                recommendation.Type,
-                _currentUser.Roles))
+        if (!DecisionRolePolicy.CanDecide(recommendation.Type, _currentUser.Roles))
         {
             throw new ForbiddenException(
                 $"Your role is not authorised to decide on '{recommendation.Type}' recommendations.");
@@ -103,24 +107,19 @@ public sealed class DecisionService : IDecisionService
         await _context.DecisionRecords.AddAsync(decision, cancellationToken);
         await _context.SaveChangesAsync(cancellationToken);
 
-        await _auditService.LogAsync(
-            userId,
+        await _auditLogger.LogAsync(
             "Decision.Recorded",
             "DecisionRecord",
             decision.Id.ToString(),
-            $"Recommendation={recommendationId};Outcome={outcome};Type={recommendation.Type}",
+            new
+            {
+                Recommendation = recommendationId,
+                Outcome = outcome.ToString(),
+                Type = recommendation.Type
+            },
             cancellationToken);
 
-        return new DecisionDto
-        {
-            Id = decision.Id,
-            RecommendationId = decision.RecommendationId,
-            Outcome = decision.Outcome,
-            FinalPayloadJson = decision.FinalPayloadJson,
-            Reason = decision.Reason,
-            DecidedBy = decision.DecidedByUserId,
-            DecidedAt = decision.DecidedAt
-        };
+        return Map(decision);
     }
 
     public async Task<DecisionDto?> GetByIdAsync(

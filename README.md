@@ -33,14 +33,20 @@ AI-Humanitarian-Crisis-Management-System/
 │   │   └── Cms.Tests/
 │   │
 │   ├── db/
-│   │   ├── 00_foundation.sql
-│   │   └── 98_foreign_keys.sql
+│   │   ├── 00_common.sql
+│   │   ├── 01_cases.sql ... 08_don.sql   (module owners)
+│   │   ├── 98_foreign_keys.sql
+│   │   ├── 99_seed_users.sql
+│   │   └── 90_seed_scenario.sql, 91_seed_ops.sql
 │   │
 │   ├── Cms.sln
 │   ├── Cms.slnx
 │   └── global.json
 │
 ├── frontend/
+│   ├── app/
+│   ├── components/
+│   ├── lib/
 │   └── README.md
 │
 ├── docs/
@@ -84,25 +90,42 @@ dotnet test Cms.slnx
 ## 6. Database Setup
 
 1. Create a SQL Server database named `CmsDb`.
-2. Configure the database connection string in the API configuration.
-3. Apply EF Core migrations from the repository root:
+2. Configure the connection string (`ConnectionStrings__DefaultConnection`).
+3. Run the ordered SQL scripts from `backend/db`.
 
-```powershell
-dotnet ef database update --project backend/src/Cms.Infrastructure --startup-project backend/src/Cms.Api
-```
+The schema is defined by plain, idempotent SQL scripts. EF migrations are not
+used and `dotnet ef database update` is not part of the workflow.
 
 ### SQL Script Execution Order
 
-For manual SQL setup, execute the following scripts in order:
+Run the scripts in this canonical order:
 
-1. `backend/db/00_foundation.sql`
-2. `backend/db/98_foreign_keys.sql`
+1. `backend/db/00_common.sql` — identity and common tables (Dev 1)
+2. `backend/db/03_ai.sql` — AI recommendations and decision records (Dev 3)
+3. `backend/db/01_cases.sql` … `backend/db/08_don.sql` — module scripts (owners)
+4. `backend/db/98_foreign_keys.sql` — guarded cross-module foreign keys
+5. `backend/db/99_seed_users.sql` — roles, demo organisation, settings (demo users are created by the API at startup)
+6. `backend/db/90_seed_scenario.sql`, `backend/db/91_seed_ops.sql` — optional demo data
 
-**Important:** Do not execute the foundation script against a database that already contains the foundation tables.
+Example with `sqlcmd` (the `-I` flag is required for filtered indexes):
+
+```powershell
+sqlcmd -S "(localdb)\mssqllocaldb" -d CmsDb -I -b -i backend/db/00_common.sql
+sqlcmd -S "(localdb)\mssqllocaldb" -d CmsDb -I -b -i backend/db/03_ai.sql
+sqlcmd -S "(localdb)\mssqllocaldb" -d CmsDb -I -b -i backend/db/98_foreign_keys.sql
+sqlcmd -S "(localdb)\mssqllocaldb" -d CmsDb -I -b -i backend/db/99_seed_users.sql
+```
+
+Every Dev 1 script is idempotent: re-running it skips existing tables, indexes,
+roles and settings instead of failing.
+
+Demo users are created/updated at API startup by `DevelopmentDemoSeeder` and all
+use the password `Demo1234!`. See `docs/TESTING.md` for the full list of demo
+accounts and roles.
 
 ## 7. Secret Management
 
-Never commit secrets, passwords, or credentials to Git.
+Never commit real secrets, passwords, or credentials to Git.
 
 The application may require the following environment variables:
 
@@ -116,24 +139,34 @@ The application may require the following environment variables:
 
 ### Local Development
 
-Navigate to the API project:
+`backend/src/Cms.Api/appsettings.Development.json` contains only non-secret
+local defaults: a LocalDB connection string, logging, and `DemoSeed:Enabled`.
+Provide secrets through `dotnet user-secrets` or environment variables.
+
+In Development, missing `Jwt:SecretKey`, `EmailProtection:EncryptionKey` and
+`EmailProtection:HashKey` are replaced with ephemeral process keys so a fresh
+checkout can start. Those keys are not persisted, so tokens do not survive a
+restart.
+
+To set persistent local keys (do not print or commit the values):
 
 ```powershell
 cd backend/src/Cms.Api
-dotnet user-secrets init
+dotnet user-secrets set "Jwt:SecretKey" "<new random value>"
+dotnet user-secrets set "EmailProtection:EncryptionKey" "<32-byte base64 value>"
+dotnet user-secrets set "EmailProtection:HashKey" "<32-byte base64 value>"
+dotnet user-secrets set "ConnectionStrings:DefaultConnection" "<local SQL connection>"
 ```
 
-Set secret values using `dotnet user-secrets set` and the configuration keys expected by the application:
+The demo users are upserted on every Development startup using the current
+keys, so changing keys does not break demo login. Run the SQL schema scripts
+first; if the database is not ready, the seeder logs a warning and the API still
+starts.
 
-- `EmailProtection:EncryptionKey`
-- `EmailProtection:HashKey`
-- `Jwt:SecretKey`
-
-Use separate secure values for encryption, email hashing, and JWT signing.
-
-Never share or commit these values.
-
-For deployment, configure the corresponding environment variables securely. SMTP settings are required when email delivery is configured.
+For deployment, configure `JWT_SECRET`, `EMAIL_ENCRYPTION_KEY`,
+`EMAIL_HASH_KEY` and `ConnectionStrings__DefaultConnection` securely through
+environment variables or a secret store. SMTP settings are required when email
+delivery is configured.
 
 ## 8. Team Module Allocation
 
@@ -172,3 +205,93 @@ Audit
 ```
 
 AI provides recommendations and decision-support capabilities only. Critical humanitarian decisions remain under human control.
+
+## 11. Build and test
+
+```powershell
+cd backend
+dotnet build Cms.slnx
+dotnet test Cms.slnx
+```
+
+The test suite includes an in-memory `WebApplicationFactory` harness that runs
+the real middleware, JWT authentication, authorization policies and controllers.
+No SQL Server instance is required for `dotnet test`.
+
+## 12. API overview
+
+| Area | Endpoints |
+|---|---|
+| Identity | `/api/v1/auth/register`, `/login`, `/refresh`, `/logout`, `/me`, `/role-check` |
+| Users | `/api/v1/users` (SystemAdmin) |
+| Organisations | `/api/v1/organisations` (SystemAdmin) |
+| Configuration | `/api/v1/admin/config` (SystemAdmin) |
+| Audit | `/api/v1/audit-events` (SystemAdmin) |
+| Outbox | `/api/v1/admin/outbox/dead` (SystemAdmin dead-letter view) |
+| KPIs | `/api/v1/kpis` (`KpiViewer`) |
+| Donations | `/api/v1/donations`, `/donors`, `/campaigns`, `/report` (`DonationViewer`; writes require `DonationManager`) |
+| Files | `/api/v1/files` (authenticated evidence upload; PNG/JPEG/WebP/PDF, 1 MB) |
+| Health | `/api/Health` (public) |
+
+Swagger is available at `/swagger` in Development. Every endpoint is authenticated
+by default; public endpoints use `[AllowAnonymous]`.
+
+A Postman master collection is provided at
+`docs/postman/Cms.postman_collection.json`. Set `baseUrl`, `adminEmail` and
+`password` collection variables before running it.
+
+## 13. Security
+
+See `docs/SECURITY.md` for the enforced controls, role policies, rate limits,
+secret handling and threat-model summary. Do not commit secrets, role strings
+outside `RoleNames`, or audit-row updates.
+
+## 14. Testing
+
+See `docs/TESTING.md` for the test layers, commands, coverage matrix, the
+end-to-end UAT loop and the manual regression checklist. The suite currently
+runs 129 backend tests with no SQL Server instance required.
+
+## 15. Dev 1 status notes
+
+- Identity, hardening, audit viewer and administration endpoints are implemented
+  and covered by the integration harness.
+- `D1-02` is complete: the stale EF migrations and `00_foundation.sql` were
+  replaced by the idempotent `00_common.sql`, `98_foreign_keys.sql` and
+  `99_seed_users.sql`.
+- KPI endpoint returns a typed report. The identity, audit and donation sections
+  are live aggregates over the `identity`, `common` and `don` schemas; the
+  cases, resources, shelter, AI and notification sections stay empty and are
+  listed in `pendingSections` until Members 2–4 publish their final
+  cross-module table/column names. No guessed SQL is used.
+- `98_foreign_keys.sql` currently guards the `notifications` → `identity.users`
+  relationship and documents the extension pattern for other cross-module FKs.
+- AI decision support (`ai.recommendations`, `ai.decision_records`) is integrated
+  from Dev 3 on the shared foundation: `RecommendationService` uses `CmsDbContext`,
+  `03_ai.sql` creates the `ai` schema, and `IRecommendationService` is registered
+  in `AiModule`. The fail-closed `DenyAllDecisionGate` remains until the
+  governance endpoints land.
+- Donations (`D1-09`, P2) are implemented end to end: the idempotent
+  `08_don.sql` schema (`don` schema, five tables), donor and campaign
+  management, manual monetary/material donation entry, value-constrained
+  allocations, campaign expenditure and a currency-aggregated transparency
+  report that never exposes donor names. Suspicious values are flagged by a
+  rule and cleared only by a human reviewer.
+- Evidence storage is available to every module through `IFileStore`
+  (`LocalFileStore` writes under `FileStorage:RootPath`, `App_Data/uploads` by
+  default). `POST /api/v1/files` accepts PNG, JPEG, WebP and PDF up to 1 MB,
+  validates the magic bytes and records a `File.Uploaded` audit event. Reading
+  a file back is left to the owning module so it can authorise the caller
+  against the owning record.
+- The transactional outbox (`common.outbox_messages`, `IOutbox`,
+  `IOutboxHandler`, `OutboxProcessor`) is owned by Dev 1. `EnqueueAsync` adds
+  the event row to the caller's `CmsDbContext` so it commits atomically with the
+  business change; the unique `UX_outbox_idempotency_key` index and an in-memory
+  pre-check make enqueue idempotent. The background processor polls every five
+  seconds, dispatches to the registered handler, retries with exponential
+  backoff and dead-letters after three attempts. `GET
+  /api/v1/admin/outbox/dead` lists dead-lettered rows for SystemAdmin without
+  exposing the payload or idempotency key. The processor is disabled in the
+  in-memory test harness via `Outbox:ProcessorEnabled=false`. Member 3 still
+  owns the `Notification.Send` handler; until it is registered those events
+  retry and dead-letter.

@@ -1,6 +1,6 @@
-using Cms.Domain.Constants;
+using Cms.Application.Contracts;
 using Cms.Domain.Entities;
-using Cms.Infrastructure.Services.Outbox;
+using Cms.Infrastructure.Services;
 
 namespace Cms.Tests;
 
@@ -13,15 +13,14 @@ public class OutboxServiceTests
         using var context = TestDb.Create(databaseName);
         using var observer = TestDb.Create(databaseName);
 
-        var service = new OutboxService(context);
+        var service = new OutboxService(context, new DateTimeService());
+        var entityId = Guid.NewGuid();
 
-        await service.EnqueueAsync(new OutboxMessage
-        {
-            Type = OutboxTypes.NotificationSend,
-            Payload = "{}",
-            EntityId = Guid.NewGuid(),
-            IdempotencyKey = "test-key"
-        });
+        await service.EnqueueAsync(
+            OutboxEventTypes.NotificationSend,
+            entityId,
+            new { requestId = entityId },
+            "test-key");
 
         Assert.Single(context.ChangeTracker.Entries<OutboxMessage>());
 
@@ -33,13 +32,16 @@ public class OutboxServiceTests
     public async Task EnqueueAsync_WithCancelledToken_DoesNotEnqueue()
     {
         using var context = TestDb.Create();
-        var service = new OutboxService(context);
+        var service = new OutboxService(context, new DateTimeService());
         using var cts = new CancellationTokenSource();
         cts.Cancel();
 
         await Assert.ThrowsAsync<OperationCanceledException>(() =>
             service.EnqueueAsync(
-                new OutboxMessage { IdempotencyKey = "cancelled" },
+                OutboxEventTypes.NotificationSend,
+                Guid.NewGuid(),
+                new { },
+                "cancelled",
                 cts.Token));
 
         Assert.Empty(context.ChangeTracker.Entries<OutboxMessage>());
