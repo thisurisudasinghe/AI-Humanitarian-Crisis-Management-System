@@ -40,12 +40,20 @@ public sealed class AiProviderSelector : IAiProvider
                     candidateRequests,
                     cancellationToken);
 
-                if (result.Suggestions.Count > 0)
+                if (result.Suggestions.Count > 0 &&
+                    result.Suggestions.All(suggestion => suggestion.Confidence >= 0.5m))
                 {
                     return result;
                 }
 
-                _logger.LogWarning("LLM provider returned no suggestions; using rule-based fallback.");
+                _logger.LogWarning(
+                    "LLM provider returned no suggestions or confidence below 0.5; using rule-based fallback.");
+            }
+            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+            {
+                // The provider's 5s timeout must never block request submission.
+                // A genuine caller cancellation is still propagated.
+                _logger.LogWarning("LLM provider timed out; using rule-based fallback.");
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {

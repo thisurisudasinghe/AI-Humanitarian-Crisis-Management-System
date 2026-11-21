@@ -3,8 +3,9 @@ using Cms.Domain.Constants;
 namespace Cms.Application.Governance;
 
 /// <summary>
-/// Role-appropriate approval policy. Critical decisions require a role that owns
-/// the affected domain; SystemAdmin can always act as a break-glass approver.
+/// Exact decider matrix from the frozen Member 3 contract. Do not add break-glass
+/// roles here: a critical action is only valid after one of these roles has
+/// recorded a human decision.
 /// </summary>
 public static class DecisionRolePolicy
 {
@@ -14,23 +15,23 @@ public static class DecisionRolePolicy
         {
             RecommendationTypes.ResourceMatch => new[]
             {
-                Roles.EmergencyCoordinator, Roles.LogisticsManager, Roles.SystemAdmin
+                Roles.LogisticsManager, Roles.EmergencyCoordinator
             },
             RecommendationTypes.ShelterMatch => new[]
             {
-                Roles.EmergencyCoordinator, Roles.ShelterAdmin, Roles.SystemAdmin
+                Roles.ShelterAdmin, Roles.EmergencyCoordinator
             },
             RecommendationTypes.VolunteerMatch => new[]
             {
-                Roles.EmergencyCoordinator, Roles.VolunteerCoordinator, Roles.SystemAdmin
+                Roles.VolunteerCoordinator, Roles.EmergencyCoordinator
             },
-            RecommendationTypes.CloseCase => new[]
+            RecommendationTypes.Announcement or RecommendationTypes.CloseCase => new[]
             {
-                Roles.EmergencyCoordinator, Roles.CaseManager, Roles.SystemAdmin
+                Roles.EmergencyCoordinator
             },
             _ => new[]
             {
-                Roles.EmergencyCoordinator, Roles.CaseManager, Roles.SystemAdmin
+                Roles.CaseManager, Roles.EmergencyCoordinator
             }
         };
     }
@@ -45,6 +46,6 @@ public static class DecisionRolePolicy
 
     public static bool CanApproveAnnouncement(IEnumerable<string> userRoles)
     {
-        return userRoles.Any(role => role is Roles.EmergencyCoordinator or Roles.SystemAdmin);
+        return userRoles.Any(role => role is Roles.EmergencyCoordinator);
     }
 }

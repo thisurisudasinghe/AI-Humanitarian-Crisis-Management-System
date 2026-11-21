@@ -2,6 +2,7 @@ using Cms.Application.Cases.DTOs;
 using Cms.Domain.Entities.Cases;
 using Cms.Infrastructure.Cases;
 using Cms.Infrastructure.Data;
+using Cms.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 
 namespace Cms.Tests.Cases;
@@ -73,6 +74,6 @@ public class HouseholdServiceTests
     {
         var date = new FixedDateTimeService(now);
         var options = TestContext.Options();
-        return new HouseholdService(context, user, date, protector, new CaseWriteHelper(context, date, options));
+        return new HouseholdService(context, user, date, protector, new CaseWriteHelper(context, date, options, new OutboxService(context, date)));
     }
 }

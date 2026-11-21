@@ -20,6 +20,9 @@ public class Announcement : BaseEntity
 
     public string Channel { get; set; } = "InApp";
 
+    /// <summary>Language of the draft and its notification template.</summary>
+    public string Language { get; set; } = "en";
+
     public Guid RequestedByUserId { get; set; }
 
     public Guid? ApprovedByUserId { get; set; }

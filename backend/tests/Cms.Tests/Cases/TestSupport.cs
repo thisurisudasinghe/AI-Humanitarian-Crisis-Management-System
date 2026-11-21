@@ -7,6 +7,7 @@ using Cms.Domain.Entities.Cases;
 using Cms.Domain.Enums.Cases;
 using Cms.Infrastructure.Cases;
 using Cms.Infrastructure.Data;
+using Cms.Infrastructure.Services;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 
@@ -86,7 +87,7 @@ internal static class TestContext
             context,
             user,
             date,
-            new CaseWriteHelper(context, date, options),
+            new CaseWriteHelper(context, date, options, new OutboxService(context, date)),
             decisionGate ?? new NoOpDecisionGate());
     }
 

@@ -6,6 +6,11 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Cms.Api.Controllers;
 
+/// <summary>Draft announcements and their human approval workflow.</summary>
+/// <remarks>
+/// A draft is advisory until an authorized human approves it; fan-out then runs
+/// through the outbox so failures can be retried and dead-lettered.
+/// </remarks>
 [ApiController]
 [Authorize]
 [Route("api/v1/announcements")]
@@ -18,6 +23,7 @@ public class AnnouncementsController : ControllerBase
         _announcementService = announcementService;
     }
 
+    /// <summary>Lists announcements in paged form, newest first.</summary>
     [HttpGet]
     public async Task<IActionResult> GetAll(
         [FromQuery] int page = 1,
@@ -27,6 +33,7 @@ public class AnnouncementsController : ControllerBase
         return Ok(await _announcementService.GetAllAsync(page, pageSize, cancellationToken));
     }
 
+    /// <summary>Gets one announcement by id, or 404 when it does not exist.</summary>
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(
         Guid id,
@@ -36,6 +43,7 @@ public class AnnouncementsController : ControllerBase
         return announcement == null ? NotFound() : Ok(announcement);
     }
 
+    /// <summary>Creates an announcement draft and its approval recommendation.</summary>
     [HttpPost]
     public async Task<IActionResult> Create(
         [FromBody] CreateAnnouncementRequest request,
@@ -56,6 +64,7 @@ public class AnnouncementsController : ControllerBase
         }
     }
 
+    /// <summary>Approves a draft and queues fan-out through the outbox.</summary>
     [HttpPost("{id:guid}/approve")]
     public async Task<IActionResult> Approve(
         Guid id,
@@ -84,6 +93,7 @@ public class AnnouncementsController : ControllerBase
         }
     }
 
+    /// <summary>Rejects a draft so it is never fanned out.</summary>
     [HttpPost("{id:guid}/reject")]
     public async Task<IActionResult> Reject(
         Guid id,

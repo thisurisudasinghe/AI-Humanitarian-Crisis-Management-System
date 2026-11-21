@@ -13,5 +13,8 @@ public interface IPostIncidentReviewService
         Guid? crisisId = null,
         int page = 1,
         int pageSize = 20,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default,
+        DateTime? fromUtc = null,
+        DateTime? toUtc = null,
+        string? outcome = null);
 }

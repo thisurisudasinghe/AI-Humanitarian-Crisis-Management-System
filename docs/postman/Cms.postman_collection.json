@@ -13,10 +13,16 @@
     { "key": "userId", "value": "" },
     { "key": "organisationId", "value": "" },
     { "key": "crisisEventId", "value": "" },
+    { "key": "requestId", "value": "" },
     { "key": "areaId", "value": "" },
     { "key": "donorId", "value": "" },
     { "key": "campaignId", "value": "" },
-    { "key": "donationId", "value": "" }
+    { "key": "donationId", "value": "" },
+    { "key": "recommendationId", "value": "" },
+    { "key": "decisionId", "value": "" },
+    { "key": "announcementId", "value": "" },
+    { "key": "notificationId", "value": "" },
+    { "key": "deadLetterId", "value": "" }
   ],
   "item": [
     {
@@ -713,8 +719,376 @@
       "name": "Placeholder module folders",
       "item": [
         { "name": "Cases (Member 2)", "item": [] },
-        { "name": "AI (Member 3)", "item": [] },
-        { "name": "Governance (Member 3)", "item": [] },
+        {
+          "name": "AI (Member 3)",
+          "item": [
+            {
+              "name": "List recommendations",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "if (pm.response.code === 200) {",
+                      "  const items = pm.response.json();",
+                      "  if (Array.isArray(items) && items.length > 0) {",
+                      "    pm.collectionVariables.set('recommendationId', items[0].id);",
+                      "  }",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "description": "Advisory recommendations only. Leave type/targetId blank to list all.",
+                "method": "GET",
+                "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/recommendations?type=&targetId=",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "recommendations"],
+                  "query": [
+                    { "key": "type", "value": "" },
+                    { "key": "targetId", "value": "" }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Get recommendation by ID",
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/recommendations/{{recommendationId}}",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "recommendations", "{{recommendationId}}"]
+                }
+              }
+            },
+            {
+              "name": "Create advisory recommendation",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "if (pm.response.code === 201 || pm.response.code === 200) {",
+                      "  const body = pm.response.json();",
+                      "  pm.collectionVariables.set('recommendationId', body.id);",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "description": "Creates a Recommendation row only; it never changes a request status or executes an action.",
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"type\": \"Classification\",\n  \"targetId\": \"{{crisisEventId}}\",\n  \"payloadJson\": \"{\\\"category\\\":\\\"Food\\\"}\",\n  \"confidence\": 0.82,\n  \"rationale\": \"Rule-based sample from Postman\",\n  \"source\": \"Rule\",\n  \"status\": \"Pending\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/recommendations",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "recommendations"]
+                }
+              }
+            },
+            {
+              "name": "Create ranked match recommendation",
+              "request": {
+                "description": "Calls the deterministic matchers and stores the ranked result as a recommendation.",
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"requestId\": \"{{requestId}}\",\n  \"type\": \"ResourceMatch\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/recommendations/match",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "recommendations", "match"]
+                }
+              }
+            },
+            {
+              "name": "FAQ chat (information only)",
+              "request": {
+                "description": "P2 FAQ chat. The response is informational; it does not make or approve decisions.",
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"message\": \"How can I check the status of my request?\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/ai/chat",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "ai", "chat"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Governance (Member 3)",
+          "item": [
+            {
+              "name": "Post-incident review",
+              "request": {
+                "description": "Paged review feed: {items,total,page,pageSize}. Rows include finalRequestStatus. crisisId, from, to and outcome are optional filters.",
+                "method": "GET",
+                "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/post-incident-review?crisisId=&from=&to=&outcome=&page=1&pageSize=20",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "post-incident-review"],
+                  "query": [
+                    { "key": "crisisId", "value": "" },
+                    { "key": "from", "value": "" },
+                    { "key": "to", "value": "" },
+                    { "key": "outcome", "value": "" },
+                    { "key": "page", "value": "1" },
+                    { "key": "pageSize", "value": "20" }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Record human decision",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "if (pm.response.code === 200 || pm.response.code === 201) {",
+                      "  const body = pm.response.json();",
+                      "  pm.collectionVariables.set('decisionId', body.id);",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "description": "Requires a role allowed for this recommendation type. AI output cannot perform this action.",
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"outcome\": \"Approved\",\n  \"reason\": \"Reviewed by a human officer\",\n  \"finalPayloadJson\": null\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/recommendations/{{recommendationId}}/decision",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "recommendations", "{{recommendationId}}", "decision"]
+                }
+              }
+            },
+            {
+              "name": "Decisions for a recommendation",
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/recommendations/{{recommendationId}}/decisions",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "recommendations", "{{recommendationId}}", "decisions"]
+                }
+              }
+            },
+            {
+              "name": "List announcements",
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/announcements?page=1&pageSize=20",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "announcements"],
+                  "query": [
+                    { "key": "page", "value": "1" },
+                    { "key": "pageSize", "value": "20" }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Create announcement draft",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "if (pm.response.code === 201 || pm.response.code === 200) {",
+                      "  const body = pm.response.json();",
+                      "  pm.collectionVariables.set('announcementId', body.id);",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "description": "Creates a draft plus approval recommendation. Templates are seeded in English (en) and Spanish (es).",
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"title\": \"Water distribution update\",\n  \"message\": \"Water points are open from 09:00.\",\n  \"audience\": { \"userIds\": [], \"roles\": [\"Citizen\"], \"allActiveUsers\": false },\n  \"channel\": \"InApp\",\n  \"language\": \"en\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/announcements",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "announcements"]
+                }
+              }
+            },
+            {
+              "name": "Approve announcement",
+              "request": {
+                "description": "Mass announcement fan-out only happens after an authorized human approves the draft.",
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+                ],
+                "body": { "mode": "raw", "raw": "{\n  \"note\": \"Approved after human review\"\n}" },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/announcements/{{announcementId}}/approve",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "announcements", "{{announcementId}}", "approve"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Notifications (Member 3)",
+          "item": [
+            {
+              "name": "Notification inbox",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "if (pm.response.code === 200) {",
+                      "  const body = pm.response.json();",
+                      "  if (body.items && body.items.length > 0) {",
+                      "    pm.collectionVariables.set('notificationId', body.items[0].id);",
+                      "  }",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/notifications?unreadOnly=false&limit=50",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "notifications"],
+                  "query": [
+                    { "key": "unreadOnly", "value": "false" },
+                    { "key": "limit", "value": "50" }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Mark notification read",
+              "request": {
+                "method": "PATCH",
+                "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/notifications/{{notificationId}}/read",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "notifications", "{{notificationId}}", "read"]
+                }
+              }
+            },
+            {
+              "name": "Mark all notifications read",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/notifications/read-all",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "notifications", "read-all"]
+                }
+              }
+            },
+            {
+              "name": "List dead letters (admin)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "if (pm.response.code === 200) {",
+                      "  const body = pm.response.json();",
+                      "  const items = body.items || [];",
+                      "  if (items.length > 0) {",
+                      "    pm.collectionVariables.set('deadLetterId', items[0].id);",
+                      "  }",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "description": "Requires the Login admin token. Failed notifications are dead-lettered after three attempts.",
+                "method": "GET",
+                "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/dead-letters?page=1&pageSize=50",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "admin", "dead-letters"],
+                  "query": [
+                    { "key": "page", "value": "1" },
+                    { "key": "pageSize", "value": "50" }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Retry dead letter (admin)",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/dead-letters/{{deadLetterId}}/retry",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "admin", "dead-letters", "{{deadLetterId}}", "retry"]
+                }
+              }
+            }
+          ]
+        },
         { "name": "Resources/Shelter/Volunteers/Mapping (Member 4)", "item": [] }
       ]
     }

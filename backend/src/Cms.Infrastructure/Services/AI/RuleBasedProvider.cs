@@ -5,6 +5,7 @@ using Cms.Application.Interfaces.AI;
 using Cms.Domain.Constants;
 using Cms.Domain.Entities.Cases;
 using Cms.Domain.Enums.Cases;
+using Cms.Domain.Operations;
 
 namespace Cms.Infrastructure.Services.AI;
 
@@ -83,7 +84,7 @@ public sealed class RuleBasedProvider : IAiProvider
             Source = RecommendationSources.Rule
         });
 
-        var duplicate = FindDuplicate(request.Id, text, candidateRequests);
+        var duplicate = FindDuplicate(request, text, candidateRequests);
         if (duplicate != null)
         {
             suggestions.Add(duplicate);
@@ -118,7 +119,7 @@ public sealed class RuleBasedProvider : IAiProvider
     }
 
     private static AiSuggestionDto? FindDuplicate(
-        Guid requestId,
+        Request request,
         string text,
         IReadOnlyList<Request> candidates)
     {
@@ -128,12 +129,20 @@ public sealed class RuleBasedProvider : IAiProvider
             return null;
         }
 
+        var cutoff = DateTime.UtcNow.AddHours(-24);
         AiSuggestionDto? best = null;
         var bestScore = 0.0;
 
         foreach (var candidate in candidates)
         {
-            if (candidate.Id == requestId)
+            if (candidate.Id == request.Id ||
+                candidate.Category != request.Category ||
+                candidate.SubmittedAt < cutoff ||
+                GeoDistance.HaversineKm(
+                    (double)request.Lat,
+                    (double)request.Lng,
+                    (double)candidate.Lat,
+                    (double)candidate.Lng) > 0.5)
             {
                 continue;
             }
@@ -155,11 +164,13 @@ public sealed class RuleBasedProvider : IAiProvider
                 best = new AiSuggestionDto
                 {
                     Type = RecommendationTypes.Duplicate,
-                    TargetId = requestId,
+                    TargetId = request.Id,
                     PayloadJson = JsonSerializer.Serialize(
                         new { duplicateTargetId = candidate.Id, similarity = Math.Round(score, 3) }),
                     Confidence = (decimal)Math.Round(score, 3),
-                    Rationale = $"Similarity {score:P0} based on shared non-identifying keywords.",
+                    Rationale =
+                        $"Same category, within 500 m, submitted in the last 24 h, " +
+                        $"with {score:P0} text similarity. Candidate only; never merged automatically.",
                     Source = RecommendationSources.Rule
                 };
             }

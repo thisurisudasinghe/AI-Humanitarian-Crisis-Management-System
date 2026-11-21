@@ -2,6 +2,8 @@ using Cms.Domain.Constants;
 using Cms.Domain.Entities;
 using Cms.Domain.Entities.Cases;
 using Cms.Domain.Enums;
+using Cms.Domain.Enums.Cases;
+using Cms.Infrastructure.Data;
 using Cms.Infrastructure.Services.Governance;
 
 namespace Cms.Tests;
@@ -9,56 +11,61 @@ namespace Cms.Tests;
 public class PostIncidentReviewServiceTests
 {
     [Fact]
-    public async Task GetDecisionsAsync_IncludesCrisisSummaryAndRequestRecommendations()
+    public async Task GetDecisionsAsync_IncludesFinalRequestStatus_AndAppliesFilters()
     {
+        using var context = TestDb.Create();
         var crisisId = Guid.NewGuid();
-
-        using var db = TestDb.Create();
-        db.Recommendations.Add(new Recommendation
-        {
-            Type = RecommendationTypes.Summary,
-            TargetId = crisisId,
-            PayloadJson = "{}",
-            Confidence = 0.9m,
-            Rationale = "Crisis summary",
-            Source = RecommendationSources.Rule
-        });
-
         var request = new Request
         {
+            Id = Guid.NewGuid(),
+            RequesterUserId = Guid.NewGuid(),
             CrisisId = crisisId,
-            Description = "Flood assistance needed"
+            Category = Category.Food,
+            Urgency = Urgency.High,
+            Status = RequestStatus.Approved,
+            SubmittedAt = DateTime.UtcNow
         };
-        db.Requests.Add(request);
-        await db.SaveChangesAsync();
-
-        var resourceRecommendation = new Recommendation
+        var recommendation = new Recommendation
         {
+            Id = Guid.NewGuid(),
             Type = RecommendationTypes.ResourceMatch,
             TargetId = request.Id,
             PayloadJson = "{}",
             Confidence = 0.8m,
-            Rationale = "Resource match",
-            Source = RecommendationSources.Rule
+            Rationale = "test",
+            Source = RecommendationSources.Rule,
+            CreatedAt = DateTime.UtcNow
         };
-        db.Recommendations.Add(resourceRecommendation);
-        db.DecisionRecords.Add(new DecisionRecord
+        var decision = new DecisionRecord
         {
-            RecommendationId = resourceRecommendation.Id,
-            Outcome = DecisionOutcome.Rejected,
-            Reason = "Not safe",
+            Id = Guid.NewGuid(),
+            RecommendationId = recommendation.Id,
+            Outcome = DecisionOutcome.Modified,
+            Reason = "Changed quantity",
             DecidedByUserId = Guid.NewGuid(),
             DecidedAt = DateTime.UtcNow
-        });
-        await db.SaveChangesAsync();
+        };
 
-        var service = new PostIncidentReviewService(db);
+        context.Requests.Add(request);
+        context.Recommendations.Add(recommendation);
+        context.DecisionRecords.Add(decision);
+        await context.SaveChangesAsync();
 
-        var result = await service.GetDecisionsAsync(crisisId);
+        var service = new PostIncidentReviewService(context);
 
-        Assert.Equal(2, result.Total);
-        Assert.Contains(result.Items, item => item.Type == RecommendationTypes.Summary);
-        Assert.Contains(result.Items, item => item.Type == RecommendationTypes.ResourceMatch);
-        Assert.Contains(result.Items, item => item.IsOverride);
+        var all = await service.GetDecisionsAsync(crisisId);
+        var entry = Assert.Single(all.Items);
+        Assert.Equal(RequestStatus.Approved.ToString(), entry.FinalRequestStatus);
+        Assert.True(entry.IsOverride);
+
+        var filtered = await service.GetDecisionsAsync(
+            crisisId,
+            outcome: "Modified",
+            fromUtc: DateTime.UtcNow.AddMinutes(-1),
+            toUtc: DateTime.UtcNow.AddMinutes(1));
+        Assert.Single(filtered.Items);
+
+        var noMatch = await service.GetDecisionsAsync(crisisId, outcome: "Rejected");
+        Assert.Empty(noMatch.Items);
     }
 }

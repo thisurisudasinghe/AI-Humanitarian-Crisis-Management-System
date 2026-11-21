@@ -77,11 +77,19 @@ public sealed class RequestSubmittedHandler : IOutboxHandler
                 return;
             }
 
+            // Duplicate candidates are constrained by the provider to the same
+            // category, 500 m and a text-similarity threshold. Narrow the query
+            // to the required 24-hour window as well.
+            var cutoff = DateTime.UtcNow.AddHours(-24);
             var candidates = await _context.Requests
                 .AsNoTracking()
-                .Where(r => r.Id != request.Id && r.Status != Cms.Domain.Enums.Cases.RequestStatus.Closed)
+                .Where(r =>
+                    r.Id != request.Id &&
+                    r.Category == request.Category &&
+                    r.Status != Cms.Domain.Enums.Cases.RequestStatus.Closed &&
+                    r.SubmittedAt >= cutoff)
                 .OrderByDescending(r => r.SubmittedAt)
-                .Take(50)
+                .Take(100)
                 .ToListAsync(cancellationToken);
 
             var analysis = await _aiProvider.AnalyzeAsync(request, candidates, cancellationToken);

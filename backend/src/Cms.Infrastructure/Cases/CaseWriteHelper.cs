@@ -1,8 +1,8 @@
 using System.Text.Json;
 using Cms.Application.Cases.Common;
+using Cms.Application.Contracts;
 using Cms.Application.Interfaces;
 using Cms.Domain.Entities;
-using Cms.Domain.Enums;
 using Cms.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -15,19 +15,21 @@ public sealed class CaseWriteHelper
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase
     };
 
-    private readonly HashSet<string> _pendingOutboxKeys = new(StringComparer.Ordinal);
     private readonly CmsDbContext _context;
     private readonly IDateTimeService _dateTimeService;
     private readonly CasesOptions _options;
+    private readonly IOutbox _outbox;
 
     public CaseWriteHelper(
         CmsDbContext context,
         IDateTimeService dateTimeService,
-        CasesOptions options)
+        CasesOptions options,
+        IOutbox outbox)
     {
         _context = context;
         _dateTimeService = dateTimeService;
         _options = options;
+        _outbox = outbox;
     }
 
     public async Task<int> NextRequestVersionAsync(Guid requestId, CancellationToken cancellationToken)
@@ -66,43 +68,14 @@ public sealed class CaseWriteHelper
         await _context.AuditEvents.AddAsync(audit, cancellationToken);
     }
 
-    public async Task AddOutboxAsync(
+    public Task AddOutboxAsync(
         string type,
         Guid entityId,
         object payload,
         string idempotencyKey,
         CancellationToken cancellationToken)
     {
-        var envelope = new
-        {
-            payload,
-            idempotencyKey
-        };
-        var serialized = JsonSerializer.Serialize(envelope, JsonOptions);
-
-        if (!_pendingOutboxKeys.Add($"{type}:{idempotencyKey}"))
-        {
-            return;
-        }
-
-        var duplicate = await _context.OutboxMessages.AnyAsync(
-            m => m.Type == type && m.Payload == serialized,
-            cancellationToken);
-        if (duplicate)
-        {
-            return;
-        }
-
-        var message = new OutboxMessage
-        {
-            Id = Guid.NewGuid(),
-            Type = type,
-            Payload = serialized,
-            Status = OutboxMessageStatus.Pending,
-            CreatedAt = _dateTimeService.UtcNow
-        };
-
-        await _context.OutboxMessages.AddAsync(message, cancellationToken);
+        return _outbox.EnqueueAsync(type, entityId, payload, idempotencyKey, cancellationToken);
     }
 
     public Task AddNotificationAsync(
@@ -122,7 +95,7 @@ public sealed class CaseWriteHelper
         };
 
         return AddOutboxAsync(
-            "Notification.Send",
+            OutboxEventTypes.NotificationSend,
             requestId,
             payload,
             $"Notification.Send:{requestId}:{version}",

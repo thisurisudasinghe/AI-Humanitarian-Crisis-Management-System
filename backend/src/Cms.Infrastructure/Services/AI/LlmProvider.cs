@@ -4,6 +4,7 @@ using Cms.Application.DTOs.AI;
 using Cms.Application.Interfaces.AI;
 using Cms.Domain.Constants;
 using Cms.Domain.Entities.Cases;
+using Cms.Infrastructure.Http;
 using Microsoft.Extensions.Configuration;
 
 namespace Cms.Infrastructure.Services.AI;
@@ -19,9 +20,13 @@ public sealed class LlmProvider : IAiProvider
     private readonly HttpClient _httpClient;
     private readonly IConfiguration _configuration;
 
-    public LlmProvider(HttpClient httpClient, IConfiguration configuration)
+    public LlmProvider(IHttpClientFactory httpClientFactory, IConfiguration configuration)
     {
-        _httpClient = httpClient;
+        ArgumentNullException.ThrowIfNull(httpClientFactory);
+
+        // Every external call must use the shared named client so retries,
+        // circuit breaking, timeouts and the identifying User-Agent apply.
+        _httpClient = httpClientFactory.CreateClient(HttpClientExtensions.CmsExternalClientName);
         _configuration = configuration;
     }
 
@@ -44,12 +49,14 @@ public sealed class LlmProvider : IAiProvider
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeout.CancelAfter(CallTimeout);
 
+        // The LLM receives only the minimum non-identifying fields permitted by
+        // the contract. It never receives requester identity or candidate records.
         var body = JsonSerializer.Serialize(new
         {
             category = request.Category.ToString(),
             urgency = request.Urgency.ToString(),
-            text = RuleBasedProvider.ScrubPii(
-                $"{request.Category} {request.Urgency} {request.Description}")
+            area = request.AreaId?.ToString(),
+            text = RuleBasedProvider.ScrubPii(request.Description)
         });
 
         using var content = new StringContent(body, Encoding.UTF8, "application/json");

@@ -6,6 +6,11 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Cms.Api.Controllers;
 
+/// <summary>Human decision records that gate critical actions.</summary>
+/// <remarks>
+/// AI output is advisory only. Allowed deciders are determined by recommendation
+/// type in the governance role policy; every decision is append-only.
+/// </remarks>
 [ApiController]
 [Authorize]
 [Route("api/v1")]
@@ -18,6 +23,7 @@ public class DecisionsController : ControllerBase
         _decisionService = decisionService;
     }
 
+    /// <summary>Records an Approved, Modified, Rejected or Deferred human decision.</summary>
     [HttpPost("recommendations/{recommendationId:guid}/decisions")]
     public async Task<IActionResult> Record(
         Guid recommendationId,
@@ -50,6 +56,7 @@ public class DecisionsController : ControllerBase
         }
     }
 
+    /// <summary>Lists the append-only decision history for one recommendation.</summary>
     [HttpGet("recommendations/{recommendationId:guid}/decisions")]
     public async Task<IActionResult> GetByRecommendation(
         Guid recommendationId,
@@ -61,6 +68,7 @@ public class DecisionsController : ControllerBase
         return Ok(decisions);
     }
 
+    /// <summary>Gets one decision record by id, or 404 when it does not exist.</summary>
     [HttpGet("decisions/{id:guid}")]
     public async Task<IActionResult> GetById(
         Guid id,

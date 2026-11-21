@@ -70,19 +70,59 @@ public class RuleBasedProviderTests
             Id = Guid.NewGuid(),
             Description = "Doctor requested urgent medical help",
             Category = Category.Medicine,
-            Urgency = Urgency.High
+            Urgency = Urgency.High,
+            SubmittedAt = DateTime.UtcNow
         };
         var duplicateCandidate = new Request
         {
             Id = Guid.NewGuid(),
             Description = "Doctor requested urgent medical help",
             Category = Category.Medicine,
-            Urgency = Urgency.High
+            Urgency = Urgency.High,
+            SubmittedAt = DateTime.UtcNow
         };
 
         var result = await provider.AnalyzeAsync(request, new[] { duplicateCandidate });
 
         Assert.Contains(
+            result.Suggestions,
+            s => s.Type == RecommendationTypes.Duplicate);
+    }
+
+    [Theory]
+    [InlineData(2.0, 0, Category.Medicine)]
+    [InlineData(0, -25, Category.Medicine)]
+    [InlineData(0, 0, Category.Food)]
+    public async Task AnalyzeAsync_RejectsDuplicateOutsideContractConstraints(
+        double distanceDegrees,
+        int submittedHoursAgo,
+        Category candidateCategory)
+    {
+        var provider = new RuleBasedProvider();
+        var request = new Request
+        {
+            Id = Guid.NewGuid(),
+            Description = "Doctor requested urgent medical help",
+            Category = Category.Medicine,
+            Urgency = Urgency.High,
+            Lat = 51m,
+            Lng = 0m,
+            SubmittedAt = DateTime.UtcNow
+        };
+        var candidate = new Request
+        {
+            Id = Guid.NewGuid(),
+            Description = "Doctor requested urgent medical help",
+            Category = candidateCategory,
+            Urgency = Urgency.High,
+            Lat = 51m + (decimal)distanceDegrees,
+            Lng = 0m,
+            SubmittedAt = DateTime.UtcNow.AddHours(submittedHoursAgo)
+        };
+
+        var result = await provider.AnalyzeAsync(request, new[] { candidate });
+
+        Assert.DoesNotContain(
             result.Suggestions,
             s => s.Type == RecommendationTypes.Duplicate);
     }

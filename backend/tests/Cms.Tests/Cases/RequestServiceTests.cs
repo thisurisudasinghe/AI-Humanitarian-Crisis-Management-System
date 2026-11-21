@@ -6,6 +6,7 @@ using Cms.Domain.Enums.Cases;
 using Cms.Domain.Exceptions;
 using Cms.Infrastructure.Cases;
 using Cms.Infrastructure.Data;
+using Cms.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 
 namespace Cms.Tests.Cases;
@@ -20,7 +21,7 @@ public class RequestServiceTests
         var now = new DateTime(2026, 11, 18, 8, 0, 0, DateTimeKind.Utc);
         var date = new FixedDateTimeService(now);
         var options = TestContext.Options();
-        var writer = new CaseWriteHelper(context, date, options);
+        var writer = new CaseWriteHelper(context, date, options, new OutboxService(context, date));
         var policy = new OverduePolicy(options);
         var protector = TestContext.CreateProtector();
         var repository = new RequestRepository(context, policy, date);
@@ -55,7 +56,8 @@ public class RequestServiceTests
         Assert.Equal(1, await context.AuditEvents.CountAsync());
         var outbox = await context.OutboxMessages.SingleAsync();
         Assert.Equal("Request.Submitted", outbox.Type);
-        Assert.Contains($"Request.Submitted:{id}:1", outbox.Payload);
+        Assert.Equal($"Request.Submitted:{id}:1", outbox.IdempotencyKey);
+        Assert.Contains("requestId", outbox.Payload);
     }
 
     [Fact]
@@ -81,7 +83,7 @@ public class RequestServiceTests
         var now = DateTime.UtcNow;
         var date = new FixedDateTimeService(now);
         var options = TestContext.Options();
-        var writer = new CaseWriteHelper(context, date, options);
+        var writer = new CaseWriteHelper(context, date, options, new OutboxService(context, date));
         var service = new RequestService(
             context,
             new RequestRepository(context, new OverduePolicy(options), date),
@@ -202,6 +204,6 @@ public class RequestServiceTests
             policy,
             TestContext.CreateProtector(),
             options,
-            new CaseWriteHelper(context, date, options));
+            new CaseWriteHelper(context, date, options, new OutboxService(context, date)));
     }
 }

@@ -7,6 +7,7 @@ using Cms.Domain.Entities;
 using Cms.Domain.Enums;
 using Cms.Infrastructure.Data;
 using Cms.Infrastructure.Services;
+using Cms.Infrastructure.Services.AI;
 using Cms.Infrastructure.Services.Announcements;
 using Moq;
 using CurrentUserContract = Cms.Application.Contracts.ICurrentUser;
@@ -31,6 +32,11 @@ public class AnnouncementServiceTests
 
         Assert.Equal("PendingApproval", announcement.Status);
         Assert.Empty(db.OutboxMessages);
+
+        var recommendation = Assert.Single(db.Recommendations);
+        Assert.Equal(RecommendationTypes.Announcement, recommendation.Type);
+        Assert.Equal(announcement.Id, recommendation.TargetId);
+        Assert.Equal(RecommendationStatuses.Pending, recommendation.Status);
     }
 
     [Fact]
@@ -50,7 +56,7 @@ public class AnnouncementServiceTests
         await Assert.ThrowsAsync<ForbiddenException>(() =>
             citizenService.ApproveAsync(created.Id, new ApproveAnnouncementRequest()));
 
-        var adminService = MakeService(db, Roles.SystemAdmin);
+        var adminService = MakeService(db, Roles.EmergencyCoordinator);
         var approved = await adminService.ApproveAsync(
             created.Id,
             new ApproveAnnouncementRequest { Note = "Confirmed with district office" });
@@ -73,10 +79,45 @@ public class AnnouncementServiceTests
             .Distinct()
             .Count());
 
+        var recommendation = Assert.Single(db.Recommendations);
+        var decision = Assert.Single(db.DecisionRecords);
+        Assert.Equal(RecommendationTypes.Announcement, recommendation.Type);
+        Assert.Equal(RecommendationStatuses.Decided, recommendation.Status);
+        Assert.Equal(decision.RecommendationId, recommendation.Id);
+        Assert.Equal(DecisionOutcome.Approved, decision.Outcome);
+
         await Assert.ThrowsAsync<ConflictException>(() =>
             adminService.ApproveAsync(created.Id, new ApproveAnnouncementRequest()));
 
         Assert.Equal(2, db.OutboxMessages.Count());
+    }
+
+    [Fact]
+    public async Task RejectAsync_RecordsRejectedDecision_WithoutFanout()
+    {
+        using var db = TestDb.Create();
+        await SeedUsersAsync(db, 2);
+        var service = MakeService(db, Roles.EmergencyCoordinator);
+
+        var created = await service.CreateAsync(new CreateAnnouncementRequest
+        {
+            Title = "Flood warning",
+            Message = "Move to higher ground",
+            Audience = new AnnouncementAudienceDto { AllActiveUsers = true }
+        });
+
+        var rejected = await service.RejectAsync(
+            created.Id,
+            new RejectAnnouncementRequest { Reason = "Too broad" });
+
+        Assert.Equal("Rejected", rejected.Status);
+        Assert.Empty(db.OutboxMessages);
+
+        var recommendation = Assert.Single(db.Recommendations);
+        var decision = Assert.Single(db.DecisionRecords);
+        Assert.Equal(RecommendationStatuses.Decided, recommendation.Status);
+        Assert.Equal(DecisionOutcome.Rejected, decision.Outcome);
+        Assert.Equal("Too broad", decision.Reason);
     }
 
     [Fact]
@@ -141,6 +182,7 @@ public class AnnouncementServiceTests
             currentUser.Object,
             audit.Object,
             new DateTimeService(),
-            new OutboxService(db, new DateTimeService()));
+            new OutboxService(db, new DateTimeService()),
+            new RecommendationService(db));
     }
 }

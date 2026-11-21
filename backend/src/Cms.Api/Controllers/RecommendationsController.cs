@@ -1,11 +1,17 @@
 using Cms.Application.DTOs.AI;
 using Cms.Application.Exceptions;
 using Cms.Application.Interfaces.AI;
+using Cms.Domain.Constants;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Cms.Api.Controllers;
 
+/// <summary>Advisory AI/rule recommendations and human-gated match requests.</summary>
+/// <remarks>
+/// Recommendations never execute a critical action. A recorded human decision
+/// through the governance endpoints is required for any approved action.
+/// </remarks>
 [ApiController]
 [Authorize]
 [Route("api/v1/recommendations")]
@@ -18,6 +24,7 @@ public class RecommendationsController : ControllerBase
         _recommendationService = recommendationService;
     }
 
+    /// <summary>Lists recommendations, optionally filtered by type or target id.</summary>
     [HttpGet]
     public async Task<IActionResult> GetAll(
         [FromQuery] string? type = null,
@@ -31,6 +38,7 @@ public class RecommendationsController : ControllerBase
         return Ok(items.Select(Map));
     }
 
+    /// <summary>Gets one recommendation by id, or 404 when it does not exist.</summary>
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(
         Guid id,
@@ -40,6 +48,7 @@ public class RecommendationsController : ControllerBase
         return item == null ? NotFound() : Ok(Map(item));
     }
 
+    /// <summary>Lists every recommendation attached to a request or other target.</summary>
     [HttpGet("target/{targetId:guid}")]
     public async Task<IActionResult> GetByTarget(
         Guid targetId,
@@ -53,6 +62,7 @@ public class RecommendationsController : ControllerBase
         return Ok(items.Select(Map));
     }
 
+    /// <summary>Creates an advisory recommendation. It does not change a request status.</summary>
     [HttpPost]
     public async Task<IActionResult> Create(
         [FromBody] CreateRecommendationRequest request,
@@ -73,6 +83,7 @@ public class RecommendationsController : ControllerBase
         }
     }
 
+    /// <summary>Ranks candidate matches for a request using the deterministic matchers.</summary>
     [HttpPost("matches")]
     public async Task<IActionResult> GetMatches(
         [FromBody] MatchRequestDto request,
@@ -95,6 +106,8 @@ public class RecommendationsController : ControllerBase
         }
     }
 
+    /// <summary>Generates a crisis-level advisory summary for EmergencyCoordinator review.</summary>
+    [Authorize(Roles = Roles.EmergencyCoordinator)]
     [HttpPost("crisis/{crisisId:guid}/generate")]
     public async Task<IActionResult> GenerateForCrisis(
         Guid crisisId,
@@ -126,6 +139,7 @@ public class RecommendationsController : ControllerBase
         Confidence = r.Confidence,
         Rationale = r.Rationale,
         Source = r.Source,
+        Status = r.Status,
         CreatedAt = r.CreatedAt
     };
 }
