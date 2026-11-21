@@ -8,10 +8,13 @@ AI decision support, human governance, post-incident review, FAQ chat, UI,
 tests and developer documentation. Existing Developers 1, 2 and 4 work was
 preserved; matcher and geo-provider implementations remain Developer 4-owned.
 
-Branch: `feature/dev3-completion`, pushed to origin and tracking
-`origin/feature/dev3-completion`. No merge into `develop`, force push, reset,
-clean or other destructive Git operation was performed. No SQL script was
-applied to a shared database.
+The original Dev3 work is `origin/feature/dev3-completion` (`db89824`), merged
+to `develop` by PR #15 (`5635a7b`). The final live verification and integration
+repairs are on `feature/dev3-final-live-verification`, based on
+`origin/develop` `8d8267dd9b4876a63e7754f1db695627fc0093b5`. No force push,
+reset, clean or other destructive Git operation was performed. No SQL script
+was applied to a shared database; all live work used the isolated LocalDB
+database `CmsDb_Dev3Live_20261121`.
 
 ## Factual audit
 
@@ -110,6 +113,53 @@ service-level enforcement remains authoritative.
   `docs/DEV3_INDIVIDUAL_REFLECTION.md`, `docs/DEV3_DEMO_SCRIPT.md` and
   `docs/demo/Dev3_Demo_Video.zip`.
 
+### Final integration repairs on this branch
+
+The baseline build from current `origin/develop` failed with 14 `CS1061`
+errors because the Dev3 `Announcements` DbSet and append-only guards had been
+lost in the M4 merge. This branch restores `CmsDbContext.Announcements` and the
+`DecisionRecord`/`Recommendation` append-only guards; the exact singular
+decision route alias from the original Dev3 contract remains in place.
+
+After M4 added operations contracts, two `MatchCandidate` interfaces caused
+ambiguity; the API controller and `MatchRecommendationService` now explicitly
+alias `Cms.Application.Contracts.Operations`. `MatchRecommendationService` is
+wired to the real M4 matcher contracts and converts the decimal matcher score
+explicitly; `MatchRecommendationServiceTests` was updated to the same contract.
+No M4 module was rewritten.
+
+## Live end-to-end verification (2026-11-21)
+
+A real API run was performed against the isolated LocalDB database with seeded
+test data and the real login endpoint; details and copied responses are in
+`docs/DEV3_LIVE_EVIDENCE.md`.
+
+Observed chain:
+
+1. `POST /api/v1/requests` returned HTTP 201; the outbox processor generated
+   two rule-based `Priority`/`Classification` recommendations.
+2. `POST /api/v1/recommendations/match` for seeded request
+   `1d000000-0000-0000-0000-000000000006` returned HTTP 200 with one real
+   resource candidate, moved the request `Triaged -> Recommended`, and stored
+   the recommendation.
+3. A citizen decision attempt returned HTTP 403; an allocation attempt with a
+   random decision id returned HTTP 403; the authorized logistics decision
+   returned HTTP 201 and moved the request `Recommended -> Approved`; a
+   duplicate decision returned HTTP 409.
+4. Workflow transitions returned HTTP 204 through `Allocated`, `Dispatched`
+   and `Fulfilled`. Closing without a CloseCase decision returned HTTP 403
+   (`CLOSE_DECISION_REQUIRED`); an approved CloseCase decision returned HTTP
+   201 and the subsequent close transition returned HTTP 204.
+5. SQL verification exited 0 and confirmed the request status/history, two
+   recommendations with exactly one decision each, two generated AI rows for
+   the new request, processed outbox rows, twelve InApp/Email notifications,
+   audit events and both append-only SQL triggers.
+
+The positive decision-gated case action in this run is the Dev3-owned Critical
+close gate. The M4 allocation write path could not be used because of an
+unrelated execution-strategy defect recorded below; the no-decision allocation
+attempt did prove the gate denies unauthorized case actions.
+
 ## Failure-injection coverage
 
 | Scenario | Evidence |
@@ -132,25 +182,44 @@ service-level enforcement remains authoritative.
 
 | Check | Result | Evidence |
 |---|---|---|
+| Baseline `dotnet build backend/Cms.sln` before repairs | FAIL | 14 `CS1061` errors from the post-merge missing Dev3 DbSet/guards; this was the starting defect, not a pass. |
 | `dotnet restore backend/Cms.sln` | PASS | All projects restored. |
 | `dotnet build backend/Cms.sln --no-restore` | PASS | 0 warnings, 0 errors. |
-| `dotnet test backend/Cms.sln --no-build` | PASS | 494 passed, 0 failed, 0 skipped. |
+| `dotnet test backend/Cms.sln --no-build` | PASS | 499 passed, 0 failed, 0 skipped. |
 | `npm.cmd run typecheck` (in `frontend/`) | PASS | `tsc --noEmit` exited 0. |
-| `npm.cmd run build` (in `frontend/`) | PASS | Next.js compiled; 34/34 static pages generated. |
+| `npm.cmd run build` (in `frontend/`) | PASS | Next.js compiled and generated the static route set. |
 | Postman collection JSON | PASS | Parsed successfully after route updates. |
-| Git merge preflight | PASS | `git merge-tree --write-tree origin/develop HEAD` returned no conflicts. |
+| Live API + LocalDB E2E | PASS | 19 asserted HTTP checks and SQL verification exited 0; see `docs/DEV3_LIVE_EVIDENCE.md`. |
+| `git diff --check` | PASS | No whitespace errors. |
 
 ## Unresolved issues / assumptions
 
-- M4 matcher implementations (`EmptyResourceMatcher`, `EmptyShelterRecommender`,
-  `EmptyVolunteerMatcher`) are still stubs in this checkout. Dev 3 calls the
-  contracts and does not overwrite Developer 4's modules.
-- In this checkout the registered geo fallback is `HaversineOnlyGeoService`;
-  the real provider/cache chain is Developer 4's work and was not modified.
+- The real M4 resource matcher was exercised successfully through
+  `POST /api/v1/recommendations/match`; shelter and volunteer matchers were not
+  part of this scenario and remain Developer 4-owned. No M4 module was
+  rewritten.
+- The registered geo provider is `HaversineOnlyGeoService`. A resource fixture
+  with coordinates caused the M4 resource matcher to call external OSRM and
+  stall; the verified fixture intentionally omitted coordinates and the matcher
+  returned `isApproximate: true`. No geo code was changed.
 - Existing EF migrations from earlier integration commits remain in history.
-  No new migration was added by this final audit; Dev 3's schema deliverables
-  are the idempotent SQL scripts under `backend/db/`.
-- `backend/db/90_seed_scenario.sql` is referenced in the documented run order
-  but is absent from this checkout.
-- No reconciliation against a live database was performed; all SQL changes are
-  idempotent additions and were reviewed only, not applied.
+  No new migration was added; Dev3 schema deliverables are the idempotent SQL
+  scripts under `backend/db/`.
+- `backend/db/90_seed_scenario.sql` exists in this checkout and seeded the
+  request used for the live run. `backend/db/91_seed_ops.sql` fails with
+  `Msg 208, Invalid object name 'res.resource_types'` because M4 EF mappings
+  expect snake_case resource objects while `04_res.sql` creates PascalCase
+  tables. This is M4-owned; the isolated fixture used test-only views/triggers,
+  not a production schema change.
+- The M4 `POST /api/v1/allocations` endpoint fails even after a valid decision
+  with `InvalidOperationException: The configured execution strategy
+  'SqlServerRetryingExecutionStrategy' does not support user-initiated
+  transactions` from `OperationsController.Allocate`. It is outside Dev3 scope
+  and was not changed. The no-decision path was still verified as denied (403),
+  and the Dev3-owned close gate was verified end to end.
+- `/swagger/v1/swagger.json` returns HTTP 500 because Swashbuckle cannot read
+  `FilesController.Upload` `[FromForm]` with `IFormFile`. Direct authenticated
+  API calls were used instead; this Swagger defect is outside Dev3 scope.
+- SMTP was not configured, so the email notification sender recorded delivery
+  in the log. Twelve email/in-app notification rows were verified in the
+  isolated database; no external email provider was contacted.

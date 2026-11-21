@@ -5,9 +5,9 @@ and manual regression checklist across the shared platform and the Dev 3
 (AI, governance, notifications) modules. Run `dotnet test` for the current
 backend test count rather than relying on a number copied into this document.
 
-Where a Dev 3 endpoint or seed script is still being integrated, the affected
-check is marked **verification pending**; no result is claimed until the final
-test run is recorded in `docs/DEV3_REPORT.md`.
+The final Dev3 live run and its exact responses are recorded in
+`docs/DEV3_LIVE_EVIDENCE.md`. Any item not exercised in that run is explicitly
+marked as not exercised rather than reported as passed.
 
 ## 1. Test layers
 
@@ -42,7 +42,9 @@ prove it):
 ```powershell
 # 00_common.sql -> 02_notif.sql -> 03_ai.sql -> 01_cases.sql ... 08_don.sql
 # -> 98_foreign_keys.sql -> 99_seed_users.sql
-# -> 90_seed_scenario.sql (Member 2; not present in this checkout), 91_seed_ops.sql
+# -> 90_seed_scenario.sql (seeded data), 91_seed_ops.sql
+# Note: 91_seed_ops.sql currently fails in this checkout because M4 EF mappings
+# expect snake_case res.* objects while 04_res.sql creates PascalCase tables.
 sqlcmd -S "(localdb)\mssqllocaldb" -d CmsDb -I -b -i backend/db/00_common.sql
 sqlcmd -S "(localdb)\mssqllocaldb" -d CmsDb -I -b -i backend/db/02_notif.sql
 sqlcmd -S "(localdb)\mssqllocaldb" -d CmsDb -I -b -i backend/db/03_ai.sql
@@ -106,16 +108,16 @@ for local development; do not re-add them to User Secrets.
 The SRS core loop is the UAT scenario. Each step is listed with its owner and
 current readiness.
 
-| # | Step | Owner | Ready | Verified today by |
+| # | Step | Owner | Final live result | Evidence |
 |---|---|---|---|---|
-| 1 | Citizen registers and logs in | Dev 1 | Yes | `AuthFlowTests`, manual login of `citizen@example.org` |
-| 2 | Citizen submits a request | Dev 2 | Pending | Waiting on `01_cases.sql` and request endpoints |
-| 3 | Coordinator verifies the request | Dev 2 | Pending | Waiting on request workflow endpoints |
-| 4 | AI classifies and scores with confidence and rationale | Dev 3 | Implemented; verification pending | Recommendations feed plus rule-based fallback |
-| 5 | Human approves, modifies or rejects the recommendation | Dev 3 | Implemented; verification pending | Decision endpoints and role policy |
-| 6 | Resource, shelter and/or volunteer allocation | Dev 4 | Pending | Waiting on allocation endpoints |
-| 7 | Notification is sent to the citizen | Dev 3 channels / Dev 1 outbox | Implemented; verification pending | `EmailNotificationHandlerTests`, in-app inbox via `GET /api/v1/notifications` |
-| 8 | Case is completed and the audit trail is reviewable | Dev 2 + Dev 1 | Partly | Audit viewer, filters and append-only guard are ready; case closure is owned by Dev 2 |
+| 1 | Citizen registers and logs in | Dev 1 | Yes | Live login HTTP 200; `AuthFlowTests` |
+| 2 | Citizen submits a request | Dev 2 | Yes | Live `POST /api/v1/requests` HTTP 201 |
+| 3 | Coordinator verifies the request | Dev 2 | Not exercised in final run | Seeded request was already `Triaged`; workflow tests remain with Dev 2 |
+| 4 | AI classifies and scores with confidence and rationale | Dev 3 | Yes | Live `Classification` and `Priority` rows from the outbox |
+| 5 | Human approves, modifies or rejects the recommendation | Dev 3 | Yes | Live 403/201/409 decision checks and `Recommended -> Approved` |
+| 6 | Resource, shelter and/or volunteer allocation | Dev 4 | Partial | No-decision allocation denied (403); M4 allocation write has a transaction defect; workflow transitions and Dev3 close gate passed |
+| 7 | Notification is sent to the citizen | Dev 3 channels / Dev 1 outbox | Yes | 12 InApp/Email notification rows verified; all `Sent` |
+| 8 | Case is completed and the audit trail is reviewable | Dev 2 + Dev 3 + Dev 1 | Yes for this scenario | Request `Closed`, history and audit rows verified; append-only triggers present |
 
 The SRS counts this as seven UAT steps; audit is treated as the cross-cutting
 control rather than a separate user action.
@@ -234,12 +236,18 @@ Apply to `/login`, `/register`, `/dashboard`, `/admin/*`, `/donations` and
 
 ## 8. Blocked coverage
 
-These items are still owned by other modules or need the final integrated run:
+These items remain outside the Dev3 pass result:
 
-- `90_seed_scenario.sql` (Member 2) is referenced by the run order but is not in
-  this checkout; `91_seed_ops.sql` is present.
+- `91_seed_ops.sql` fails on the M4 PascalCase/snake_case resource mismatch. The
+  live run used test-only compatibility views in a disposable database; no
+  production schema change was committed.
 - Cross-module foreign keys in `98_foreign_keys.sql` beyond the notification →
-  user relationship are added by their owning modules.
+  user relationship remain with their owning modules.
 - Integration tests for requests, resources, shelter, volunteers and mapping
-  remain with their owners; Dev 3 AI/governance coverage is listed above.
-- The full core-loop UAT run and final evidence pack are still to be recorded.
+  remain with their owners; Dev3 AI/governance coverage is listed above.
+- The M4 allocation endpoint's EF retry/transaction defect prevents a successful
+  allocation write. The Dev3 core-loop evidence therefore uses the Dev3-owned
+  Critical close decision gate for the positive case action, and records the
+  no-decision allocation denial as the governance negative check.
+- Swagger JSON generation fails on `FilesController.Upload`; direct API calls
+  were used for the live run.

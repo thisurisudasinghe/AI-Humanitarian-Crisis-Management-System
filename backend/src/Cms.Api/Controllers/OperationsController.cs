@@ -8,6 +8,10 @@ using Cms.Infrastructure.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using IGeoService = Cms.Application.Contracts.Operations.IGeoService;
+using IResourceMatcher = Cms.Application.Contracts.Operations.IResourceMatcher;
+using IShelterRecommender = Cms.Application.Contracts.Operations.IShelterRecommender;
+using IVolunteerMatcher = Cms.Application.Contracts.Operations.IVolunteerMatcher;
 
 namespace Cms.Api.Controllers;
 

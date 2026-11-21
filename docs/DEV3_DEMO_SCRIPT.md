@@ -73,7 +73,55 @@ npm.cmd run typecheck
 npm.cmd run build
 ```
 
-Expected final evidence: 0 build warnings, 0 errors, 494 passing tests,
-successful TypeScript check and 34/34 generated Next.js pages. The Postman
-collection in `docs/postman/Cms.postman_collection.json` parses successfully and
-covers the AI, Governance and Notifications folders.
+Expected final evidence from the final integrated run: 0 build warnings,
+0 errors, 499 passing tests, successful TypeScript and Next.js builds, and a
+parseable Postman collection. The collection in
+`docs/postman/Cms.postman_collection.json` covers the AI, Governance and
+Notifications folders.
+
+## 6. Live Recommendation -> Approval -> Case Action run
+
+The final verification was performed on 2026-11-21 against a fresh isolated
+LocalDB database (`CmsDb_Dev3Live_20261121`) and a real API on
+`http://127.0.0.1:5210`. The checked-in schema scripts and
+`90_seed_scenario.sql` were applied first. Because of the M4 resource naming
+mismatch, temporary snake_case compatibility views/triggers were created only
+in that disposable database; they are not part of the repository or a shared
+database. See `docs/DEV3_LIVE_EVIDENCE.md` for the copied response bodies and
+SQL rows.
+
+Reproduce the same flow with authenticated API calls (demo password
+`Demo1234!`):
+
+1. Log in as `citizen@example.org`, `logistics@example.org` and
+   `coordinator@example.org` through `POST /api/v1/auth/login` (all HTTP 200).
+2. `POST /api/v1/requests` as the citizen returns HTTP 201 with the new request
+   id. After a few seconds,
+   `GET /api/v1/recommendations?targetId=<new request id>` returns rule-based
+   `Classification` and `Priority` recommendations.
+3. Read seeded request `1d000000-0000-0000-0000-000000000006` as the
+   coordinator; confirm `Triaged`, `Food`, `Critical`.
+4. `POST /api/v1/recommendations/match` with
+   `{ "requestId": "1d000000-0000-0000-0000-000000000006", "type": "ResourceMatch" }`
+   returns HTTP 200 with a real resource candidate, recommendation id
+   `8b86b352-4189-4d59-a3fb-b3ba93d61f00` and `requestStatus: "Recommended"`
+   in this run.
+5. Try the decision as the citizen -> HTTP 403. Try the case action without a
+   decision -> HTTP 403. Record the approval as logistics through
+   `POST /api/v1/recommendations/8b86b352-4189-4d59-a3fb-b3ba93d61f00/decisions`
+   -> HTTP 201, decision id `1f78bcb7-6a1e-4631-afe3-820eabdc579d` in this
+   run. Repeating it -> HTTP 409. The request now reads `Approved`.
+6. Transition the request with the coordinator endpoint through `Allocated`,
+   `Dispatched` and `Fulfilled` (HTTP 204 each). Closing directly -> HTTP 403
+   with `code: "CLOSE_DECISION_REQUIRED"`.
+7. Create a `CloseCase` recommendation, approve it as coordinator (HTTP 201;
+   decision `765ae2ce-a7ea-4ec0-ae32-71c5c3c686d3` in this run), then close with
+   that `decisionId` -> HTTP 204. The final request is `Closed`.
+8. Verify with `sqlcmd`: request/history rows, recommendations and decisions,
+   outbox and notification rows, audit events, and both append-only triggers.
+   The observed SQL verification exited 0.
+
+This run intentionally does not demonstrate a successful M4 allocation write:
+that endpoint has an unrelated EF execution-strategy/transaction defect. The
+decision-gated Critical close transition is the Dev3-owned positive case action
+and passed.
