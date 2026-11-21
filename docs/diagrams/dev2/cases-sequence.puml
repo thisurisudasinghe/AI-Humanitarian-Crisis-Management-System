@@ -68,7 +68,7 @@ Workflow -> StatusSvc : TransitionAsync(id, Verified, reason, null)
 StatusSvc -> StateMachine : Ensure(Submitted, Verified)
 StatusSvc -> Writer : AddHistoryAsync(Submitted -> Verified)
 StatusSvc -> Writer : AddAuditAsync("Request.StatusChanged")
-StatusSvc -> Writer : AddNotificationAsync("request.status.Verified")
+StatusSvc -> Writer : AddNotificationAsync(id, requesterUserId,\n"request.status.Verified", data, version, ct)
 StatusSvc -> Db : SaveChangesAsync()
 ReqCtrl --> Staff : 204 No Content
 
@@ -87,10 +87,9 @@ Staff -> ReqCtrl : POST /api/v1/requests/{id}/transition\n(TransitionRequestDto)
 ReqCtrl -> Workflow : TransitionAsync(id, request)
 Workflow -> StatusSvc : TransitionAsync(id, To, Reason, DecisionId)
 StatusSvc -> Db : Set<Request>().FirstOrDefaultAsync(id)
-StatusSvc -> StateMachine : Ensure(currentStatus, to)
 
 alt to = Closed AND urgency = Critical
-    StatusSvc -> Gate : IsApprovedAsync(decisionId, requestId)
+    StatusSvc -> Gate : IsApprovedAsync(decisionId, requestId, ct)
     alt approved
         Gate --> StatusSvc : true
     else denied / missing decision
@@ -100,16 +99,20 @@ alt to = Closed AND urgency = Critical
     end
 end
 
+StatusSvc -> StateMachine : Ensure(currentStatus, to)
 StatusSvc -> Writer : NextRequestVersionAsync(requestId)
 StatusSvc -> Writer : AddHistoryAsync(from -> to,\nchangedByUserId, reason)
 StatusSvc -> Writer : AddAuditAsync("Request.StatusChanged",\n"Request", id, details, userId)
-StatusSvc -> Writer : AddNotificationAsync(requestId,\nrequesterUserId, "request.status.{to}", data, version)
+StatusSvc -> Writer : AddNotificationAsync(requestId,\nrequesterUserId, "request.status.{to}", data, version, ct)
 StatusSvc -> Db : SaveChangesAsync()
 ReqCtrl --> Staff : 204 No Content
 
 note over Gate
-  Production fallback UnavailableCloseCaseDecisionGate
-  always denies. Member 3 owns the real IDecisionGate adapter.
+  DEV2 DecisionGateCloseCaseAdapter delegates to
+  IDecisionGate.RequireApprovedAsync(decisionId,
+  RecommendationType.CloseCase, requestId, ct).
+  It is fail-closed until Member 3 implements and
+  registers the real IDecisionGate.
 end note
 
 == Human decision and allocation handoff ==
@@ -139,13 +142,13 @@ end note
 Staff -> ReqCtrl : POST /api/v1/requests/{criticalId}/transition\n{"to":"Closed","decisionId":"..."}
 ReqCtrl -> Workflow : TransitionAsync(criticalId, Closed, reason, decisionId)
 Workflow -> StatusSvc : TransitionAsync(criticalId, Closed, reason, decisionId)
+StatusSvc -> Gate : IsApprovedAsync(decisionId, criticalId, ct)
 StatusSvc -> StateMachine : Ensure(Fulfilled, Closed)
-StatusSvc -> Gate : IsApprovedAsync(decisionId, criticalId)
 alt approved CloseCase decision
     Gate --> StatusSvc : true
     StatusSvc -> Writer : AddHistoryAsync(Fulfilled -> Closed)
     StatusSvc -> Writer : AddAuditAsync("Request.StatusChanged")
-    StatusSvc -> Writer : AddNotificationAsync("request.status.Closed")
+    StatusSvc -> Writer : AddNotificationAsync(criticalId,\nrequesterUserId, "request.status.Closed", data, version, ct)
     StatusSvc -> Db : SaveChangesAsync()
     ReqCtrl --> Staff : 204 No Content
 else denied or missing decisionId
@@ -176,7 +179,8 @@ StatusSvc -> Writer : AddHistoryAsync(target unchanged)
 StatusSvc -> Db : Set<RequestLink>().AddAsync(Merged)
 StatusSvc -> Writer : AddAuditAsync("Request.Merged")
 StatusSvc -> Writer : AddAuditAsync("Request.MergeTarget")
-StatusSvc -> Writer : AddNotificationAsync(source and target)
+StatusSvc -> Writer : AddNotificationAsync(source.Id, sourceRequester,\n"request.status.Merged", data, sourceVersion, ct)
+StatusSvc -> Writer : AddNotificationAsync(target.Id, targetRequester,\n"request.status.Merged", data, targetVersion, ct)
 StatusSvc -> Db : SaveChangesAsync()
 ReqCtrl --> Staff : 204 No Content
 

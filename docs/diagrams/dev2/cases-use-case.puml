@@ -1,5 +1,5 @@
 @startuml
-title DEV2 Cases & Citizen - Use Cases (implemented API)
+title DEV2 Cases & Citizen - Use Cases (implemented API and cross-member handoffs)
 
 left to right direction
 
@@ -110,8 +110,12 @@ note right of UC_TRANSITION
 end note
 
 note right of UC_CLOSE
-  Critical close requires an approved
-  CloseCase decision decisionId.
+  An approved CloseCase decisionId is required.
+end note
+
+note right of UC_ALLOC
+  Member 4 owns this endpoint. It is a
+  planned handoff until M4 allocation ships.
 end note
 
 note bottom of UC_AI

@@ -39,10 +39,11 @@ Use anonymised participant codes only. Do not collect names, contact details or 
 
 | Constraint | Evidence | Effect on the session |
 |---|---|---|
-| D2-09/D2-10 pages are not yet connected to the Cases API. | `frontend/lib/crisis.ts:42-54`, `frontend/app/(app)/my-reports/page.tsx`, `frontend/app/(app)/operations/crises/page.tsx` | Until integration, run tasks against the existing UI shells plus `postman/dev2-cases.json`, and record the UI/API handoff as a finding. |
+| DEV2 web pages exist but are not connected to M1's SAFEWAY navigation or build. | `web/app/(public)`, `web/app/(citizen)`, `web/app/(coordinator)`, `web/components/cases`, `frontend/lib/crisis.ts:42-54` | Until M1 approves navigation and the `develop` web scaffold is available, run tasks against the API plus `postman/dev2-cases.json`, and record the UI/API handoff as a finding. |
 | Runtime Cases DI is not wired in startup. | `backend/src/Cms.Api/Modules/CasesModule.cs:9-12`, `backend/src/Cms.Infrastructure/Cases/CasesModuleExtensions.cs:16-54` | Cases controller activation fails until Member 1 calls `AddCasesModule`; record as a blocker and attribute to integration, not to the participant. |
 | Public alerts endpoint exists and is anonymous. | `backend/src/Cms.Api/Controllers/PublicController.cs:19-30` | Task 4 can be tested through the API or a minimal public page once available. |
-| Map components live in Member 4's `web/` app. | `web/components/map/MapPicker.tsx`, `web/components/map/MapView.tsx` | Do not modify them. Record any need for shared map access as a cross-member finding. |
+| Map components live in Member 4's `web/` app. | `web/components/map/MapPicker.tsx`, `web/components/map/MapView.tsx` | Do not modify them. DEV2 pages import them read-only with a permanent lat/lng fallback. Record any need for shared map access as a cross-member finding. |
+| Web scaffold and form libraries are Member 1/Member 4 owned. | `develop:web/package.json`, `develop:web/lib/api.ts` | DEV2 pages use native accessible validation because React Hook Form/Zod are not declared. No usability session should claim a web build pass until the scaffold and navigation are integrated. |
 
 **Environment / build record (complete before the first session)**
 

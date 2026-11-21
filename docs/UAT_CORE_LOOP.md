@@ -20,7 +20,7 @@ This script verifies the complete humanitarian case workflow using the **actual 
 8. Complete the request.
 9. Verify the timeline and audit history.
 
-It is an **API-level UAT script**. The D2-09/D2-10 frontend pages are not yet integrated with these endpoints, so testers should use the DEV2 Postman collection at `postman/dev2-cases.json` until those pages are available.
+It is an **API-level UAT script**. The D2-09/D2-10 frontend pages are not yet integrated with these endpoints, so testers should use the DEV2 Postman collection at `postman/dev2-cases.json` for DEV2 routes, and the Member 1/Member 3/Member 4 collections or direct calls for the dependency steps below. The DEV2 collection intentionally contains no M3/M4 routes.
 
 ---
 
@@ -81,13 +81,15 @@ These must be resolved before the full loop can pass end to end. They are **not*
 |---|---|---|---|
 | DEP-01 | **Runtime DI is not wired.** The real `Cms.Infrastructure.Cases.CasesModuleExtensions.AddCasesModule(IServiceCollection, IConfiguration)` is not called. The API module hook `backend/src/Cms.Api/Modules/CasesModule.cs:9-12` only returns `services`. | `backend/src/Cms.Api/Modules/CasesModule.cs:9-12`, `backend/src/Cms.Infrastructure/Cases/CasesModuleExtensions.cs:16-54`, `backend/src/Cms.Infrastructure/DependencyInjection.cs:107-115` | **BLOCKING.** DEV2 controller dependencies (`IRequestService`, `ICrisisService`, `IRequestWorkflowService`, `IRequestMergeService`, `IAttachmentService`, `IHouseholdService`) have no fallback registration, so controller activation fails with a DI resolution error. Only three foundation interfaces have fail-closed stubs (`NullRequestReader`, `NoOpRequestStatusService`, `DenyAllDecisionGate`). Member 1 must wire the real extension before UAT; do not expect stub responses. |
 | DEP-02 | **AI recommendation review has no target-based read endpoint.** Existing M3 routes are `POST /api/recommendation`, `GET /api/recommendation/{recommendationId:guid}`, `POST /api/recommendation/crisis/{crisisId:guid}/generate` and `GET /api/decision/recommendation/{recommendationId:guid}`. There is no `GET /api/v1/recommendations?targetId=`. | `backend/src/Cms.Api/Controllers/RecommendationController.cs:21-65`, `backend/src/Cms.Api/Controllers/DecisionController.cs:60-77` | Test UAT-04 is **BLOCKED** unless a recommendation/decision ID is supplied externally by Member 3 or a target-based read is agreed. |
-| DEP-03 | **Critical close requires an approved CloseCase decision.** Production fallback still denies. The main loop therefore uses the seeded **High** urgency request or creates a new High/Urgency request. | `backend/src/Cms.Infrastructure/Cases/RequestStatusService.cs:76-85`, `backend/src/Cms.Infrastructure/Cases/UnavailableCloseCaseDecisionGate.cs:11-15` | Closing a Critical request will return `403 CLOSE_DECISION_REQUIRED`. This is expected until Member 3's `IDecisionGate` adapter is wired. |
+| DEP-03 | **Critical close requires an approved CloseCase decision.** DEV2 now has a composition adapter that calls the shared M3 contract `IDecisionGate.RequireApprovedAsync(decisionId, RecommendationType.CloseCase, requestId, ct)`, but Member 1's `DenyAllDecisionGate` is still the registered implementation. The main loop therefore uses the seeded **High** urgency request or creates a new High/Urgency request. | `backend/src/Cms.Infrastructure/Cases/RequestStatusService.cs:76-85`, `backend/src/Cms.Infrastructure/Cases/DecisionGateCloseCaseAdapter.cs`, `backend/src/Cms.Application/Contracts/IDecisionGate.cs` | Closing a Critical request still returns `403 CLOSE_DECISION_REQUIRED`. This is expected until Member 3 implements and registers the real `IDecisionGate`. |
 | DEP-04 | **Notification delivery depends on Member 1/Member 3 outbox processing.** DEV2 enqueues `Notification.Send`; delivery into the in-app inbox is not performed by DEV2. | `backend/src/Cms.Infrastructure/Cases/CaseWriteHelper.cs:108-129`, `backend/src/Cms.Api/Controllers/NotificationsController.cs:28-41` | UAT-07 verifies the outbox/inbox only if the shared processor is running. |
-| DEP-05 | **Outbox rows written by DEV2 omit `entity_id` and `idempotency_key` values.** The SQL columns are `NOT NULL`; EF defaults them to `Guid.Empty` and `""`. `CaseWriteHelper` suppresses in-request duplicates by payload comparison, but the EF configuration declares a unique index on `IdempotencyKey`. | `backend/src/Cms.Infrastructure/Cases/CaseWriteHelper.cs:83-103`, `backend/src/Cms.Domain/Entities/OutboxMessage.cs:15,19`, `backend/src/Cms.Infrastructure/Data/Configurations/OutboxMessageConfiguration.cs:48-49`, `backend/db/00_common.sql:101-103` | Outbox rows carry empty identity/idempotency values; payload-based dedup is the only working guard, and a second distinct message can violate the unique index. This directly affects the duplicate-outbox negative check. Report, do not fix, during UAT. |
+| DEP-05 | **Outbox key defect fixed in DEV2 writer.** `CaseWriteHelper` now delegates to the shared `IOutbox`/`OutboxService`, which sets `EntityId` and `IdempotencyKey`, rejects empty values, and deduplicates against tracked and persisted rows. The payload is a direct `Notification.Send` DTO rather than a wrapped envelope. | `backend/src/Cms.Infrastructure/Cases/CaseWriteHelper.cs`, `backend/src/Cms.Infrastructure/Services/OutboxService.cs`, `backend/db/00_common.sql:101-103,267-272` | Regression coverage is in `CaseWriteHelperTests`. No UAT blocker remains from this item. |
 | DEP-06 | **Audit viewer is Member 1 owned and AdminOnly.** | `backend/src/Cms.Api/Controllers/AuditEventsController.cs:11-12` | UAT-09 requires a SystemAdmin token. |
 | DEP-07 | **No separate classification/prioritisation endpoint exists.** `Category` and `Urgency` are set on `POST /api/v1/requests` and are not editable afterwards. `PATCH /api/v1/requests/{id}` changes description/location/household/accessibility only (or assignment for staff). | `backend/src/Cms.Application/Cases/DTOs/RequestDtos.cs:7-39`, `backend/src/Cms.Infrastructure/Cases/RequestService.cs:194-254` | UAT-03 verifies classification via submission + staff filtering, not via a separate update call. |
-| DEP-08 | **Frontend D2 pages are not yet wired to these APIs.** | `frontend/lib/crisis.ts:42-54`, `frontend/app/(app)/my-reports/page.tsx`, `frontend/app/(app)/operations/crises/page.tsx` | Run UAT through the Postman collection until D2-09/D2-10 integration is approved. |
-| DEP-09 | **Member 4 allocation decision check appears inconsistent with the shared enum.** `OperationsController.ApprovedDecision` checks `DecisionOutcome.Approve` / `DecisionOutcome.Modify`, but the shipped enum defines `Approved` / `Modified`. | `backend/src/Cms.Api/Controllers/OperationsController.cs:305-310`, `backend/src/Cms.Domain/Enums/DecisionOutcome.cs:4-10` | UAT-10 allocation handoff may fail to compile or return `403` even with an `Approved` decision. Report to Member 4; do not change the controller here. |
+| DEP-08 | **DEV2 web pages now exist under the allowed `web/` paths, but are not wired into M1's SAFEWAY navigation or build.** The M1-owned `frontend/` shell seams still throw/notices. | `web/app/(public)`, `web/app/(citizen)`, `web/app/(coordinator)`, `web/components/cases`, `frontend/lib/crisis.ts:42-54` | Run API UAT through the Postman collection until Member 1 approves navigation and the web app is built with the `develop` scaffold. |
+| DEP-09 | **Member 4 allocation decision check is inconsistent with the shared enum.** `OperationsController.ApprovedDecision` checks `DecisionOutcome.Approve` / `DecisionOutcome.Modify`, but the shipped enum defines `Approved` / `Modified`. | `backend/src/Cms.Api/Controllers/OperationsController.cs:305-310`, `backend/src/Cms.Domain/Enums/DecisionOutcome.cs:4-10` | After the stale type names in DEP-10 are fixed, this will still fail to compile. UAT-10 cannot pass until Member 4 corrects the enum names. Report to Member 4; do not change the controller here. |
+| DEP-10 | **The current `develop` target does not build.** `OperationsController.cs` still references `ApplicationDbContext`, `ICurrentUserService` and `IAuditService`, which no longer exist after the shared-type renames. | `backend/src/Cms.Api/Controllers/OperationsController.cs:17-24`; verified by building an archive of `develop` at `77a7fa2` (6 × `CS0246`) | Member 4/Member 1 must fix these references before any merge can be accepted. The DEV2 feature branch itself builds cleanly; the failure is pre-existing on `develop` and is not caused by these seven files. |
+| DEP-11 | **DEV2 web pages cannot be built on this feature branch alone.** The `web/` scaffold (`package.json`, `lib/api.ts`, `app/layout.tsx`, map components) exists only on `develop`, and React Hook Form/Zod are not declared in the M1/M4-owned `web/package.json`. DEV2 pages therefore use native accessible validation and the existing `web/lib/api.ts` client. | `develop:web/package.json`, `develop:web/lib/api.ts`, `web/components/cases`, `web/app/(citizen)`, `web/app/(coordinator)` | M1/M4 must supply the scaffold and decide whether to add React Hook Form/Zod; M1 must add navigation to the DEV2 routes. No web build result can be claimed until those prerequisites are present. |
 
 ---
 
@@ -269,7 +271,7 @@ Example body:
 | **Actual result** |  |
 | **Evidence / screenshot ref** |  |
 | **Pass/Fail** |  |
-| **Dependency status** | Match and allocation controllers are Member 4 owned; DEP-09 may block allocation. |
+| **Dependency status** | Match and allocation controllers are Member 4 owned; DEP-09 and DEP-10 block allocation until fixed. |
 
 ---
 
@@ -317,9 +319,9 @@ Example body:
 | Field | Value |
 |---|---|
 | **Objective** | Replaying the same `Notification.Send` outbox message does not create duplicate inbox notifications. |
-| **Preconditions** | At least one status transition has produced a `Notification.Send` message. SystemAdmin token for outbox/dead-letter diagnostics; Citizen token for inbox. DEP-04 and DEP-05 noted. |
+| **Preconditions** | At least one status transition has produced a `Notification.Send` message with a non-empty `EntityId` and `IdempotencyKey`. SystemAdmin token for outbox/dead-letter diagnostics; Citizen token for inbox. DEP-04 noted; DEP-05 regression is covered by unit tests. |
 | **Test steps** | 1. With SystemAdmin token, `GET {{baseUrl}}/api/v1/admin/outbox/dead?page=1&pageSize=20` and capture the relevant message payload. 2. Replay that same payload twice using the Member 1/Member 3 outbox processor tooling. 3. With the Citizen token, `GET {{baseUrl}}/api/v1/notifications?unreadOnly=false&limit=50`. 4. Count notifications for the request. |
-| **Expected result** | Replay tooling accepts both attempts but the citizen inbox contains exactly one notification for the request. If the payload-based dedup guard is the only guard (DEP-05), document that limitation. |
+| **Expected result** | Both attempts use the same idempotency key; the writer deduplicates them and the citizen inbox contains exactly one notification for the request. |
 | **Actual result** |  |
 | **Evidence / screenshot ref** |  |
 | **Pass/Fail** |  |
@@ -337,14 +339,16 @@ Example body:
 | UAT-04 | Review recommendation |  | **BLOCKED — DEP-02** |
 | UAT-05 | Assign request |  | DEP-01 |
 | UAT-06 | Update status |  | DEP-01, DEP-03 |
-| UAT-07 | Notify user |  | DEP-04, DEP-05 |
+| UAT-07 | Notify user |  | DEP-04 |
 | UAT-08 | Complete request |  | DEP-03 |
 | UAT-09 | Timeline and audit |  | DEP-06 |
-| UAT-10 | Request match and allocation handoff |  | DEP-09 (M4 owned) |
+| UAT-10 | Request match and allocation handoff |  | DEP-09, DEP-10 (M4 owned) |
 | NEG-01 | Invalid transition 409 |  |  |
 | NEG-02 | Citizen 403 on staff routes |  | DEP-01 |
 | NEG-03 | Critical close blocked |  | DEP-03 |
-| NEG-04 | Duplicate outbox → one notification |  | DEP-04, DEP-05 (may be blocked) |
+| NEG-04 | Duplicate outbox → one notification |  | DEP-04 |
+
+**Global merge gate:** DEP-10 must be resolved on `develop` before any UAT can be accepted, even if individual rows above are marked passed on the DEV2 feature branch.
 
 ---
 

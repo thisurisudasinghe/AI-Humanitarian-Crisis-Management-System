@@ -59,7 +59,7 @@ package "Cms.Api - Controllers" {
   }
 }
 
-package "Cms.Application - Cases contracts" {
+package "Cms.Application - Cases contracts and interfaces" {
   interface "IRequestService" as IRequestService {
     +SubmitAsync(CreateRequestDto) : Guid
     +ListMineAsync(PagedQuery) : PagedResult~RequestListItemDto~
@@ -135,12 +135,16 @@ package "Cms.Application - Cases contracts" {
   }
 
   interface "ICloseCaseDecisionGate" as ICloseCaseDecisionGate {
-    +IsApprovedAsync(Guid, Guid) : bool
+    +IsApprovedAsync(Guid, Guid, CancellationToken) : bool
+  }
+
+  interface "IDecisionGate (M3-owned)" as IDecisionGate {
+    +RequireApprovedAsync(Guid, RecommendationType, Guid, CancellationToken) : DecisionDto
   }
 
   interface "IFileStore (module-local)" as ILocalFileStore {
-    +SaveAsync(Stream, string) : void
-    +OpenReadAsync(string) : Stream
+    +SaveAsync(Stream, string, CancellationToken) : Task
+    +OpenReadAsync(string, CancellationToken) : Task~Stream~
   }
 }
 
@@ -233,20 +237,26 @@ package "Cms.Infrastructure - Cases implementations" {
     -CmsDbContext _context
     -IDateTimeService _dateTimeService
     -CasesOptions _options
-    +NextRequestVersionAsync(Guid) : int
-    +AddHistoryAsync(RequestStatusHistory) : void
-    +AddAuditAsync(string, string, Guid, object, Guid?) : void
-    +AddOutboxAsync(string, Guid, object, string) : void
-    +AddNotificationAsync(Guid, Guid, string, object, int) : void
+    -IOutbox _outbox
+    +NextRequestVersionAsync(Guid, CancellationToken) : int
+    +AddHistoryAsync(RequestStatusHistory, CancellationToken) : void
+    +AddAuditAsync(string, string, Guid, object, Guid?, CancellationToken) : void
+    +AddOutboxAsync(string, Guid, object, string, CancellationToken) : void
+    +AddNotificationAsync(Guid, Guid, string, object, int, CancellationToken) : void
+  }
+
+  class "DecisionGateCloseCaseAdapter" as DecisionGateCloseCaseAdapter {
+    -IDecisionGate _decisionGate
+    +IsApprovedAsync(Guid, Guid, CancellationToken) : bool
   }
 
   class "UnavailableCloseCaseDecisionGate" as UnavailableCloseCaseDecisionGate {
-    +IsApprovedAsync(Guid, Guid) : bool
+    +IsApprovedAsync(Guid, Guid, CancellationToken) : bool
   }
 
   class "LocalFileStore (module-local)" as LocalFileStore {
-    +SaveAsync(Stream, string) : void
-    +OpenReadAsync(string) : Stream
+    +SaveAsync(Stream, string, CancellationToken) : Task
+    +OpenReadAsync(string, CancellationToken) : Task~Stream~
   }
 
   class "CasesOptions" as CasesOptions {
@@ -428,13 +438,20 @@ package "Cms.Domain - Cases" {
 
 package "Shared / Member 1" {
   interface "ICurrentUser" as ICurrentUser {
-    +UserId : Guid
-    +Roles : IReadOnlyList~string~
+    +UserId : Guid?
+    +OrgId : Guid?
+    +Email : string?
+    +Roles : IReadOnlyCollection~string~
+    +IsAuthenticated : bool
     +IsInRole(string) : bool
   }
 
   interface "IDateTimeService" as IDateTimeService {
     +UtcNow : DateTime
+  }
+
+  interface "IOutbox" as IOutbox {
+    +EnqueueAsync(string, Guid, object, string, CancellationToken) : void
   }
 
   class "CmsDbContext" as CmsDbContext {
@@ -493,6 +510,8 @@ RequestStatusService --> CmsDbContext
 RequestWorkflowService ..|> IRequestWorkflowService
 RequestWorkflowService --> IRequestDecisionTransitionService
 UnavailableCloseCaseDecisionGate ..|> ICloseCaseDecisionGate
+DecisionGateCloseCaseAdapter ..|> ICloseCaseDecisionGate
+DecisionGateCloseCaseAdapter --> IDecisionGate
 AttachmentService ..|> IAttachmentService
 HouseholdService ..|> IHouseholdService
 OverduePolicy ..|> IOverduePolicy
@@ -500,6 +519,7 @@ SensitiveDataProtector ..|> ISensitiveDataProtector
 LocalFileStore ..|> ILocalFileStore
 
 CaseWriteHelper --> CmsDbContext
+CaseWriteHelper --> IOutbox
 CaseWriteHelper --> AuditEvent
 CaseWriteHelper --> OutboxMessage
 
@@ -527,9 +547,21 @@ note bottom of RequestStatusService
   Outbox/audit/history are staged and committed with one SaveChangesAsync.
 end note
 
+note bottom of DecisionGateCloseCaseAdapter
+  DEV2 composition only: delegates to the shared M3 contract
+  with RecommendationType.CloseCase and the request as target.
+  It contains no decision lookup or approval logic.
+end note
+
 note bottom of UnavailableCloseCaseDecisionGate
-  Production fallback denies every CloseCase decision.
-  Member 3 must provide the real IDecisionGate adapter.
+  Retained as the fail-closed fallback. Member 3 must implement
+  and register the real IDecisionGate; Member 1 currently
+  registers DenyAllDecisionGate.
+end note
+
+note bottom of LocalFileStore
+  Cms.Application.Contracts.IFileStore also exists with a different signature.
+  Member 1 must confirm which interface is canonical before freeze.
 end note
 
 @enduml
