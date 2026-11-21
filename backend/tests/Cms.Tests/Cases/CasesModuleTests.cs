@@ -30,7 +30,7 @@ public class CasesModuleTests
         services.AddScoped<IDateTimeService>(_ => new FixedDateTimeService(DateTime.UtcNow));
         services.AddScoped<IRequestReader, StubRequestReader>();
 
-        services.AddCasesModule(configuration);
+        Cms.Api.Modules.CasesModule.AddCasesModule(services, configuration);
 
         using var provider = services.BuildServiceProvider();
         using var scope = provider.CreateScope();

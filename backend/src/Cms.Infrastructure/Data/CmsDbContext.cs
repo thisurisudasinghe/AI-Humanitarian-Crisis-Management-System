@@ -1,4 +1,6 @@
 using Cms.Domain.Entities;
+using Cms.Domain.Entities.Cases;
+using Cms.Domain.Entities.Operations;
 using Microsoft.EntityFrameworkCore;
 
 namespace Cms.Infrastructure.Data;
@@ -50,6 +52,33 @@ public class CmsDbContext : DbContext
     public DbSet<Recommendation> Recommendations => Set<Recommendation>();
 
     public DbSet<DecisionRecord> DecisionRecords => Set<DecisionRecord>();
+
+    public DbSet<Announcement> Announcements => Set<Announcement>();
+
+    public DbSet<Request> Requests => Set<Request>();
+
+    // Member 4 operations (res/shelter/vol schemas).
+    public DbSet<ResourceType> ResourceTypes => Set<ResourceType>();
+
+    public DbSet<Inventory> Inventories => Set<Inventory>();
+
+    public DbSet<Allocation> Allocations => Set<Allocation>();
+
+    public DbSet<Dispatch> Dispatches => Set<Dispatch>();
+
+    public DbSet<AssistanceRequest> AssistanceRequests => Set<AssistanceRequest>();
+
+    public DbSet<Shelter> Shelters => Set<Shelter>();
+
+    public DbSet<ShelterAllocation> ShelterAllocations => Set<ShelterAllocation>();
+
+    public DbSet<Volunteer> Volunteers => Set<Volunteer>();
+
+    public DbSet<VolunteerAvailability> VolunteerAvailabilities => Set<VolunteerAvailability>();
+
+    public DbSet<VolunteerTask> VolunteerTasks => Set<VolunteerTask>();
+
+    public DbSet<VolunteerActivity> VolunteerActivities => Set<VolunteerActivity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -5390,6 +5390,27 @@ a.btn-primary {
   color: var(--deep);
 }
 
+/* Unread notification count on the header bell */
+.notification-bell {
+  position: relative;
+  display: inline-flex;
+}
+
+.notification-badge {
+  position: absolute;
+  top: -6px;
+  right: -9px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: #c0392b;
+  color: #fff;
+  font: 700 9px "Manrope";
+  line-height: 16px;
+  text-align: center;
+}
+
 .sidebar nav a.nav-link-hidden {
   display: none;
 }

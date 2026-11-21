@@ -1,12 +1,13 @@
 using System.Text.Json;
-using Cms.Application.Contracts.Operations;
-using Cms.Application.Interfaces;
+using Cms.Application.Contracts;
 using Cms.Domain.Entities.Operations;
 using Cms.Domain.Entities.Cases;
 using Cms.Infrastructure.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using AuditLoggerContract = Cms.Application.Contracts.IAuditLogger;
+using CurrentUserContract = Cms.Application.Contracts.ICurrentUser;
 
 namespace Cms.Api.Controllers;
 
@@ -14,15 +15,31 @@ namespace Cms.Api.Controllers;
 [Route("api/v1")]
 public sealed class OperationsController : ControllerBase
 {
-    private readonly ApplicationDbContext _db;
-    private readonly ICurrentUserService _user;
-    private readonly IAuditService _audit;
+    private readonly CmsDbContext _db;
+    private readonly CurrentUserContract _user;
+    private readonly AuditLoggerContract _audit;
     private readonly IGeoService _geo;
     private readonly IResourceMatcher _resourceMatcher;
     private readonly IShelterRecommender _shelterMatcher;
     private readonly IVolunteerMatcher _volunteerMatcher;
-    public OperationsController(ApplicationDbContext db, ICurrentUserService user, IAuditService audit, IGeoService geo, IResourceMatcher resourceMatcher, IShelterRecommender shelterMatcher, IVolunteerMatcher volunteerMatcher)
-    { _db = db; _user = user; _audit = audit; _geo = geo; _resourceMatcher = resourceMatcher; _shelterMatcher = shelterMatcher; _volunteerMatcher = volunteerMatcher; }
+
+    public OperationsController(
+        CmsDbContext db,
+        CurrentUserContract user,
+        AuditLoggerContract audit,
+        IGeoService geo,
+        IResourceMatcher resourceMatcher,
+        IShelterRecommender shelterMatcher,
+        IVolunteerMatcher volunteerMatcher)
+    {
+        _db = db;
+        _user = user;
+        _audit = audit;
+        _geo = geo;
+        _resourceMatcher = resourceMatcher;
+        _shelterMatcher = shelterMatcher;
+        _volunteerMatcher = volunteerMatcher;
+    }
 
     [HttpGet("resources/types"), Authorize(Roles = "LogisticsManager,EmergencyCoordinator,SystemAdmin")]
     public async Task<IActionResult> ResourceTypes(CancellationToken ct) => Ok(await _db.ResourceTypes.AsNoTracking().OrderBy(x => x.Name).ToListAsync(ct));
@@ -73,7 +90,7 @@ public sealed class OperationsController : ControllerBase
            !payload.TryGetProperty("requestId", out var requestProp) || !Guid.TryParse(requestProp.GetString(), out var requestId))
             return BadRequest(new { code = "INVALID_DECISION_PAYLOAD", message = "Approved decision must contain inventoryId, quantity and requestId." });
         await using var tx = await _db.Database.BeginTransactionAsync(ct);
-        var changed = await _db.Database.ExecuteSqlInterpolatedAsync($@"UPDATE res.Inventories SET Available=Available-{quantity}, Allocated=Allocated+{quantity}, UpdatedAt={DateTime.UtcNow} WHERE Id={inventoryId} AND Available >= {quantity}", ct);
+        var changed = await _db.Database.ExecuteSqlInterpolatedAsync($@"UPDATE res.inventories SET available=available-{quantity}, allocated=allocated+{quantity}, updated_at={DateTime.UtcNow} WHERE id={inventoryId} AND available >= {quantity}", ct);
         if (changed != 1) { await tx.RollbackAsync(ct); return Conflict(new { code = "INSUFFICIENT_STOCK", message = "The selected inventory no longer has sufficient available stock." }); }
         var allocation = new Allocation { Id = Guid.NewGuid(), RequestId = requestId, InventoryId = inventoryId, Quantity = quantity, DecisionId = decision.Id, IdempotencyKey = key, Status = "Allocated", Explanation = "Allocated from the approved ResourceMatch decision.", CreatedAt = DateTime.UtcNow };
         _db.Allocations.Add(allocation); await _db.SaveChangesAsync(ct); await tx.CommitAsync(ct);
@@ -88,7 +105,7 @@ public sealed class OperationsController : ControllerBase
         if (allocation is null) return NotFound();
         if (allocation.Status != "Allocated") return Conflict(new { code = "INVALID_ALLOCATION_STATE" });
         await using var tx = await _db.Database.BeginTransactionAsync(ct);
-        var moved = await _db.Database.ExecuteSqlInterpolatedAsync($@"UPDATE res.Inventories SET Allocated=Allocated-{allocation.Quantity}, Dispatched=Dispatched+{allocation.Quantity}, UpdatedAt={DateTime.UtcNow} WHERE Id={allocation.InventoryId} AND Allocated >= {allocation.Quantity}", ct);
+        var moved = await _db.Database.ExecuteSqlInterpolatedAsync($@"UPDATE res.inventories SET allocated=allocated-{allocation.Quantity}, dispatched=dispatched+{allocation.Quantity}, updated_at={DateTime.UtcNow} WHERE id={allocation.InventoryId} AND allocated >= {allocation.Quantity}", ct);
         if (moved != 1) { await tx.RollbackAsync(ct); return Conflict(new { code = "INVENTORY_BUCKET_MISMATCH" }); }
         allocation.Status = "Dispatched";
         var dispatch = new Dispatch { AllocationId = allocation.Id, Quantity = allocation.Quantity, Status = "Dispatched" };
@@ -103,11 +120,11 @@ public sealed class OperationsController : ControllerBase
         if (dispatch is null) return NotFound(); if (dispatch.Status != "Dispatched") return Conflict(new { code = "INVALID_DISPATCH_STATE" });
         var allocation = await _db.Allocations.FirstAsync(x => x.Id == dispatch.AllocationId, ct);
         await using var tx = await _db.Database.BeginTransactionAsync(ct);
-        var changed = await _db.Database.ExecuteSqlInterpolatedAsync($@"UPDATE res.Inventories SET Dispatched=Dispatched-{allocation.Quantity}, Utilised=Utilised+{allocation.Quantity} WHERE Id={allocation.InventoryId} AND Dispatched >= {allocation.Quantity}", ct);
+        var changed = await _db.Database.ExecuteSqlInterpolatedAsync($@"UPDATE res.inventories SET dispatched=dispatched-{allocation.Quantity}, utilised=utilised+{allocation.Quantity} WHERE id={allocation.InventoryId} AND dispatched >= {allocation.Quantity}", ct);
         // An allocation enters the dispatched bucket when dispatch is recorded.
         if (changed == 0)
         {
-            changed = await _db.Database.ExecuteSqlInterpolatedAsync($@"UPDATE res.Inventories SET Allocated=Allocated-{allocation.Quantity}, Utilised=Utilised+{allocation.Quantity} WHERE Id={allocation.InventoryId} AND Allocated >= {allocation.Quantity}", ct);
+            changed = await _db.Database.ExecuteSqlInterpolatedAsync($@"UPDATE res.inventories SET allocated=allocated-{allocation.Quantity}, utilised=utilised+{allocation.Quantity} WHERE id={allocation.InventoryId} AND allocated >= {allocation.Quantity}", ct);
             if (changed == 0) { await tx.RollbackAsync(ct); return Conflict(new { code = "INVENTORY_BUCKET_MISMATCH" }); }
         }
         dispatch.Status = "Fulfilled"; dispatch.ConfirmedAt = DateTime.UtcNow; dispatch.ConfirmedBy = _user.UserId;
@@ -153,7 +170,7 @@ public sealed class OperationsController : ControllerBase
         if (!TryGuid(p, "shelterId", out var shelterId) || !TryGuid(p, "requestId", out var requestId) || !p.TryGetProperty("householdSize", out var size) || !size.TryGetInt32(out var count) || count < 1)
             return BadRequest(new { code = "INVALID_DECISION_PAYLOAD" });
         await using var tx = await _db.Database.BeginTransactionAsync(ct);
-        var rows = await _db.Database.ExecuteSqlInterpolatedAsync($@"UPDATE shelter.Shelters SET Occupancy=Occupancy+{count}, UpdatedAt={DateTime.UtcNow} WHERE Id={shelterId} AND Approved=1 AND Occupancy+{count}<=Capacity", ct);
+        var rows = await _db.Database.ExecuteSqlInterpolatedAsync($@"UPDATE shelter.shelters SET occupancy=occupancy+{count}, updated_at={DateTime.UtcNow} WHERE id={shelterId} AND approved=1 AND occupancy+{count}<=capacity", ct);
         if (rows != 1) { await tx.RollbackAsync(ct); return Conflict(new { code = "SHELTER_FULL" }); }
         var item = new ShelterAllocation { RequestId = requestId, ShelterId = shelterId, HouseholdSize = count, DecisionId = decision.Id };
         _db.ShelterAllocations.Add(item); await _db.SaveChangesAsync(ct); await tx.CommitAsync(ct);
@@ -305,7 +322,7 @@ public sealed class OperationsController : ControllerBase
     private async Task<Cms.Domain.Entities.DecisionRecord?> ApprovedDecision(Guid id, string type, CancellationToken ct)
     {
         var decision = await _db.DecisionRecords.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct);
-        if (decision is null || decision.Outcome is not (Cms.Domain.Enums.DecisionOutcome.Approve or Cms.Domain.Enums.DecisionOutcome.Modify)) return null;
+        if (decision is null || decision.Outcome is not (Cms.Domain.Enums.DecisionOutcome.Approved or Cms.Domain.Enums.DecisionOutcome.Modified)) return null;
         var recommendation = await _db.Recommendations.AsNoTracking().FirstOrDefaultAsync(x => x.Id == decision.RecommendationId, ct);
         if (recommendation is null || recommendation.Type != type) return null;
         if (string.IsNullOrWhiteSpace(decision.FinalPayloadJson)) return null;

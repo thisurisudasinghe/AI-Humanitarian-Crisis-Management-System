@@ -32,6 +32,12 @@ public static class NotificationTemplates
                 "Hello {name}, your account is ready."),
             ["Emergency.Announcement"] = (
                 "Emergency announcement",
+                "{message}"),
+            ["Announcement.Approved"] = (
+                "Emergency announcement",
+                "{message}"),
+            ["Announcement.Rejected"] = (
+                "Announcement update",
                 "{message}")
         };
 

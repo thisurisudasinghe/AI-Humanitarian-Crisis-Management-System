@@ -10,6 +10,12 @@ public class NotificationPayloadDto
     /// <summary>Reserved for the P2 multilingual template work.</summary>
     public string? Language { get; set; }
 
+    /// <summary>
+    /// Optional delivery channel (InApp or Email). Null means every supported
+    /// channel, preserving the behaviour of existing notification producers.
+    /// </summary>
+    public string? Channel { get; set; }
+
     /// <summary>Optional override; otherwise the template registry supplies a subject.</summary>
     public string? Subject { get; set; }
 

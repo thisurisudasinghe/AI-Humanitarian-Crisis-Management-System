@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using Cms.Application.Contracts;
 using Cms.Application.DTOs.Notifications;
 using Cms.Application.Interfaces;
+using Cms.Domain.Constants;
 using Cms.Domain.Entities;
 using Cms.Domain.Enums;
 using Cms.Infrastructure.Data;
@@ -78,33 +79,94 @@ public sealed class EmailNotificationHandler : IOutboxHandler
 
         var (subject, body) = NotificationTemplates.Render(payload);
 
-        await UpsertAsync(
-            message,
-            user,
-            payload,
-            NotificationChannel.InApp,
-            subject,
-            body,
-            cancellationToken);
+        var channel = payload.Channel?.Trim();
+        var deliverInApp = string.IsNullOrEmpty(channel) ||
+                           string.Equals(channel, NotificationChannels.InApp, StringComparison.OrdinalIgnoreCase);
+        var deliverEmail = string.IsNullOrEmpty(channel) ||
+                           string.Equals(channel, NotificationChannels.Email, StringComparison.OrdinalIgnoreCase);
 
-        if (!string.IsNullOrWhiteSpace(user.EmailEncrypted))
+        if (!deliverInApp && !deliverEmail)
+        {
+            throw new InvalidOperationException(
+                $"Notification outbox message {message.Id} has unsupported channel '{payload.Channel}'.");
+        }
+
+        if (deliverInApp)
         {
             await UpsertAsync(
                 message,
                 user,
                 payload,
-                NotificationChannel.Email,
+                NotificationChannel.InApp,
                 subject,
                 body,
                 cancellationToken);
         }
-        else
+
+        if (deliverEmail)
         {
-            _logger.LogInformation(
-                "Notification {OutboxMessageId} has no email channel: recipient {RecipientUserId} has no address.",
-                message.Id,
-                user.Id);
+            if (!string.IsNullOrWhiteSpace(user.EmailEncrypted))
+            {
+                await UpsertAsync(
+                    message,
+                    user,
+                    payload,
+                    NotificationChannel.Email,
+                    subject,
+                    body,
+                    cancellationToken);
+            }
+            else
+            {
+                _logger.LogInformation(
+                    "Notification {OutboxMessageId} has no email channel: recipient {RecipientUserId} has no address.",
+                    message.Id,
+                    user.Id);
+            }
         }
+
+        await MarkAnnouncementDispatchedAsync(message, cancellationToken);
+    }
+
+    /// <summary>
+    /// Announcement fan-out creates one outbox message per recipient. The
+    /// broadcast moves to Dispatched only when every fan-out message is
+    /// Processed. Failed, pending and dead-lettered messages keep it Approved so
+    /// operators never see failed delivery reported as completed.
+    /// </summary>
+    private async Task MarkAnnouncementDispatchedAsync(
+        OutboxMessage message,
+        CancellationToken cancellationToken)
+    {
+        var announcement = await _db.Announcements
+            .FirstOrDefaultAsync(
+                candidate =>
+                    candidate.Id == message.EntityId &&
+                    candidate.Status == AnnouncementStatus.Approved,
+                cancellationToken);
+
+        if (announcement == null)
+        {
+            return;
+        }
+
+        var undelivered = await _db.OutboxMessages
+            .AsNoTracking()
+            .AnyAsync(
+                candidate =>
+                    candidate.EntityId == message.EntityId &&
+                    candidate.Id != message.Id &&
+                    candidate.Status != OutboxMessageStatus.Processed,
+                cancellationToken);
+
+        if (undelivered)
+        {
+            return;
+        }
+
+        announcement.Status = AnnouncementStatus.Dispatched;
+        announcement.DispatchedAt = _dateTimeService.UtcNow;
+        await _db.SaveChangesAsync(cancellationToken);
     }
 
     private async Task UpsertAsync(

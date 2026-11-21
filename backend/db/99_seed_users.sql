@@ -183,4 +183,3 @@ BEGIN
             N'Donation value above which a human review flag is raised.', '2026-11-01T00:00:00', NULL);
 END;
 GO
-
