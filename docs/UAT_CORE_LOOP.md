@@ -4,6 +4,8 @@
 **Scope:** D2-12 User Acceptance Testing for the Cases workflow (D2-01–D2-08).  
 **Status:** Test script only. **No UAT has been executed yet.** All “Actual result” and “Pass/Fail” cells are intentionally blank.
 
+> **Implementation note (not UAT evidence):** On `feature/dev2-cases-improvements`, the coordinator alert POST now uses the authenticated `casesApi.createAlert()` client, and the active `frontend/` crisis-reporting, my-reports, incident-queue and crisis-detail screens now read/write real DEV2 endpoints. These are source-level changes only. No UAT, usability session, screenshot, live database run or runtime verification was performed, so all result cells remain blank. Validation was blocked by unavailable Node/npm for frontend builds and pre-existing backend compile errors in Member 3 notification/announcement files.
+
 ---
 
 ## 1. Purpose
@@ -20,7 +22,7 @@ This script verifies the complete humanitarian case workflow using the **actual 
 8. Complete the request.
 9. Verify the timeline and audit history.
 
-It is an **API-level UAT script**. The D2-09/D2-10 frontend pages are not yet integrated with these endpoints, so testers should use the DEV2 Postman collection at `postman/dev2-cases.json` for DEV2 routes, and the Member 1/Member 3/Member 4 collections or direct calls for the dependency steps below. The DEV2 collection intentionally contains no M3/M4 routes.
+It is an **API-level UAT script**. Source-level frontend integrations now exist, but they have not been executed or verified in this document; testers should still use the DEV2 Postman collection at `postman/dev2-cases.json` for DEV2 routes, and the Member 1/Member 3/Member 4 collections or direct calls for the dependency steps below. The DEV2 collection intentionally contains no M3/M4 routes.
 
 ---
 

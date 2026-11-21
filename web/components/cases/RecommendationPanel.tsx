@@ -23,7 +23,7 @@ export default function RecommendationPanel({ targetId }: { targetId: string }) 
         if (!active) return;
         setMessage(
           "M3 recommendation lookup is unavailable (GET /api/v1/recommendations?targetId=). " +
-            "External dependency DEP-02 remains open."
+            "No recommendation data is shown in this state."
         );
       });
     return () => {
