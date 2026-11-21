@@ -4,11 +4,10 @@ import Link from "next/link";
 import { useState } from "react";
 import { Brand } from "./Brand";
 import { Icon } from "./Icon";
-import { IntegrationNotice } from "./IntegrationNotice";
 import {
-  FeatureNotAvailableError,
-  crisisModuleOwner,
-  submitCrisisReport
+  caseRequestErrorMessage,
+  submitCrisisReport,
+  type CrisisReportReceipt
 } from "@/lib/crisis";
 
 const categories = [
@@ -36,7 +35,7 @@ export function ReportFlow() {
   const [attachment, setAttachment] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [attempted, setAttempted] = useState(false);
+  const [receipt, setReceipt] = useState<CrisisReportReceipt | null>(null);
 
   function goToStep(next: number) {
     setFormError(null);
@@ -70,7 +69,7 @@ export function ReportFlow() {
     setBusy(true);
 
     try {
-      await submitCrisisReport({
+      const submitted = await submitCrisisReport({
         category,
         description,
         location,
@@ -81,19 +80,15 @@ export function ReportFlow() {
         email,
         consent
       });
-      setAttempted(true);
+      setReceipt(submitted);
     } catch (caught) {
-      if (caught instanceof FeatureNotAvailableError) {
-        setAttempted(true);
-      } else {
-        setFormError(caught instanceof Error ? caught.message : "Something went wrong.");
-      }
+      setFormError(caseRequestErrorMessage(caught, "Your report could not be submitted."));
     } finally {
       setBusy(false);
     }
   }
 
-  if (attempted) {
+  if (receipt) {
     return (
       <div className="form-shell">
         <SimpleHeader />
@@ -102,20 +97,20 @@ export function ReportFlow() {
             <Icon name="check" size={42} />
           </div>
           <div className="eyebrow dark">
-            <span /> Report preview only
+            <span /> Report submitted
           </div>
-          <h1>Your report is ready, but it wasn&apos;t sent.</h1>
+          <h1>Your report has been received.</h1>
           <p>
-            Crisis intake is owned by {crisisModuleOwner} and its API is not available in this
-            build. Nothing was transmitted — the details you entered stayed in this browser.
+            The report was submitted to the crisis and case service and is linked to your
+            signed-in account. You can follow its status from your reports page.
           </p>
           <div className="reference-box">
-            <span>Submission status</span>
-            <strong>Not submitted</strong>
+            <span>Reference</span>
+            <strong>{receipt.reference}</strong>
             <button
               type="button"
               onClick={() => {
-                setAttempted(false);
+                setReceipt(null);
                 setStep(3);
               }}
             >
@@ -123,7 +118,7 @@ export function ReportFlow() {
             </button>
           </div>
           <div className="next-steps">
-            <b>What will happen once intake is connected?</b>
+            <b>What happens next?</b>
             <div>
               <span>1</span>
               <p>
@@ -191,15 +186,6 @@ export function ReportFlow() {
         </aside>
 
         <section className="form-panel">
-          <IntegrationNotice
-            inline
-            title="Crisis intake is not connected in this build"
-            owner="Dev 2 — crisis & case management"
-          >
-            You can complete every step and review the design, but the final submit will not store
-            a report until the crisis endpoint is available.
-          </IntegrationNotice>
-
           <div className="mobile-progress">
             Step {step} of 3{" "}
             <span>
@@ -305,7 +291,7 @@ export function ReportFlow() {
                 <span>
                   <b>{attachment ?? "Add photos or documents"}</b>
                   <small>Optional · JPG, PNG or PDF up to 10 MB</small>
-                  <small>Attachments upload with the report once intake is connected.</small>
+                  <small>File selection is a preview only; this form does not upload evidence.</small>
                 </span>
                 <input
                   type="file"
@@ -414,7 +400,7 @@ export function ReportFlow() {
                 onClick={() => void onSubmit()}
                 disabled={busy}
               >
-                {busy ? "Preparing report…" : "Review submission"} <Icon name="arrow" />
+                {busy ? "Submitting report…" : "Submit report"} <Icon name="arrow" />
               </button>
             </>
           ) : null}

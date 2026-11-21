@@ -102,6 +102,12 @@ export interface AlertItem {
   createdAt: string;
 }
 
+export interface CreateAlertPayload {
+  title: string;
+  body: string;
+  publish: boolean;
+}
+
 export interface ServiceCentre {
   id: string;
   crisisId?: string | null;
@@ -283,13 +289,18 @@ export const casesApi = {
     payload: { name: string; description?: string; lat: number; lng: number; radiusKm?: number }
   ) => api<{ id: string }>(`/crises/${crisisId}/areas`, { method: "POST", body: JSON.stringify(payload) }),
   crisisSummary: (id: string) => api<CrisisSummary>(`/crises/${id}/summary`),
+  createAlert: (crisisId: string, payload: CreateAlertPayload) =>
+    api<{ id: string }>(`/crises/${crisisId}/alerts`, {
+      method: "POST",
+      body: JSON.stringify(payload)
+    }),
 
   kpis: (from: string, to: string) => api<KpiReport>(`/kpis${queryString({ from, to })}`),
   resourceTypes: () => api<ResourceType[]>("/resources/types"),
   shortageProposal: (resourceTypeId: string) =>
     api<ShortageProposal>(`/shortages/proposal${queryString({ resourceTypeId })}`),
 
-  // M3 dependency: this endpoint is documented for D2-10 but is not shipped yet.
+  // M3-owned endpoint consumed by D2-10; show an unavailable state when absent.
   recommendationsByTarget: (targetId: string) =>
     api<Recommendation[]>(`/recommendations${queryString({ targetId })}`),
 

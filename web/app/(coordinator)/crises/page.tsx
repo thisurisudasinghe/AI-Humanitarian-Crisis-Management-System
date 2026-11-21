@@ -88,18 +88,11 @@ export default function CoordinatorCrisesPage() {
     if (!selectedId) return;
     setError("");
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL ?? "https://localhost:7001"}/api/v1/crises/${selectedId}/alerts`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ title: alertTitle, body: alertBody, publish: true })
-        }
-      );
-      if (!response.ok) {
-        const problem = await response.json().catch(() => null) as { message?: string } | null;
-        throw new Error(problem?.message ?? "Alert could not be created.");
-      }
+      await casesApi.createAlert(selectedId, {
+        title: alertTitle,
+        body: alertBody,
+        publish: true
+      });
       setAlertTitle("");
       setAlertBody("");
     } catch (cause) {
