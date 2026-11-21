@@ -9,6 +9,7 @@ using Cms.Infrastructure.Data;
 using Cms.Infrastructure.Services;
 using Cms.Infrastructure.Services.AI;
 using Microsoft.EntityFrameworkCore;
+using OperationsContracts = Cms.Application.Contracts.Operations;
 using Moq;
 
 namespace Cms.Tests;
@@ -31,13 +32,13 @@ public class MatchRecommendationServiceTests
         context.Requests.Add(request);
         await context.SaveChangesAsync();
 
-        var resourceMatcher = new Mock<IResourceMatcher>();
+        var resourceMatcher = new Mock<OperationsContracts.IResourceMatcher>();
         resourceMatcher
             .Setup(m => m.RankAsync(request.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new[]
             {
-                new MatchCandidate(Guid.NewGuid(), 0.9d, "Closest available stock", false),
-                new MatchCandidate(Guid.NewGuid(), 0.7d, "Second-best stock", true)
+                new OperationsContracts.MatchCandidate(Guid.NewGuid(), 0.9m, "Closest available stock", false),
+                new OperationsContracts.MatchCandidate(Guid.NewGuid(), 0.7m, "Second-best stock", true)
             });
 
         var requestStatus = new Mock<IRequestStatusService>();
@@ -52,8 +53,8 @@ public class MatchRecommendationServiceTests
         var service = new MatchRecommendationService(
             context,
             resourceMatcher.Object,
-            Mock.Of<IShelterRecommender>(),
-            Mock.Of<IVolunteerMatcher>(),
+            Mock.Of<OperationsContracts.IShelterRecommender>(),
+            Mock.Of<OperationsContracts.IVolunteerMatcher>(),
             new RecommendationService(context, Mock.Of<IAuditLogger>()),
             requestStatus.Object,
             new DateTimeService());

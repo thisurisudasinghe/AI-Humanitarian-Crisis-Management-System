@@ -7,6 +7,7 @@ using Cms.Application.Interfaces.AI;
 using Cms.Domain.Constants;
 using Cms.Domain.Enums.Cases;
 using Cms.Infrastructure.Data;
+using OperationsContracts = Cms.Application.Contracts.Operations;
 using Microsoft.EntityFrameworkCore;
 
 namespace Cms.Infrastructure.Services.AI;
@@ -21,18 +22,18 @@ public sealed class MatchRecommendationService : IMatchRecommendationService
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     private readonly CmsDbContext _context;
-    private readonly IResourceMatcher _resourceMatcher;
-    private readonly IShelterRecommender _shelterMatcher;
-    private readonly IVolunteerMatcher _volunteerMatcher;
+    private readonly OperationsContracts.IResourceMatcher _resourceMatcher;
+    private readonly OperationsContracts.IShelterRecommender _shelterMatcher;
+    private readonly OperationsContracts.IVolunteerMatcher _volunteerMatcher;
     private readonly IRecommendationService _recommendations;
     private readonly IRequestStatusService _requestStatusService;
     private readonly IDateTimeService _dateTimeService;
 
     public MatchRecommendationService(
         CmsDbContext context,
-        IResourceMatcher resourceMatcher,
-        IShelterRecommender shelterMatcher,
-        IVolunteerMatcher volunteerMatcher,
+        OperationsContracts.IResourceMatcher resourceMatcher,
+        OperationsContracts.IShelterRecommender shelterMatcher,
+        OperationsContracts.IVolunteerMatcher volunteerMatcher,
         IRecommendationService recommendations,
         IRequestStatusService requestStatusService,
         IDateTimeService dateTimeService)
@@ -73,7 +74,7 @@ public sealed class MatchRecommendationService : IMatchRecommendationService
             {
                 TargetId = candidate.TargetId,
                 TargetType = TargetTypeFor(type),
-                Score = Math.Clamp(candidate.Score, 0d, 1d),
+                Score = Math.Clamp((double)candidate.Score, 0d, 1d),
                 Rationale = candidate.Rationale ?? string.Empty,
                 IsApproximate = candidate.IsApproximate
             })
@@ -132,7 +133,7 @@ public sealed class MatchRecommendationService : IMatchRecommendationService
         };
     }
 
-    private async Task<IReadOnlyList<MatchCandidate>> RankAsync(
+    private async Task<IReadOnlyList<OperationsContracts.MatchCandidate>> RankAsync(
         string type,
         Guid requestId,
         CancellationToken cancellationToken)
@@ -145,7 +146,7 @@ public sealed class MatchRecommendationService : IMatchRecommendationService
                 await _shelterMatcher.RankAsync(requestId, cancellationToken),
             RecommendationTypes.VolunteerMatch =>
                 await _volunteerMatcher.RankAsync(requestId, cancellationToken),
-            _ => Array.Empty<MatchCandidate>()
+            _ => Array.Empty<OperationsContracts.MatchCandidate>()
         };
     }
 
