@@ -8,6 +8,7 @@ const sections = [
   { href: "/admin/organisations", label: "Organisations" },
   { href: "/admin/config", label: "Configuration" },
   { href: "/admin/audit", label: "Audit trail" },
+  { href: "/admin/notifications", label: "Failed notifications" },
   { href: "/admin/outbox", label: "Outbox dead letters" }
 ];
 
