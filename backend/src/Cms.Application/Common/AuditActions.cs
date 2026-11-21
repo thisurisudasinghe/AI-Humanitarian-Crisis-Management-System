@@ -19,6 +19,8 @@ public static class AuditActions
     public const string OrganisationUpdated = "Organisation.Updated";
     public const string OrganisationDeactivated = "Organisation.Deactivated";
     public const string ConfigUpdated = "Config.Updated";
+    public const string OrganisationReactivated = "Organisation.Reactivated";
+    public const string OutboxRetried = "Outbox.Retried";
 
     // Evidence files
     public const string FileUploaded = "File.Uploaded";

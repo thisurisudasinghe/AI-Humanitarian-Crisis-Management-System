@@ -11,10 +11,12 @@ namespace Cms.Infrastructure.Services;
 public sealed class OutboxAdminService : IOutboxAdminService
 {
     private readonly CmsDbContext _db;
+    private readonly IDateTimeService _clock;
 
-    public OutboxAdminService(CmsDbContext db)
+    public OutboxAdminService(CmsDbContext db, IDateTimeService clock)
     {
         _db = db;
+        _clock = clock;
     }
 
     public async Task<PagedResultDto<OutboxMessageDto>> GetDeadLetteredAsync(
@@ -65,5 +67,30 @@ public sealed class OutboxAdminService : IOutboxAdminService
             PageSize = pageSize,
             TotalCount = totalCount
         };
+    }
+
+    public async Task<bool> RetryDeadLetteredAsync(
+        Guid id,
+        CancellationToken cancellationToken = default)
+    {
+        var message = await _db.OutboxMessages
+            .FirstOrDefaultAsync(
+                item => item.Id == id &&
+                        item.Status == OutboxMessageStatus.DeadLettered,
+                cancellationToken);
+
+        if (message is null)
+        {
+            return false;
+        }
+
+        message.Status = OutboxMessageStatus.Pending;
+        message.RetryCount = 0;
+        message.NextRetryAt = null;
+        message.ErrorMessage = null;
+        message.UpdatedAt = _clock.UtcNow;
+
+        await _db.SaveChangesAsync(cancellationToken);
+        return true;
     }
 }

@@ -34,7 +34,7 @@ AI-Humanitarian-Crisis-Management-System/
 │   │
 │   ├── db/
 │   │   ├── 00_common.sql
-│   │   ├── 01_cases.sql ... 08_don.sql   (module owners)
+│   │   ├── 01_cases.sql ... 08_don.sql   (module owners; includes 02_notif.sql)
 │   │   ├── 98_foreign_keys.sql
 │   │   ├── 99_seed_users.sql
 │   │   └── 90_seed_scenario.sql, 91_seed_ops.sql
@@ -101,19 +101,22 @@ used and `dotnet ef database update` is not part of the workflow.
 Run the scripts in this canonical order:
 
 1. `backend/db/00_common.sql` — identity and common tables (Dev 1)
-2. `backend/db/03_ai.sql` — AI recommendations and decision records (Dev 3)
-3. `backend/db/01_cases.sql` … `backend/db/08_don.sql` — module scripts (owners)
-4. `backend/db/98_foreign_keys.sql` — guarded cross-module foreign keys
-5. `backend/db/99_seed_users.sql` — roles, demo organisation, settings (demo users are created by the API at startup)
-6. `backend/db/90_seed_scenario.sql`, `backend/db/91_seed_ops.sql` — optional demo data
+2. `backend/db/02_notif.sql` — notification templates (Dev 3; run before `03_ai.sql`)
+3. `backend/db/03_ai.sql` — AI recommendations and decision records (Dev 3)
+4. `backend/db/01_cases.sql` … `backend/db/08_don.sql` — remaining module scripts (owners)
+5. `backend/db/98_foreign_keys.sql` — guarded cross-module foreign keys
+6. `backend/db/99_seed_users.sql` — roles, demo organisation, settings (demo users are created by the API at startup)
+7. `backend/db/91_seed_ops.sql` — optional operations demo data. `backend/db/90_seed_scenario.sql` is the Member 2 case-scenario seed; it is referenced here for the canonical run order but is not present in this checkout, so skip it until that owner publishes it.
 
 Example with `sqlcmd` (the `-I` flag is required for filtered indexes):
 
 ```powershell
 sqlcmd -S "(localdb)\mssqllocaldb" -d CmsDb -I -b -i backend/db/00_common.sql
+sqlcmd -S "(localdb)\mssqllocaldb" -d CmsDb -I -b -i backend/db/02_notif.sql
 sqlcmd -S "(localdb)\mssqllocaldb" -d CmsDb -I -b -i backend/db/03_ai.sql
 sqlcmd -S "(localdb)\mssqllocaldb" -d CmsDb -I -b -i backend/db/98_foreign_keys.sql
 sqlcmd -S "(localdb)\mssqllocaldb" -d CmsDb -I -b -i backend/db/99_seed_users.sql
+sqlcmd -S "(localdb)\mssqllocaldb" -d CmsDb -I -b -i backend/db/91_seed_ops.sql
 ```
 
 Every Dev 1 script is idempotent: re-running it skips existing tables, indexes,
@@ -228,6 +231,9 @@ No SQL Server instance is required for `dotnet test`.
 | Configuration | `/api/v1/admin/config` (SystemAdmin) |
 | Audit | `/api/v1/audit-events` (SystemAdmin) |
 | Outbox | `/api/v1/admin/outbox/dead` (SystemAdmin dead-letter view) |
+| AI (Dev 3) | `/api/v1/recommendations`, `/api/v1/recommendations/match`, `/api/v1/recommendations/{id}/decision` (plural `/decisions` kept as an alias), `/api/v1/ai/chat` (informational FAQ only) |
+| Governance (Dev 3) | `/api/v1/post-incident-review`, `/api/v1/reviews/decisions` (compatibility alias), `/api/v1/announcements` |
+| Notifications (Dev 3) | `/api/v1/notifications`, `/api/v1/admin/dead-letters` (AdminOnly) |
 | KPIs | `/api/v1/kpis` (`KpiViewer`) |
 | Donations | `/api/v1/donations`, `/donors`, `/campaigns`, `/report` (`DonationViewer`; writes require `DonationManager`) |
 | Files | `/api/v1/files` (authenticated evidence upload; PNG/JPEG/WebP/PDF, 1 MB) |
@@ -249,8 +255,10 @@ outside `RoleNames`, or audit-row updates.
 ## 14. Testing
 
 See `docs/TESTING.md` for the test layers, commands, coverage matrix, the
-end-to-end UAT loop and the manual regression checklist. The suite currently
-runs 129 backend tests with no SQL Server instance required.
+end-to-end UAT loop and the manual regression checklist. Run `dotnet test` for
+the current backend test count; the in-memory harness does not require a SQL
+Server instance. Frontend checks are `npm.cmd run typecheck` and
+`npm.cmd run build` from `frontend/`.
 
 ## 15. Dev 1 status notes
 
@@ -269,8 +277,9 @@ runs 129 backend tests with no SQL Server instance required.
 - AI decision support (`ai.recommendations`, `ai.decision_records`) is integrated
   from Dev 3 on the shared foundation: `RecommendationService` uses `CmsDbContext`,
   `03_ai.sql` creates the `ai` schema, and `IRecommendationService` is registered
-  in `AiModule`. The fail-closed `DenyAllDecisionGate` remains until the
-  governance endpoints land.
+  in `AiModule`. `AiModule` now registers the real `DecisionGate`; the
+  fail-closed `DenyAllDecisionGate` is only a fallback when that module is not
+  loaded.
 - Donations (`D1-09`, P2) are implemented end to end: the idempotent
   `08_don.sql` schema (`don` schema, five tables), donor and campaign
   management, manual monetary/material donation entry, value-constrained
@@ -292,6 +301,36 @@ runs 129 backend tests with no SQL Server instance required.
   backoff and dead-letters after three attempts. `GET
   /api/v1/admin/outbox/dead` lists dead-lettered rows for SystemAdmin without
   exposing the payload or idempotency key. The processor is disabled in the
-  in-memory test harness via `Outbox:ProcessorEnabled=false`. Member 3 still
-  owns the `Notification.Send` handler; until it is registered those events
-  retry and dead-letter.
+  in-memory test harness via `Outbox:ProcessorEnabled=false`. The
+  `Notification.Send` handler is registered by the notification module; failed
+  sends retry with back-off and dead-letter after three attempts, and Member 3
+  owns the admin dead-letter route `/api/v1/admin/dead-letters`.
+
+## 16. Dev 3 status notes (AI, governance, notifications)
+
+- Dev 3 endpoints are `/api/v1/recommendations`, `/api/v1/post-incident-review`
+  (with `crisisId`, `from`, `to`, `outcome`, `page`, `pageSize` and a
+  `finalRequestStatus` field on each row), `/api/v1/reviews/decisions`
+  (compatibility alias), `/api/v1/notifications`, `/api/v1/announcements`,
+  `/api/v1/admin/dead-letters` and `/api/v1/ai/chat`.
+- AI advice is advisory only. It never performs a critical action; only an
+  authorized human role records a decision. The P2 FAQ chat at
+  `/operations/ai/chat` is explicitly informational and decides nothing.
+- The post-incident review UI is at `/operations/decisions`; it filters by
+  crisis id, date range and outcome and shows the final request status.
+- Database run order for Dev 3 is `backend/db/00_common.sql` →
+  `backend/db/02_notif.sql` → `backend/db/03_ai.sql` → `backend/db/98_foreign_keys.sql`
+  → `backend/db/99_seed_users.sql`. `02_notif.sql` seeds English (`en`) and
+  Spanish (`es`) template rows keyed by `template_key` + `language`; the
+  in-code fallback registry currently holds English defaults only.
+- Resilience expectations: AI failure, timeout or low confidence falls back to
+  the rule-based provider with `Source = Rule`; map failure falls back to
+  cache then Haversine (`IsApproximate = true`); email failure leaves the
+  notification `Failed`, retries with back-off and dead-letters after three
+  attempts. Reprocessing the same outbox idempotency key must produce one
+  notification, and dead letters must be visible to administrators.
+- Postman: the AI, Governance and Notifications folders in
+  `docs/postman/Cms.postman_collection.json` cover the routes above. Swagger XML
+  comments are included for these controllers in Development.
+- See `docs/DEV3_REPORT.md` for the factual audit and the recorded frontend
+  verification results; backend verification remains with the owning worker.

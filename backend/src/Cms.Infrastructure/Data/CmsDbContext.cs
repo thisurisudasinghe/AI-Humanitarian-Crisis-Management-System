@@ -1,4 +1,6 @@
 using Cms.Domain.Entities;
+using Cms.Domain.Entities.Cases;
+using Cms.Domain.Entities.Operations;
 using Microsoft.EntityFrameworkCore;
 
 namespace Cms.Infrastructure.Data;
@@ -51,6 +53,33 @@ public class CmsDbContext : DbContext
 
     public DbSet<DecisionRecord> DecisionRecords => Set<DecisionRecord>();
 
+    public DbSet<Announcement> Announcements => Set<Announcement>();
+
+    public DbSet<Request> Requests => Set<Request>();
+
+    // Member 4 operations (res/shelter/vol schemas).
+    public DbSet<ResourceType> ResourceTypes => Set<ResourceType>();
+
+    public DbSet<Inventory> Inventories => Set<Inventory>();
+
+    public DbSet<Allocation> Allocations => Set<Allocation>();
+
+    public DbSet<Dispatch> Dispatches => Set<Dispatch>();
+
+    public DbSet<AssistanceRequest> AssistanceRequests => Set<AssistanceRequest>();
+
+    public DbSet<Shelter> Shelters => Set<Shelter>();
+
+    public DbSet<ShelterAllocation> ShelterAllocations => Set<ShelterAllocation>();
+
+    public DbSet<Volunteer> Volunteers => Set<Volunteer>();
+
+    public DbSet<VolunteerAvailability> VolunteerAvailabilities => Set<VolunteerAvailability>();
+
+    public DbSet<VolunteerTask> VolunteerTasks => Set<VolunteerTask>();
+
+    public DbSet<VolunteerActivity> VolunteerActivities => Set<VolunteerActivity>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -94,6 +123,15 @@ public class CmsDbContext : DbContext
             {
                 throw new InvalidOperationException(
                     "Audit events are append-only and cannot be modified or deleted.");
+            }
+        }
+
+        foreach (var entry in ChangeTracker.Entries<DecisionRecord>())
+        {
+            if (entry.State is EntityState.Modified or EntityState.Deleted)
+            {
+                throw new InvalidOperationException(
+                    "Decision records are immutable and cannot be modified or deleted.");
             }
         }
     }

@@ -4,6 +4,7 @@ using Cms.Domain.Enums.Cases;
 using Cms.Domain.Exceptions;
 using Cms.Infrastructure.Cases;
 using Cms.Infrastructure.Data;
+using Cms.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 
 namespace Cms.Tests.Cases;
@@ -34,6 +35,7 @@ public class RequestStatusServiceTests
         Assert.Contains("request.status.Verified", outbox.Payload);
         Assert.Equal(request.Id, outbox.EntityId);
         Assert.Equal("Notification.Send:" + request.Id + ":1", outbox.IdempotencyKey);
+        Assert.DoesNotContain("Notification.Send:", outbox.Payload);
     }
 
     [Fact]

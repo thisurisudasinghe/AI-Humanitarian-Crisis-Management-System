@@ -99,7 +99,7 @@ public sealed class CaseWriteHelper
         };
 
         return AddOutboxAsync(
-            "Notification.Send",
+            OutboxEventTypes.NotificationSend,
             requestId,
             payload,
             $"Notification.Send:{requestId}:{version}",

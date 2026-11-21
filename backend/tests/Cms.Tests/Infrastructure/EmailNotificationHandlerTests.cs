@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Cms.Application.Contracts;
 using Cms.Application.DTOs.Notifications;
+using Cms.Domain.Constants;
 using Cms.Domain.Entities;
 using Cms.Domain.Enums;
 using Cms.Infrastructure.Data;
@@ -109,12 +110,62 @@ public class EmailNotificationHandlerTests
         Assert.Equal(0, harness.Sender.SendCount);
     }
 
-    private static OutboxMessage BuildMessage(Guid recipientUserId, string templateKey)
+    [Fact]
+    public async Task Handler_honours_an_explicit_channel()
+    {
+        using var harness = new HandlerHarness();
+        var user = await harness.AddUserAsync("active@tests.local");
+        var message = BuildMessage(
+            user.Id,
+            "Announcement.Approved",
+            channel: NotificationChannels.InApp);
+
+        await harness.Handler.HandleAsync(message);
+
+        var rows = await harness.GetNotificationsAsync(message.Id);
+
+        var inApp = Assert.Single(rows);
+        Assert.Equal(NotificationChannel.InApp, inApp.Channel);
+        Assert.Equal(0, harness.Sender.SendCount);
+    }
+
+    [Fact]
+    public async Task Handler_keeps_announcement_approved_when_a_fanout_message_is_dead_lettered()
+    {
+        using var harness = new HandlerHarness();
+        var user = await harness.AddUserAsync("active@tests.local");
+        var announcementId = Guid.NewGuid();
+
+        await harness.SeedAnnouncementAsync(announcementId);
+        await harness.SeedSiblingOutboxMessageAsync(
+            announcementId,
+            OutboxMessageStatus.DeadLettered);
+
+        var message = BuildMessage(
+            user.Id,
+            "Announcement.Approved",
+            channel: NotificationChannels.InApp,
+            entityId: announcementId);
+
+        await harness.Handler.HandleAsync(message);
+
+        var announcement = await harness.GetAnnouncementAsync(announcementId);
+
+        Assert.Equal(AnnouncementStatus.Approved, announcement.Status);
+        Assert.Null(announcement.DispatchedAt);
+    }
+
+    private static OutboxMessage BuildMessage(
+        Guid recipientUserId,
+        string templateKey,
+        string? channel = null,
+        Guid? entityId = null)
     {
         var payload = new NotificationPayloadDto
         {
             RecipientUserId = recipientUserId,
             TemplateKey = templateKey,
+            Channel = channel,
             Data = new Dictionary<string, string>
             {
                 ["name"] = "Test User"
@@ -124,7 +175,7 @@ public class EmailNotificationHandlerTests
         return new OutboxMessage
         {
             Type = OutboxEventTypes.NotificationSend,
-            EntityId = recipientUserId,
+            EntityId = entityId ?? recipientUserId,
             Payload = JsonSerializer.Serialize(payload, JsonOptions),
             IdempotencyKey = $"notify:{Guid.NewGuid():N}",
             Status = OutboxMessageStatus.Processing
@@ -158,6 +209,9 @@ public class EmailNotificationHandlerTests
                 Cms.Infrastructure.Services.DateTimeService>();
             services.AddSingleton<INotificationSender>(
                 new RecordingSender(failingSender));
+            services.AddScoped<InAppNotificationChannel>();
+            services.AddScoped<EmailNotificationChannel>();
+            services.AddScoped<INotificationChannelFactory, NotificationChannelFactory>();
             services.AddScoped<EmailNotificationHandler>();
 
             _provider = services.BuildServiceProvider();
@@ -193,6 +247,53 @@ public class EmailNotificationHandlerTests
             await db.SaveChangesAsync();
 
             return user;
+        }
+
+        public async Task SeedAnnouncementAsync(Guid announcementId)
+        {
+            using var scope = _provider.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<CmsDbContext>();
+
+            db.Announcements.Add(new Announcement
+            {
+                Id = announcementId,
+                Title = "Flood warning",
+                Message = "Move to higher ground",
+                Status = AnnouncementStatus.Approved,
+                Channel = NotificationChannels.InApp,
+                RequestedByUserId = Guid.NewGuid(),
+                IdempotencyKey = $"announcement-test:{announcementId:N}",
+                CreatedAt = DateTime.UtcNow
+            });
+
+            await db.SaveChangesAsync();
+        }
+
+        public async Task SeedSiblingOutboxMessageAsync(
+            Guid entityId,
+            OutboxMessageStatus status)
+        {
+            using var scope = _provider.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<CmsDbContext>();
+
+            db.OutboxMessages.Add(new OutboxMessage
+            {
+                Type = OutboxEventTypes.NotificationSend,
+                EntityId = entityId,
+                Payload = "{}",
+                IdempotencyKey = $"announcement-sibling:{entityId:N}:{status}",
+                Status = status
+            });
+
+            await db.SaveChangesAsync();
+        }
+
+        public async Task<Announcement> GetAnnouncementAsync(Guid announcementId)
+        {
+            using var scope = _provider.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<CmsDbContext>();
+
+            return await db.Announcements.FirstAsync(row => row.Id == announcementId);
         }
 
         public async Task<List<Notification>> GetNotificationsAsync(Guid outboxMessageId)

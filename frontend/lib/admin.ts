@@ -6,6 +6,14 @@ export interface PagedResult<T> {
   totalPages: number;
 }
 
+/** Shape returned by Cms.Application.DTOs.Common.PagedResult<T> (v1 APIs). */
+export interface CmsPagedResult<T> {
+  items: T[];
+  page: number;
+  pageSize: number;
+  total: number;
+}
+
 export interface UserSummary {
   id: string;
   fullName: string;

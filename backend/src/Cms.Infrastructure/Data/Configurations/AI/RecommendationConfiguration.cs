@@ -30,6 +30,11 @@ public class RecommendationConfiguration
             .IsRequired()
             .HasMaxLength(100);
 
+        builder.Property(x => x.Status)
+            .IsRequired()
+            .HasMaxLength(30)
+            .HasDefaultValue(Cms.Domain.Constants.RecommendationStatuses.Pending);
+
         builder.HasIndex(x => new { x.TargetId, x.Type });
     }
 }

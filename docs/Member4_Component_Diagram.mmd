@@ -1,0 +1,11 @@
+flowchart LR
+  Web[Next.js Operations UI] --> API[ASP.NET Core API]
+  API --> Ops[Operations Controllers]
+  Ops --> App[Operations Contracts and Matchers]
+  App --> Domain[Resource / Shelter / Volunteer / Geo Domain]
+  App --> Infra[EF Core + Geo Adapter]
+  Infra --> DB[(SQL Server: res, shelter, vol, geo)]
+  Infra --> OSM[Nominatim Geocoding]
+  Infra --> OSRM[OSRM Routing]
+  Ops --> Governance[Member 3 Decision Records]
+  Ops --> Cases[Member 2 Request Status Service]

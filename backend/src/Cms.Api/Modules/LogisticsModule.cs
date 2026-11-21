@@ -1,3 +1,6 @@
+using Cms.Application.Contracts.Operations;
+using Cms.Infrastructure.Services.Operations;
+
 namespace Cms.Api.Modules;
 
 /// <summary>
@@ -8,6 +11,7 @@ public static class LogisticsModule
 {
     public static IServiceCollection AddLogisticsModule(this IServiceCollection services)
     {
+        services.AddScoped<IResourceMatchScoringStrategy, WeightedResourceMatchScoringStrategy>();
         return services;
     }
 }
