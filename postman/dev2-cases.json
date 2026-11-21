@@ -1,0 +1,460 @@
+{
+  "info": {
+    "_postman_id": "dev2-cases-collection",
+    "name": "DEV2 - Cases & Citizen API",
+    "description": "Existing Member 2 (DEV2) Cases endpoints only. Set {{baseUrl}} and {{token}} before running. The {{token}} value must be a bearer token for the role named in each request description (Citizen, EmergencyCoordinator or CaseManager). Do not include the Bearer prefix in the variable because request headers add it.\n\nKNOWN INTEGRATION BLOCKERS (do not fix from this collection):\n1. Runtime DI: backend/src/Cms.Api/Modules/CasesModule.cs:9-12 is empty; the real Cms.Infrastructure.Cases.CasesModuleExtensions.AddCasesModule is not called by startup. Cases controller activation will fail until Member 1 calls AddCasesModule; only three foundation interfaces have fail-closed stubs.\n2. Critical close: closing a Critical request requires an approved CloseCase decision; the production fallback gate denies. Use a High-urgency request for the full loop or wait for Member 3's adapter.\n3. No partner-shares endpoint exists, so no partner-workspace request is included.\n4. No recommendations?targetId endpoint exists; recommendation review is not included because it is Member 3 owned.\n5. DEV2 outbox writes currently omit entity_id/idempotency_key values. Use docs/UAT_CORE_LOOP.md NEG-04 for the Member 1/Member 3 outbox diagnostics; no non-DEV2 request is included in this collection.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5210", "type": "string" },
+    { "key": "token", "value": "", "type": "string" },
+    { "key": "crisisId", "value": "1a000000-0000-0000-0000-000000000001", "type": "string" },
+    { "key": "areaId", "value": "1b000000-0000-0000-0000-000000000001", "type": "string" },
+    { "key": "requestId", "value": "1d000000-0000-0000-0000-000000000005", "type": "string" },
+    { "key": "closedRequestId", "value": "1d000000-0000-0000-0000-000000000001", "type": "string" },
+    { "key": "mergeSourceRequestId", "value": "1d000000-0000-0000-0000-000000000004", "type": "string" },
+    { "key": "targetRequestId", "value": "1d000000-0000-0000-0000-000000000005", "type": "string" },
+    { "key": "attachmentId", "value": "20000000-0000-0000-0000-000000000001", "type": "string" },
+    { "key": "alertId", "value": "21000000-0000-0000-0000-000000000002", "type": "string" },
+    { "key": "assignedToUserId", "value": "0b000000-0000-0000-0000-000000000003", "type": "string" },
+    { "key": "decisionId", "value": "", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "1. Citizen Requests",
+      "item": [
+        {
+          "name": "Submit request",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/requests",
+            "description": "Role: Citizen. Creates a request. Address and evidenceAttachmentIds are accepted by the DTO but not persisted in the current implementation. Expected: 201 Created with { id }; 401, 403, 422, 500.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"category\": \"Food\",\n  \"urgency\": \"High\",\n  \"description\": \"Family of four needs food parcels after floodwater entered the home.\",\n  \"lat\": 7.29,\n  \"lng\": 80.64,\n  \"address\": \"Harbour Ward, Colombo\",\n  \"householdSize\": 4,\n  \"accessibilityNeeds\": null,\n  \"crisisId\": \"{{crisisId}}\",\n  \"areaId\": \"{{areaId}}\",\n  \"evidenceAttachmentIds\": []\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List my requests",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/requests/mine?page=1&pageSize=20&sortBy=urgency&sortDescending=true",
+            "description": "Role: Citizen. sortBy accepts 'urgency' or 'age'; other values default to newest submittedAt. Expected: 200 OK; 401, 403, 500."
+          },
+          "response": []
+        },
+        {
+          "name": "Update my request",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/requests/{{requestId}}",
+            "description": "Role: Citizen for own Submitted request; staff may pass assignedToUserId. Category and urgency cannot be changed here. Expected: 204 No Content; 401, 403, 404, 409, 422, 500.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Updated description after coordinator call.\",\n  \"householdSize\": 4,\n  \"accessibilityNeeds\": null\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "2. Request Details",
+      "item": [
+        {
+          "name": "Get request detail",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/requests/{{requestId}}",
+            "description": "Roles: Citizen, EmergencyCoordinator, CaseManager. Citizen visibility is owner-scoped. Expected: 200 OK; 401, 403, 404, 500."
+          },
+          "response": []
+        },
+        {
+          "name": "Get request timeline",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/requests/{{requestId}}/timeline",
+            "description": "Roles: Citizen, EmergencyCoordinator, CaseManager. Returns status history with actor display names and reasons. Expected: 200 OK; 401, 403, 404, 500."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "3. Attachments",
+      "item": [
+        {
+          "name": "Upload attachment",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/requests/{{requestId}}/attachments",
+            "description": "Role: Citizen. multipart/form-data with key 'file'. Request size limit is 5 MB; PNG/JPEG/PDF magic bytes are validated. Expected: 201 Created with { attachmentId }; 400, 401, 403, 404, 413, 422, 500.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": [],
+                  "description": "Select a local PNG, JPEG or PDF file under 5 MB."
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Download attachment",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/requests/{{requestId}}/attachments/{{attachmentId}}",
+            "description": "Roles: Citizen, EmergencyCoordinator, CaseManager. Returns the file stream with original filename and content type. Expected: 200 OK; 401, 403, 404, 500."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "4. Feedback",
+      "item": [
+        {
+          "name": "Submit feedback",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/requests/{{closedRequestId}}/feedback",
+            "description": "Role: Citizen and owner of a Fulfilled or Closed request. Uses {{closedRequestId}} = seeded closed R1 because the default {{requestId}} is Submitted. Expected: 200 OK with { id }; 401, 403, 404, 409, 422, 500.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"comment\": \"Assistance received; thank you.\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "5. Coordinator Workflow",
+      "item": [
+        {
+          "name": "List staff request queue",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/requests?status=Submitted&urgency=High&category=Food&sortBy=urgency&page=1&pageSize=20",
+            "description": "Roles: EmergencyCoordinator, CaseManager. Filter names match RequestFilter: requesterUserId, status, urgency, category, areaId, crisisId, assignedTo, overdue, q. Expected: 200 OK; 401, 403, 500."
+          },
+          "response": []
+        },
+        {
+          "name": "List overdue requests",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/requests/overdue?page=1&pageSize=20",
+            "description": "Roles: EmergencyCoordinator, CaseManager. Uses configured SLA (default 24h from CasesOptions). Expected: 200 OK; 401, 403, 500."
+          },
+          "response": []
+        },
+        {
+          "name": "List unresolved requests",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/requests/unresolved?page=1&pageSize=20",
+            "description": "Roles: EmergencyCoordinator, CaseManager. Builds all open RequestStatus values. Expected: 200 OK; 401, 403, 500."
+          },
+          "response": []
+        },
+        {
+          "name": "Transition request status",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/requests/{{requestId}}/transition",
+            "description": "Roles: EmergencyCoordinator, CaseManager. Valid status strings are Submitted, Verified, Rejected, Triaged, Recommended, Approved, Allocated, Dispatched, InProgress, Fulfilled, Closed, Escalated, Merged, OnHold, Reopened. Critical close requires an approved decisionId. Expected: 204 No Content; 401, 403, 404, 409, 422, 500.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"to\": \"Verified\",\n  \"reason\": \"Verified against call centre record.\",\n  \"decisionId\": null\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Assign request",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/requests/{{requestId}}/assign",
+            "description": "Roles: EmergencyCoordinator, CaseManager. Expected: 204 No Content; 401, 403, 404, 422, 500.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"assignedToUserId\": \"{{assignedToUserId}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Merge request",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/requests/{{mergeSourceRequestId}}/merge",
+            "description": "Roles: EmergencyCoordinator, CaseManager. Uses {{mergeSourceRequestId}} = seeded Verified R4 into non-terminal {{targetRequestId}} = R5. The default {{requestId}} is Submitted and is not mergeable. Expected: 204 No Content; 401, 403, 404, 409, 422, 500.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"targetRequestId\": \"{{targetRequestId}}\",\n  \"reason\": \"Duplicate report.\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "6. Crisis Management",
+      "item": [
+        {
+          "name": "List crises",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/crises",
+            "description": "Roles: Citizen, EmergencyCoordinator, CaseManager. Note: task document states EmergencyCoordinator for this read, but implementation uses RequestReaders. Expected: 200 OK; 401, 403, 500."
+          },
+          "response": []
+        },
+        {
+          "name": "Create crisis",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/crises",
+            "description": "Role: EmergencyCoordinator. Expected: 201 Created with { id }; 401, 403, 422, 500.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Eastern Rainfall Response\",\n  \"type\": \"Flood\",\n  \"description\": \"Demo crisis created from the DEV2 collection.\",\n  \"startedAt\": \"2026-11-21T06:00:00\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update crisis",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/crises/{{crisisId}}",
+            "description": "Role: EmergencyCoordinator. Status values are Active and Closed. Expected: 204 No Content; 401, 403, 404, 422, 500.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Updated coordination notes.\",\n  \"status\": \"Active\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get crisis summary",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/crises/{{crisisId}}/summary",
+            "description": "Roles: EmergencyCoordinator, CaseManager. Returns byStatus, byUrgency, byArea, openTotal and overdueTotal. Expected: 200 OK; 401, 403, 404, 500."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "7. Areas and Alerts",
+      "item": [
+        {
+          "name": "List areas",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/areas?crisisId={{crisisId}}",
+            "description": "Roles: Citizen, EmergencyCoordinator, CaseManager. Note: task document states EmergencyCoordinator, implementation uses RequestReaders. Expected: 200 OK; 401, 403, 500."
+          },
+          "response": []
+        },
+        {
+          "name": "Create area for crisis",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/crises/{{crisisId}}/areas",
+            "description": "Role: EmergencyCoordinator. Crisis ID comes from the route. Expected: 200 OK with { id }; 401, 403, 404, 422, 500.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"North Embankment\",\n  \"description\": \"Raised embankment near the river.\",\n  \"lat\": 7.315,\n  \"lng\": 80.675,\n  \"radiusKm\": 3\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create alert for crisis",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/crises/{{crisisId}}/alerts",
+            "description": "Role: EmergencyCoordinator. Publish=true creates a Published alert; false creates Draft. Expected: 200 OK with { id }; 401, 403, 404, 422, 500.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Water supply interruption\",\n  \"body\": \"Supply in Riverside Ward is interrupted while repairs continue.\",\n  \"publish\": true\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Publish or update alert",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/alerts/{{alertId}}",
+            "description": "Role: EmergencyCoordinator. Publish is nullable: true publishes, false unpublishes, omitted leaves visibility unchanged. Expected: 204 No Content; 401, 403, 404, 422, 500.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Shelter capacity update\",\n  \"body\": \"Additional capacity is open at the Harbour Ward Relief Centre.\",\n  \"publish\": true\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "8. Public Endpoints",
+      "item": [
+        {
+          "name": "List public alerts",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/public/alerts",
+            "description": "Anonymous. Returns only Published alerts. Expected: 200 OK; 500."
+          },
+          "response": []
+        },
+        {
+          "name": "List public service centres",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/public/service-centres",
+            "description": "Anonymous. Returns only IsActive service centres. Expected: 200 OK; 500."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "9. Household Profile",
+      "item": [
+        {
+          "name": "Get my household profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/households/me",
+            "description": "Role: Citizen. Sensitive fields are decrypted for the authorised owner. Expected: 200 OK; 401, 403, 404, 500."
+          },
+          "response": []
+        },
+        {
+          "name": "Save my household profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/households/me",
+            "description": "Role: Citizen. Upserts by current user ID. Sensitive values are encrypted by HouseholdService. Expected: 200 OK with { id }; 401, 403, 422, 500.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"size\": 4,\n  \"accessibilityNeeds\": null,\n  \"contactPhone\": null\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

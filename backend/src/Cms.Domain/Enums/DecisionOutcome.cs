@@ -1,10 +1,9 @@
-﻿
-namespace Cms.Domain.Enums;
+﻿namespace Cms.Domain.Enums;
 
 public enum DecisionOutcome
 {
-    Approve = 1,
-    Modify = 2,
-    Reject = 3,
-    Defer = 4
+    Approved = 1,
+    Modified = 2,
+    Rejected = 3,
+    Deferred = 4
 }

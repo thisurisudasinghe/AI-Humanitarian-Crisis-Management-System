@@ -6,17 +6,8 @@ namespace Cms.Domain.Entities.Cases;
 public class RequestStatusHistory : BaseEntity
 {
     public Guid RequestId { get; set; }
-
-    public RequestStatus PreviousStatus { get; set; }
-
-    public RequestStatus NewStatus { get; set; }
-
-    public string? ChangedByUserId { get; set; }
-
-    public string? Remarks { get; set; }
-
-    public DateTime ChangedAt { get; set; } = DateTime.UtcNow;
-
-    // Navigation Property
-    public Request? Request { get; set; }
+    public RequestStatus FromStatus { get; set; }
+    public RequestStatus ToStatus { get; set; }
+    public Guid? ChangedByUserId { get; set; }
+    public string? Reason { get; set; }
 }

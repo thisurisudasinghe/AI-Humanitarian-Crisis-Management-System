@@ -11,9 +11,7 @@ public class RefreshToken : BaseEntity
 
     public DateTime ExpiresAt { get; set; }
 
-    public DateTime? RevokedAt { get; set; }
-
-    public bool IsRevoked => RevokedAt.HasValue;
+    public bool IsRevoked { get; set; }
 
     public User User { get; set; } = null!;
 }

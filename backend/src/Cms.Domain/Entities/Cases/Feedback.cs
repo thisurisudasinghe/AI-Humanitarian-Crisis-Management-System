@@ -5,14 +5,6 @@ namespace Cms.Domain.Entities.Cases;
 public class Feedback : BaseEntity
 {
     public Guid RequestId { get; set; }
-
-    public string? UserId { get; set; }
-
-    public int Rating { get; set; }
-
-    public string? Comments { get; set; }
-
-    public DateTime SubmittedAt { get; set; } = DateTime.UtcNow;
-
-    public Request? Request { get; set; }
+    public Guid SubmittedByUserId { get; set; }
+    public string Comment { get; set; } = string.Empty;
 }

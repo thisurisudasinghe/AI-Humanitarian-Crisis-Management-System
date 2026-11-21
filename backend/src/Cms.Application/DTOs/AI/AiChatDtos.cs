@@ -1,0 +1,21 @@
+namespace Cms.Application.DTOs.AI;
+
+/// <summary>
+/// Informational FAQ chat request. The response never executes an action.
+/// </summary>
+public sealed class AiChatRequestDto
+{
+    public string Message { get; set; } = string.Empty;
+}
+
+public sealed class AiChatResponseDto
+{
+    public string Answer { get; set; } = string.Empty;
+
+    /// <summary>Rule or Ai.</summary>
+    public string Source { get; set; } = string.Empty;
+
+    public IReadOnlyList<string> Suggestions { get; set; } = Array.Empty<string>();
+
+    public bool DecidesNothing { get; set; } = true;
+}
