@@ -18,6 +18,7 @@ public sealed class AdminService : IAdminService
 {
     private readonly CmsDbContext _db;
     private readonly IAuditLogger _auditLogger;
+    private readonly ICurrentUser _currentUser;
     private readonly EmailProtectionService _emailProtection;
     private readonly PasswordHashingService _passwordHashing;
     private readonly IDateTimeService _dateTimeService;
@@ -25,12 +26,14 @@ public sealed class AdminService : IAdminService
     public AdminService(
         CmsDbContext db,
         IAuditLogger auditLogger,
+        ICurrentUser currentUser,
         EmailProtectionService emailProtection,
         PasswordHashingService passwordHashing,
         IDateTimeService dateTimeService)
     {
         _db = db;
         _auditLogger = auditLogger;
+        _currentUser = currentUser;
         _emailProtection = emailProtection;
         _passwordHashing = passwordHashing;
         _dateTimeService = dateTimeService;
@@ -244,6 +247,25 @@ public sealed class AdminService : IAdminService
             user.Status = request.Status.Value;
         }
 
+        if (request.Status == UserStatus.Inactive &&
+            previousStatus == UserStatus.Active &&
+            await IsSystemAdminAsync(id, cancellationToken))
+        {
+            if (_currentUser.UserId == id)
+            {
+                throw new ValidationException(
+                    "You cannot deactivate your own System Administrator account.",
+                    code: "ADMIN_SELF_LOCKOUT");
+            }
+
+            if (!await HasAnotherActiveAdminAsync(id, cancellationToken))
+            {
+                throw new ValidationException(
+                    "At least one active System Administrator must remain.",
+                    code: "ADMIN_LAST_ADMIN");
+            }
+        }
+
         user.UpdatedAt = _dateTimeService.UtcNow;
         await _db.SaveChangesAsync(cancellationToken);
 
@@ -283,6 +305,29 @@ public sealed class AdminService : IAdminService
             ?? throw new NotFoundException("User was not found.", "USER_NOT_FOUND");
 
         var roles = await ResolveRolesAsync(request.Roles, cancellationToken);
+
+        var removesSystemAdmin =
+            await IsSystemAdminAsync(id, cancellationToken) &&
+            !roles.Any(role => role.Name == RoleNames.SystemAdmin);
+
+        if (removesSystemAdmin)
+        {
+            if (_currentUser.UserId == id)
+            {
+                throw new ValidationException(
+                    "You cannot remove your own System Administrator role.",
+                    code: "ADMIN_SELF_LOCKOUT");
+            }
+
+            if (user.Status == UserStatus.Active &&
+                !await HasAnotherActiveAdminAsync(id, cancellationToken))
+            {
+                throw new ValidationException(
+                    "At least one active System Administrator must remain.",
+                    code: "ADMIN_LAST_ADMIN");
+            }
+        }
+
         var now = _dateTimeService.UtcNow;
 
         _db.UserRoles.RemoveRange(
@@ -456,11 +501,11 @@ public sealed class AdminService : IAdminService
         organisation.UpdatedAt = _dateTimeService.UtcNow;
         await _db.SaveChangesAsync(cancellationToken);
 
-        var action = !previousActive && organisation.IsActive
-            ? AuditActions.OrganisationUpdated
-            : organisation.IsActive
+        var action = organisation.IsActive
+            ? previousActive
                 ? AuditActions.OrganisationUpdated
-                : AuditActions.OrganisationDeactivated;
+                : AuditActions.OrganisationReactivated
+            : AuditActions.OrganisationDeactivated;
 
         await _auditLogger.LogAsync(
             action,
@@ -561,6 +606,19 @@ public sealed class AdminService : IAdminService
 
         return await GetConfigAsync(cancellationToken);
     }
+
+    private Task<bool> IsSystemAdminAsync(Guid userId, CancellationToken cancellationToken) =>
+        _db.UserRoles.AnyAsync(
+            userRole => userRole.UserId == userId &&
+                        userRole.Role.Name == RoleNames.SystemAdmin,
+            cancellationToken);
+
+    private Task<bool> HasAnotherActiveAdminAsync(Guid userId, CancellationToken cancellationToken) =>
+        _db.UserRoles.AnyAsync(
+            userRole => userRole.UserId != userId &&
+                        userRole.Role.Name == RoleNames.SystemAdmin &&
+                        userRole.User.Status == UserStatus.Active,
+            cancellationToken);
 
     private IQueryable<User> UserQuery() =>
         _db.Users
