@@ -1,6 +1,8 @@
+using Cms.Api.Constants;
 using Cms.Application.DTOs.Announcements;
 using Cms.Application.Exceptions;
 using Cms.Application.Interfaces.Announcements;
+using Cms.Domain.Constants;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -12,7 +14,7 @@ namespace Cms.Api.Controllers;
 /// through the outbox so failures can be retried and dead-lettered.
 /// </remarks>
 [ApiController]
-[Authorize]
+[Authorize(Roles = AuthorizedRoles.Staff)]
 [Route("api/v1/announcements")]
 public class AnnouncementsController : ControllerBase
 {
@@ -65,6 +67,7 @@ public class AnnouncementsController : ControllerBase
     }
 
     /// <summary>Approves a draft and queues fan-out through the outbox.</summary>
+    [Authorize(Roles = Roles.EmergencyCoordinator)]
     [HttpPost("{id:guid}/approve")]
     public async Task<IActionResult> Approve(
         Guid id,
@@ -94,6 +97,7 @@ public class AnnouncementsController : ControllerBase
     }
 
     /// <summary>Rejects a draft so it is never fanned out.</summary>
+    [Authorize(Roles = Roles.EmergencyCoordinator)]
     [HttpPost("{id:guid}/reject")]
     public async Task<IActionResult> Reject(
         Guid id,

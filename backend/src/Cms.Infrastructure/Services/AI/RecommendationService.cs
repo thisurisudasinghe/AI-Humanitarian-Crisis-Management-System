@@ -8,6 +8,7 @@ using Cms.Domain.Entities.Cases;
 using Cms.Domain.Enums.Cases;
 using Cms.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using IAuditLogger = Cms.Application.Contracts.IAuditLogger;
 
 namespace Cms.Infrastructure.Services.AI;
 
@@ -18,10 +19,12 @@ namespace Cms.Infrastructure.Services.AI;
 public class RecommendationService : IRecommendationService
 {
     private readonly CmsDbContext _context;
+    private readonly IAuditLogger _auditLogger;
 
-    public RecommendationService(CmsDbContext context)
+    public RecommendationService(CmsDbContext context, IAuditLogger auditLogger)
     {
         _context = context;
+        _auditLogger = auditLogger;
     }
 
     public async Task<Guid> CreateAsync(
@@ -82,6 +85,20 @@ public class RecommendationService : IRecommendationService
 
         await _context.Recommendations.AddAsync(recommendation, cancellationToken);
         await _context.SaveChangesAsync(cancellationToken);
+
+        await _auditLogger.LogAsync(
+            "Recommendation.Created",
+            "Recommendation",
+            recommendation.Id.ToString(),
+            new
+            {
+                recommendation.Type,
+                recommendation.TargetId,
+                recommendation.Source,
+                recommendation.Confidence,
+                recommendation.Status
+            },
+            cancellationToken);
 
         return recommendation.Id;
     }
@@ -265,6 +282,20 @@ public class RecommendationService : IRecommendationService
 
         await _context.Recommendations.AddAsync(recommendation, cancellationToken);
         await _context.SaveChangesAsync(cancellationToken);
+
+        await _auditLogger.LogAsync(
+            "Recommendation.Created",
+            "Recommendation",
+            recommendation.Id.ToString(),
+            new
+            {
+                recommendation.Type,
+                recommendation.TargetId,
+                recommendation.Source,
+                recommendation.Confidence,
+                recommendation.Status
+            },
+            cancellationToken);
 
         return recommendation.Id;
     }

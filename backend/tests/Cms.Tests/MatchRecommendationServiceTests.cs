@@ -54,7 +54,7 @@ public class MatchRecommendationServiceTests
             resourceMatcher.Object,
             Mock.Of<IShelterRecommender>(),
             Mock.Of<IVolunteerMatcher>(),
-            new RecommendationService(context),
+            new RecommendationService(context, Mock.Of<IAuditLogger>()),
             requestStatus.Object,
             new DateTimeService());
 

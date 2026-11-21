@@ -87,6 +87,19 @@ BEGIN
 END;
 GO
 
+-- AI output is append-only. A decision is represented by a new DecisionRecord,
+-- never by mutating the original recommendation.
+CREATE OR ALTER TRIGGER [ai].[TR_recommendations_immutable]
+    ON [ai].[recommendations]
+    AFTER UPDATE, DELETE
+AS
+BEGIN
+    SET NOCOUNT ON;
+    RAISERROR(N'Recommendations are immutable; record a decision instead.', 16, 1);
+    ROLLBACK TRANSACTION;
+END;
+GO
+
 -- ----------------------------------------------------------------------------
 -- ai.announcements
 -- ----------------------------------------------------------------------------

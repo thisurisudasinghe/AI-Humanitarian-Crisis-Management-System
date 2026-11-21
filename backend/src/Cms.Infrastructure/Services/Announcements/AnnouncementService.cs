@@ -441,8 +441,7 @@ public sealed class AnnouncementService : IAnnouncementService
 
         _context.DecisionRecords.Add(decision);
 
-        recommendation.Status = RecommendationStatuses.Decided;
-        recommendation.UpdatedAt = decidedAt;
+        // Recommendations are append-only; the decision record carries the outcome.
 
         return decision.Id;
     }
@@ -497,6 +496,25 @@ public sealed class AnnouncementService : IAnnouncementService
             }
         }
 
+        if (audience.AreaIds.Count > 0)
+        {
+            var areaIds = audience.AreaIds.Distinct().ToList();
+            var requesterIds = await _context.Requests
+                .AsNoTracking()
+                .Where(r => r.AreaId.HasValue && areaIds.Contains(r.AreaId.Value))
+                .Select(r => r.RequesterUserId)
+                .Distinct()
+                .ToListAsync(cancellationToken);
+
+            foreach (var id in await activeUsers
+                         .Where(u => requesterIds.Contains(u.Id))
+                         .Select(u => u.Id)
+                         .ToListAsync(cancellationToken))
+            {
+                selected.Add(id);
+            }
+        }
+
         return selected.ToList();
     }
 
@@ -504,10 +522,11 @@ public sealed class AnnouncementService : IAnnouncementService
     {
         if (!audience.AllActiveUsers &&
             audience.UserIds.Count == 0 &&
-            audience.Roles.Count == 0)
+            audience.Roles.Count == 0 &&
+            audience.AreaIds.Count == 0)
         {
             throw new ValidationException(
-                "Select explicit users, roles, or all active users for the audience.");
+                "Select explicit users, roles, areas, or all active users for the audience.");
         }
 
         var invalidRoles = audience.Roles

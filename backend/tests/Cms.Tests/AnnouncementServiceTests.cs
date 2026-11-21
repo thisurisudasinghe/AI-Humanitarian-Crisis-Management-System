@@ -4,7 +4,9 @@ using Cms.Application.Exceptions;
 using Cms.Application.Interfaces;
 using Cms.Domain.Constants;
 using Cms.Domain.Entities;
+using Cms.Domain.Entities.Cases;
 using Cms.Domain.Enums;
+using Cms.Domain.Enums.Cases;
 using Cms.Infrastructure.Data;
 using Cms.Infrastructure.Services;
 using Cms.Infrastructure.Services.AI;
@@ -82,7 +84,7 @@ public class AnnouncementServiceTests
         var recommendation = Assert.Single(db.Recommendations);
         var decision = Assert.Single(db.DecisionRecords);
         Assert.Equal(RecommendationTypes.Announcement, recommendation.Type);
-        Assert.Equal(RecommendationStatuses.Decided, recommendation.Status);
+        Assert.Equal(RecommendationStatuses.Pending, recommendation.Status);
         Assert.Equal(decision.RecommendationId, recommendation.Id);
         Assert.Equal(DecisionOutcome.Approved, decision.Outcome);
 
@@ -115,9 +117,50 @@ public class AnnouncementServiceTests
 
         var recommendation = Assert.Single(db.Recommendations);
         var decision = Assert.Single(db.DecisionRecords);
-        Assert.Equal(RecommendationStatuses.Decided, recommendation.Status);
+        Assert.Equal(RecommendationStatuses.Pending, recommendation.Status);
         Assert.Equal(DecisionOutcome.Rejected, decision.Outcome);
         Assert.Equal("Too broad", decision.Reason);
+    }
+
+    [Fact]
+    public async Task ApproveAsync_FansOutToRequestersInSelectedArea()
+    {
+        using var db = TestDb.Create();
+        await SeedUsersAsync(db, 3);
+        var users = db.Users.OrderBy(u => u.FirstName).ToList();
+        var areaId = Guid.NewGuid();
+
+        db.Requests.Add(new Request
+        {
+            RequesterUserId = users[1].Id,
+            AreaId = areaId,
+            Category = Category.Food,
+            Urgency = Urgency.High,
+            Description = "Needs food in the affected area",
+            Lat = 6.9m,
+            Lng = 79.8m,
+            HouseholdSize = 2,
+            SubmittedAt = DateTime.UtcNow
+        });
+        await db.SaveChangesAsync();
+
+        var service = MakeService(db, Roles.EmergencyCoordinator);
+        var created = await service.CreateAsync(new CreateAnnouncementRequest
+        {
+            Title = "Area warning",
+            Message = "Collect supplies at the centre",
+            Audience = new AnnouncementAudienceDto { AreaIds = new[] { areaId } }
+        });
+
+        var approved = await service.ApproveAsync(
+            created.Id,
+            new ApproveAnnouncementRequest());
+
+        Assert.Equal(1, approved.RecipientCount);
+        var message = Assert.Single(db.OutboxMessages);
+        using var payload = JsonDocument.Parse(message.Payload);
+        Assert.Equal(users[1].Id.ToString(), payload.RootElement
+            .GetProperty("recipientUserId").GetString());
     }
 
     [Fact]
@@ -183,6 +226,6 @@ public class AnnouncementServiceTests
             audit.Object,
             new DateTimeService(),
             new OutboxService(db, new DateTimeService()),
-            new RecommendationService(db));
+            new RecommendationService(db, audit.Object));
     }
 }

@@ -9,6 +9,12 @@ public class AnnouncementAudienceDto
     /// <summary>Frozen role names; all active users holding any role are included.</summary>
     public IReadOnlyList<string> Roles { get; set; } = Array.Empty<string>();
 
+    /// <summary>
+    /// Area ids. Active requesters with at least one request in any selected area
+    /// are included; the frozen user contract has no direct user-area field.
+    /// </summary>
+    public IReadOnlyList<Guid> AreaIds { get; set; } = Array.Empty<Guid>();
+
     /// <summary>Every active user in the platform.</summary>
     public bool AllActiveUsers { get; set; }
 }

@@ -6,6 +6,7 @@ using Cms.Domain.Entities;
 using Cms.Domain.Enums;
 using Cms.Infrastructure.Data;
 using Cms.Infrastructure.Notifications;
+using Cms.Infrastructure.Stubs;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -212,6 +213,7 @@ public class EmailNotificationHandlerTests
             services.AddScoped<InAppNotificationChannel>();
             services.AddScoped<EmailNotificationChannel>();
             services.AddScoped<INotificationChannelFactory, NotificationChannelFactory>();
+            services.AddScoped<IAuditLogger, NoOpAuditLogger>();
             services.AddScoped<EmailNotificationHandler>();
 
             _provider = services.BuildServiceProvider();

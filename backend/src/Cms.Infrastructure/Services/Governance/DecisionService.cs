@@ -112,8 +112,7 @@ public sealed class DecisionService : Cms.Application.Interfaces.Governance.IDec
         await _context.DecisionRecords.AddAsync(decision, cancellationToken);
         await _context.SaveChangesAsync(cancellationToken);
 
-        recommendation.Status = RecommendationStatuses.Decided;
-        recommendation.UpdatedAt = now;
+        // Recommendations are append-only; the decision record carries the outcome.
 
         var advancesRequest =
             outcome is DecisionOutcome.Approved or DecisionOutcome.Modified &&
