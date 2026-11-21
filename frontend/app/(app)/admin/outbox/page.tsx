@@ -12,7 +12,7 @@ import {
 } from "@/components/ui";
 import { AuthGuard } from "@/components/AuthGuard";
 import { AdminNav } from "@/components/safeway/AdminNav";
-import { api, errorMessage } from "@/lib/api";
+import { api, apiJson, errorMessage } from "@/lib/api";
 import {
   formatDate,
   type OutboxMessageDto,
@@ -29,6 +29,7 @@ export default function OutboxPage() {
   const [result, setResult] = useState<PagedResult<OutboxMessageDto> | null>(null);
   const [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState<Notice>(null);
+  const [retryingId, setRetryingId] = useState<string | null>(null);
 
   const debouncedType = useDebouncedValue(type);
 
@@ -76,6 +77,29 @@ export default function OutboxPage() {
   function resetFilters() {
     setType("");
     setPage(1);
+  }
+
+  async function retry(id: string) {
+    setRetryingId(id);
+    setNotice(null);
+
+    try {
+      await apiJson<{ message: string }>(
+        `/api/v1/admin/dead-letters/${id}/retry`,
+        "POST",
+        {}
+      );
+      setNotice({ message: "Message queued for retry.", tone: "success" });
+      await load()
+        .then(setResult)
+        .catch((caught: unknown) =>
+          setNotice({ message: errorMessage(caught), tone: "error" })
+        );
+    } catch (caught) {
+      setNotice({ message: errorMessage(caught), tone: "error" });
+    } finally {
+      setRetryingId(null);
+    }
   }
 
   const columns: Column<OutboxMessageDto>[] = [
@@ -129,6 +153,19 @@ export default function OutboxPage() {
         ) : (
           "—"
         )
+    },
+    {
+      key: "actions",
+      header: "Actions",
+      render: (message) => (
+        <Button
+          variant="secondary"
+          disabled={retryingId !== null}
+          onClick={() => void retry(message.id)}
+        >
+          {retryingId === message.id ? "Retrying…" : "Retry"}
+        </Button>
+      )
     }
   ];
 
@@ -140,7 +177,8 @@ export default function OutboxPage() {
             <h1>Outbox dead letters</h1>
             <p>
               Messages that exhausted their retries and were removed from the
-              delivery queue. Read-only: the outbox processor owns replay.
+              delivery queue. Retrying requeues a message for another delivery
+              attempt.
             </p>
           </div>
           <Button variant="secondary" onClick={resetFilters}>
