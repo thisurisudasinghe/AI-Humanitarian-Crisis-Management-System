@@ -1,9 +1,14 @@
 using Cms.Application.Cases.Common;
 using Cms.Application.Cases.Interfaces;
+using Cms.Application.Contracts;
 using Cms.Application.Interfaces;
+using Cms.Infrastructure.Services;
+using Cms.Infrastructure.Stubs;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using IFileStore = Cms.Application.Cases.Interfaces.IFileStore;
 
 namespace Cms.Infrastructure.Cases;
 
@@ -27,6 +32,8 @@ public static class CasesModuleExtensions
         Directory.CreateDirectory(options.DataProtectionKeyRing);
 
         services.AddSingleton(options);
+        services.TryAddScoped<IOutbox, OutboxService>();
+        services.TryAddScoped<IDecisionGate, DenyAllDecisionGate>();
         services.AddDataProtection()
             .PersistKeysToFileSystem(new DirectoryInfo(options.DataProtectionKeyRing))
             .SetApplicationName("Cms.Cases");
@@ -35,7 +42,7 @@ public static class CasesModuleExtensions
         services.AddScoped<IOverduePolicy, OverduePolicy>();
         services.AddScoped<ISensitiveDataProtector, SensitiveDataProtector>();
         services.AddScoped<IFileStore, LocalFileStore>();
-        services.AddScoped<ICloseCaseDecisionGate, UnavailableCloseCaseDecisionGate>();
+        services.AddScoped<ICloseCaseDecisionGate, DecisionGateCloseCaseAdapter>();
 
         services.AddScoped<RequestStatusService>();
         services.AddScoped<IRequestRepository, RequestRepository>();

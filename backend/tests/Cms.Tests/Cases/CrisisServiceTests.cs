@@ -160,6 +160,6 @@ public class CrisisServiceTests
             user,
             date,
             new OverduePolicy(options),
-            new CaseWriteHelper(context, date, options));
+            TestContext.CreateWriter(context, date, options));
     }
 }

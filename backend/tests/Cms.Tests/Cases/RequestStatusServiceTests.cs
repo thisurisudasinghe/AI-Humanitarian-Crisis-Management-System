@@ -32,7 +32,8 @@ public class RequestStatusServiceTests
         var outbox = await context.OutboxMessages.SingleAsync();
         Assert.Equal("Notification.Send", outbox.Type);
         Assert.Contains("request.status.Verified", outbox.Payload);
-        Assert.Contains("Notification.Send:" + request.Id + ":1", outbox.Payload);
+        Assert.Equal(request.Id, outbox.EntityId);
+        Assert.Equal("Notification.Send:" + request.Id + ":1", outbox.IdempotencyKey);
     }
 
     [Fact]
@@ -184,7 +185,7 @@ public class RequestStatusServiceTests
         using var context = TestContext.Create();
         var now = DateTime.UtcNow;
         var date = new FixedDateTimeService(now);
-        var writer = new CaseWriteHelper(context, date, TestContext.Options());
+        var writer = TestContext.CreateWriter(context, date);
         var entityId = Guid.NewGuid();
 
         await writer.AddOutboxAsync("Test.Event", entityId, new { value = 1 }, $"Test.Event:{entityId}:1", default);
