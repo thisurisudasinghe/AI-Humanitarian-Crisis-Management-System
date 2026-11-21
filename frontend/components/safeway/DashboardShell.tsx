@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState, type FormEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { useAuth } from "@/lib/auth";
 import { initials, humanizeRole } from "@/lib/format";
+import { getInbox } from "@/lib/notifications";
 import { RoleNames, hasAnyRole, isStaff } from "@/lib/roles";
 import { Brand } from "./Brand";
 import { Icon } from "./Icon";
@@ -27,6 +28,7 @@ const opsNav: NavItem[] = [
   { href: "/operations", icon: "grid", label: "Overview" },
   { href: "/operations/crises", icon: "alert", label: "Crises & cases" },
   { href: "/operations/ai", icon: "brain", label: "AI decision support" },
+  { href: "/operations/decisions", icon: "file", label: "Decision history" },
   { href: "/operations/map", icon: "map", label: "Live map" },
   { href: "/resources", icon: "box", label: "Resources" },
   { href: "/shelters", icon: "home", label: "Shelters" },
@@ -86,6 +88,46 @@ export function DashboardShell({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth();
   const [mobileNav, setMobileNav] = useState(false);
   const [search, setSearch] = useState("");
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  const loadUnreadCount = useCallback(async () => {
+    try {
+      const inbox = await getInbox({ limit: 1 });
+      setUnreadCount(inbox.unreadCount);
+    } catch {
+      // The shell stays quiet when the inbox cannot be loaded; the page handles errors.
+      setUnreadCount(0);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadUnreadCount();
+  }, [loadUnreadCount, pathname]);
+
+  useEffect(() => {
+    const refresh = () => void loadUnreadCount();
+    window.addEventListener("cms:notifications-changed", refresh);
+    window.addEventListener("focus", refresh);
+
+    return () => {
+      window.removeEventListener("cms:notifications-changed", refresh);
+      window.removeEventListener("focus", refresh);
+    };
+  }, [loadUnreadCount]);
+
+  const bellLabel =
+    unreadCount > 0 ? `Notifications (${unreadCount} unread)` : "Notifications";
+
+  const bell = (
+    <span className="notification-bell">
+      <Icon name="bell" />
+      {unreadCount > 0 ? (
+        <span className="notification-badge" aria-hidden="true">
+          {unreadCount > 9 ? "9+" : unreadCount}
+        </span>
+      ) : null}
+    </span>
+  );
 
   const roles = user?.roles ?? [];
   const mode = isOpsPath(pathname, roles) ? "ops" : "public";
@@ -186,8 +228,12 @@ export function DashboardShell({ children }: { children: ReactNode }) {
             <Icon name="menu" />
           </button>
           <Brand />
-          <Link href="/notifications" aria-label="Notifications">
-            <Icon name="bell" />
+          <Link
+            href="/notifications"
+            aria-label={bellLabel}
+            onClick={() => void loadUnreadCount()}
+          >
+            {bell}
           </Link>
         </header>
 
@@ -208,8 +254,12 @@ export function DashboardShell({ children }: { children: ReactNode }) {
                 <kbd>⌘ K</kbd>
               </label>
             </form>
-            <Link href="/notifications" aria-label="Notifications">
-              <Icon name="bell" />
+            <Link
+              href="/notifications"
+              aria-label={bellLabel}
+              onClick={() => void loadUnreadCount()}
+            >
+              {bell}
             </Link>
             <div className="profile-mini">{initials(displayName)}</div>
           </header>

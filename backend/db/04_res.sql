@@ -29,3 +29,11 @@ CREATE TABLE res.AssistanceRequests(
  ResourceTypeId UNIQUEIDENTIFIER NOT NULL, Quantity DECIMAL(18,2) NOT NULL, Reason NVARCHAR(1000) NOT NULL,
  Status NVARCHAR(20) NOT NULL, ShelterId UNIQUEIDENTIFIER NULL, ResponseReason NVARCHAR(1000) NULL,
  CreatedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(), UpdatedAt DATETIME2 NULL);
+
+-- Member 4 query indexes (safe to re-run).
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name='IX_Inventories_OrgId' AND object_id=OBJECT_ID('res.Inventories'))
+ CREATE INDEX IX_Inventories_OrgId ON res.Inventories(OrgId);
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name='IX_Inventories_ResourceTypeId' AND object_id=OBJECT_ID('res.Inventories'))
+ CREATE INDEX IX_Inventories_ResourceTypeId ON res.Inventories(ResourceTypeId);
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name='IX_Allocations_RequestId' AND object_id=OBJECT_ID('res.Allocations'))
+ CREATE INDEX IX_Allocations_RequestId ON res.Allocations(RequestId);

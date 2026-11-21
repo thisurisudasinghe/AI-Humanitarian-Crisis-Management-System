@@ -5,9 +5,10 @@ System. The UI is the SAFEWAY Figma design, migrated from the Vite export into
 `frontend/` without changing the visual language: the exported stylesheet is kept
 verbatim in `app/globals.css` and only additive integration rules follow it.
 
-This branch (`feature/dev1-frontend`) targets the Dev 1 identity, administration,
-donation, KPI, file and audit APIs. Modules owned by Dev 2, Dev 3 and Dev 4 render
-their designed shells with explicit integration notices instead of invented data.
+This branch targets the Dev 1 identity, administration, donation, KPI, file and
+audit APIs plus the Dev 3 recommendation, decision-review and announcement APIs.
+Modules still owned by Dev 2 and Dev 4 render their designed shells with explicit
+integration notices instead of invented data.
 
 ## Setup
 
@@ -68,7 +69,8 @@ npm start
 | `/operations` | Live identity/donation KPIs and audit activity, operational placeholders |
 | `/operations/crises` | Incident queue shell (awaiting Dev 2) |
 | `/operations/crises/[id]` | Case workspace shell (awaiting Dev 2) |
-| `/operations/ai` | Decision-support shell (awaiting Dev 3) |
+| `/operations/ai` | Live recommendations with filters, detail, human decisions and decision history (Dev 3 API) |
+| `/operations/decisions` | Post-incident decision review: AI output vs human outcome, overrides and pagination (Dev 3 API) |
 | `/operations/map` | Situation-map shell (awaiting Dev 2 / Dev 4) |
 | `/resources` | Inventory shell (awaiting Dev 4) |
 | `/shelters` | Shelter network shell (awaiting Dev 4) |
@@ -78,6 +80,7 @@ npm start
 | `/admin/users` | User create, role replacement and activation (`SystemAdmin`) |
 | `/admin/organisations` | Organisation CRUD (`SystemAdmin`) |
 | `/admin/config` | Runtime settings (`SystemAdmin`) |
+| `/admin/announcements` | Announcement creation, pending approval queue and approve/reject (`SystemAdmin`, `EmergencyCoordinator` for approvals) |
 | `/admin/audit` | Append-only audit viewer (`SystemAdmin`) |
 | `/admin/outbox` | Read-only outbox dead-letter queue (`SystemAdmin`) |
 
@@ -97,6 +100,12 @@ Live against the Dev 1 API:
 - donations, campaigns, allocations, expenses and transparency report
 - file upload and outbox dead-letter endpoints (`/admin/outbox` is read-only;
   replay is owned by the outbox processor)
+- Dev 3 decision support: recommendations, decisions, decision reviews and
+  announcements via `frontend/lib/recommendations.ts`, `frontend/lib/decisions.ts`
+  and `frontend/lib/announcements.ts` (`/operations/ai`, `/operations/decisions`,
+  `/admin/announcements`)
+- notification inbox unread badge in the shell, refreshed on navigation and when
+  the inbox marks items read
 - role-aware landing: `homePathForRoles` and `/dashboard` send staff accounts to
   `/operations`, citizens stay in the public workspace
 - date-range filters default to the current local month and text filters are
@@ -107,7 +116,6 @@ Not connected yet — shown as designed shells with no fabricated records:
 | Area | Owner | Seam |
 |---|---|---|
 | Crisis intake, cases, assignments | Dev 2 | `frontend/lib/crisis.ts` |
-| AI recommendations and approvals | Dev 3 | `/operations/ai`, `/operations/crises/[id]` |
 | Resources, shelters, volunteers, map | Dev 4 | `/resources`, `/shelters`, `/volunteers`, `/operations/map` |
 | Notification delivery and read state | Member 3 (M9) | `/notifications` |
 

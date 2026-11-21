@@ -4,6 +4,7 @@ using Cms.Domain.Enums.Cases;
 using Cms.Domain.Exceptions;
 using Cms.Infrastructure.Cases;
 using Cms.Infrastructure.Data;
+using Cms.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 
 namespace Cms.Tests.Cases;
@@ -116,6 +117,6 @@ public class AttachmentServiceTests
             store,
             new FakeCurrentUser { UserId = userId, Roles = new[] { Cms.Domain.Cases.CasesRoles.Citizen } },
             date,
-            new CaseWriteHelper(context, date, TestContext.Options()));
+            TestContext.CreateWriter(context, date));
     }
 }

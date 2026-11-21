@@ -1,6 +1,7 @@
 ﻿
 using System.Text.Json;
 using Cms.Application.Contracts;
+using Cms.Application.Governance;
 using Cms.Application.Interfaces;
 using Cms.Application.Interfaces.AI;
 using Cms.Domain.Entities;
@@ -60,11 +61,29 @@ public class DecisionService : IDecisionService
                 "Final payload is required when modifying a recommendation.");
         }
 
-        var recommendationExists = await _context.Recommendations
-            .AnyAsync(x => x.Id == recommendationId, cancellationToken);
+        var recommendation = await _context.Recommendations
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == recommendationId, cancellationToken);
 
-        if (!recommendationExists)
+        if (recommendation == null)
             throw new KeyNotFoundException("Recommendation was not found.");
+
+        if (!DecisionRolePolicy.CanDecide(recommendation.Type, _currentUser.Roles))
+        {
+            throw new UnauthorizedAccessException(
+                $"Your role is not authorised to decide on '{recommendation.Type}' recommendations.");
+        }
+
+        var alreadyDecided = await _context.DecisionRecords
+            .AsNoTracking()
+            .AnyAsync(x => x.RecommendationId == recommendationId, cancellationToken);
+
+        if (alreadyDecided)
+        {
+            throw new InvalidOperationException(
+                "A decision has already been recorded for this recommendation. " +
+                "Decision records are immutable.");
+        }
 
         var decision = new DecisionRecord
         {

@@ -7,6 +7,7 @@ using Cms.Domain.Entities.Cases;
 using Cms.Domain.Enums.Cases;
 using Cms.Infrastructure.Cases;
 using Cms.Infrastructure.Data;
+using Cms.Infrastructure.Services;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 
@@ -74,6 +75,12 @@ internal static class TestContext
     public static SensitiveDataProtector CreateProtector() =>
         new(DataProtectionProvider.Create("Cms.Tests.Cases"));
 
+    public static CaseWriteHelper CreateWriter(
+        CmsDbContext context,
+        IDateTimeService date,
+        CasesOptions? options = null) =>
+        new(context, date, options ?? Options(), new OutboxService(context, date));
+
     public static RequestStatusService CreateStatusService(
         CmsDbContext context,
         ICurrentUser user,
@@ -86,7 +93,7 @@ internal static class TestContext
             context,
             user,
             date,
-            new CaseWriteHelper(context, date, options),
+            CreateWriter(context, date, options),
             decisionGate ?? new NoOpDecisionGate());
     }
 

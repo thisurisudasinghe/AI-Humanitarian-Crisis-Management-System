@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Cms.Application.Contracts;
 using Cms.Application.Contracts.Operations;
 using Cms.Application.Interfaces;
 using Cms.Domain.Entities.Operations;
@@ -14,14 +15,14 @@ namespace Cms.Api.Controllers;
 [Route("api/v1")]
 public sealed class OperationsController : ControllerBase
 {
-    private readonly ApplicationDbContext _db;
-    private readonly ICurrentUserService _user;
-    private readonly IAuditService _audit;
+    private readonly CmsDbContext _db;
+    private readonly ICurrentUser _user;
+    private readonly IAuditLogger _audit;
     private readonly IGeoService _geo;
     private readonly IResourceMatcher _resourceMatcher;
     private readonly IShelterRecommender _shelterMatcher;
     private readonly IVolunteerMatcher _volunteerMatcher;
-    public OperationsController(ApplicationDbContext db, ICurrentUserService user, IAuditService audit, IGeoService geo, IResourceMatcher resourceMatcher, IShelterRecommender shelterMatcher, IVolunteerMatcher volunteerMatcher)
+    public OperationsController(CmsDbContext db, ICurrentUser user, IAuditLogger audit, IGeoService geo, IResourceMatcher resourceMatcher, IShelterRecommender shelterMatcher, IVolunteerMatcher volunteerMatcher)
     { _db = db; _user = user; _audit = audit; _geo = geo; _resourceMatcher = resourceMatcher; _shelterMatcher = shelterMatcher; _volunteerMatcher = volunteerMatcher; }
 
     [HttpGet("resources/types"), Authorize(Roles = "LogisticsManager,EmergencyCoordinator,SystemAdmin")]
@@ -305,9 +306,9 @@ public sealed class OperationsController : ControllerBase
     private async Task<Cms.Domain.Entities.DecisionRecord?> ApprovedDecision(Guid id, string type, CancellationToken ct)
     {
         var decision = await _db.DecisionRecords.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct);
-        if (decision is null || decision.Outcome is not (Cms.Domain.Enums.DecisionOutcome.Approve or Cms.Domain.Enums.DecisionOutcome.Modify)) return null;
+        if (decision is null || decision.Outcome is not (Cms.Domain.Enums.DecisionOutcome.Approved or Cms.Domain.Enums.DecisionOutcome.Modified)) return null;
         var recommendation = await _db.Recommendations.AsNoTracking().FirstOrDefaultAsync(x => x.Id == decision.RecommendationId, ct);
-        if (recommendation is null || recommendation.Type != type) return null;
+        if (recommendation is null || recommendation.Type.ToString() != type) return null;
         if (string.IsNullOrWhiteSpace(decision.FinalPayloadJson)) return null;
         try
         {

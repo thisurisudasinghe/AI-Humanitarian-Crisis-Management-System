@@ -37,6 +37,7 @@ export default function NotificationsPage() {
     try {
       const result = await getInbox({ limit: 100 });
       setInbox(result);
+      window.dispatchEvent(new Event("cms:notifications-changed"));
     } catch (error) {
       setNotice({ message: errorMessage(error), tone: "error" });
     } finally {

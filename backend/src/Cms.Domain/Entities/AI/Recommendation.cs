@@ -1,4 +1,5 @@
 ﻿using Cms.Domain.Common;
+using Cms.Domain.Constants;
 
 namespace Cms.Domain.Entities;
 
@@ -15,4 +16,6 @@ public class Recommendation : BaseEntity
     public string Rationale { get; set; } = string.Empty;
 
     public string Source { get; set; } = string.Empty;
+
+    public string Status { get; set; } = RecommendationStatuses.Pending;
 }

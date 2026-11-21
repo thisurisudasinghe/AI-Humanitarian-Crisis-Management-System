@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Configuration;
+
 namespace Cms.Api.Modules;
 
 /// <summary>
@@ -6,8 +8,15 @@ namespace Cms.Api.Modules;
 /// </summary>
 public static class CasesModule
 {
-    public static IServiceCollection AddCasesModule(this IServiceCollection services)
+    public static IServiceCollection AddCasesModule(
+        this IServiceCollection services,
+        IConfiguration configuration)
     {
-        return services;
+        // Delegate to the real Developer 2 registrations. Keeping this thin API
+        // module lets Program.cs compose features without referencing each
+        // infrastructure namespace directly.
+        return Cms.Infrastructure.Cases.CasesModuleExtensions.AddCasesModule(
+            services,
+            configuration);
     }
 }
