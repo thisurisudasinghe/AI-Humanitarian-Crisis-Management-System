@@ -106,6 +106,41 @@ public sealed class OutboxEndpointTests : IClassFixture<CmsWebApplicationFactory
         Assert.True(result.TotalCount >= 2);
     }
 
+    [Fact]
+    public async Task Legacy_dead_letter_controller_uses_admin_policy_and_hides_payload()
+    {
+        await _factory.EnsureSeededAsync();
+        var message = await SeedDeadLetteredAsync();
+
+        using var citizen = await _factory.CreateAuthenticatedClientAsync(
+            CmsWebApplicationFactory.CitizenEmail);
+        Assert.Equal(
+            HttpStatusCode.Forbidden,
+            (await citizen.GetAsync("/api/v1/admin/dead-letters")).StatusCode);
+
+        using var admin = await _factory.CreateAuthenticatedClientAsync(
+            CmsWebApplicationFactory.AdminEmail);
+
+        var response = await admin.GetAsync("/api/v1/admin/dead-letters?page=1&pageSize=50");
+        response.EnsureSuccessStatusCode();
+
+        var raw = await response.Content.ReadAsStringAsync();
+        Assert.DoesNotContain("payload", raw, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("idempotencyKey", raw, StringComparison.OrdinalIgnoreCase);
+
+        var result = JsonSerializer.Deserialize<PagedResultDto<OutboxMessageDto>>(raw, JsonOptions);
+        Assert.NotNull(result);
+        Assert.Contains(result!.Items, item => item.Id == message.Id);
+
+        var missingRetry = await admin.PostAsync(
+            $"/api/v1/admin/dead-letters/{Guid.NewGuid()}/retry", null);
+        Assert.Equal(HttpStatusCode.NotFound, missingRetry.StatusCode);
+
+        var retry = await admin.PostAsync(
+            $"/api/v1/admin/dead-letters/{message.Id}/retry", null);
+        retry.EnsureSuccessStatusCode();
+    }
+
     private async Task<OutboxMessage> SeedDeadLetteredAsync()
     {
         using var scope = _factory.Services.CreateScope();

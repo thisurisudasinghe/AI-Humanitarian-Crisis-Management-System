@@ -1,70 +1,72 @@
-﻿using Cms.Domain.Enums;
-using Cms.Infrastructure.Data;
+﻿using Cms.Application.Common;
+using Cms.Application.Contracts;
+using Cms.Application.DTOs;
+using Cms.Application.DTOs.Outbox;
+using Cms.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace Cms.Api.Controllers;
 
 /// <summary>
 /// Dead-letter view and retry for the shared transactional outbox (M9/M4).
-/// Kept alongside <see cref="OutboxController"/> so the Member 3 route remains
-/// available while both modules share the same <see cref="CmsDbContext"/>.
+/// Kept alongside <see cref="OutboxController"/> so the existing admin route
+/// remains available while both modules share the transactional outbox.
 /// </summary>
 [ApiController]
-[Authorize(Roles = "SystemAdministrator")]
+[Authorize(Policy = "AdminOnly")]
 [Route("api/v1/admin/dead-letters")]
 [Produces("application/json")]
-public class DeadLetterController : ControllerBase
+public sealed class DeadLetterController : ControllerBase
 {
-    private readonly CmsDbContext _context;
+    private readonly IOutboxAdminService _outboxAdminService;
+    private readonly IAuditLogger _auditLogger;
 
-    public DeadLetterController(CmsDbContext context)
+    public DeadLetterController(
+        IOutboxAdminService outboxAdminService,
+        IAuditLogger auditLogger)
     {
-        _context = context;
+        _outboxAdminService = outboxAdminService;
+        _auditLogger = auditLogger;
     }
 
     // GET: api/v1/admin/dead-letters
     [HttpGet]
-    public async Task<IActionResult> GetDeadLetters(
+    [ProducesResponseType(typeof(PagedResultDto<OutboxMessageDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<PagedResultDto<OutboxMessageDto>>> GetDeadLetters(
+        [FromQuery] OutboxQueryDto query,
         CancellationToken cancellationToken)
     {
-        var messages = await _context.OutboxMessages
-            .AsNoTracking()
-            .Where(x => x.Status == OutboxMessageStatus.DeadLettered)
-            .OrderByDescending(x => x.CreatedAt)
-            .ToListAsync(cancellationToken);
-
-        return Ok(messages);
+        // The admin projection deliberately omits the serialized payload and
+        // the idempotency key. Never return raw OutboxMessage rows here.
+        return Ok(await _outboxAdminService.GetDeadLetteredAsync(query, cancellationToken));
     }
 
     // POST: api/v1/admin/dead-letters/{id}/retry
     [HttpPost("{id:guid}/retry")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> RetryDeadLetter(
         Guid id,
         CancellationToken cancellationToken)
     {
-        var message = await _context.OutboxMessages
-            .FirstOrDefaultAsync(
-                x => x.Id == id &&
-                     x.Status == OutboxMessageStatus.DeadLettered,
-                cancellationToken);
-
-        if (message == null)
+        var requeued = await _outboxAdminService.RetryDeadLetteredAsync(id, cancellationToken);
+        if (!requeued)
         {
             return NotFound();
         }
 
-        message.Status = OutboxMessageStatus.Pending;
-        message.RetryCount = 0;
-        message.NextRetryAt = null;
-        message.ErrorMessage = null;
+        await _auditLogger.LogAsync(
+            AuditActions.OutboxRetried,
+            "common.OutboxMessage",
+            id.ToString(),
+            new { status = "Pending" },
+            cancellationToken);
 
-        await _context.SaveChangesAsync(cancellationToken);
-
-        return Ok(new
-        {
-            message = "Message queued for retry."
-        });
+        return Ok(new { message = "Message queued for retry." });
     }
 }

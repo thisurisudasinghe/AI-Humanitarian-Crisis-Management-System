@@ -393,4 +393,31 @@ public sealed class AdminEndpointTests : IClassFixture<CmsWebApplicationFactory>
         Assert.Empty(report.RequestsByArea);
         Assert.Empty(report.SheltersByArea);
     }
+
+    [Fact]
+    public async Task Admin_cannot_remove_own_admin_role_or_deactivate_self()
+    {
+        await _factory.EnsureSeededAsync();
+        var adminAuth = await _factory.LoginAsync(CmsWebApplicationFactory.AdminEmail);
+        using var admin = await _factory.CreateAuthenticatedClientAsync(CmsWebApplicationFactory.AdminEmail);
+
+        var removeOwnAdmin = await admin.PutAsJsonAsync(
+            $"/api/v1/users/{adminAuth.UserId}/roles",
+            new ReplaceRolesRequestDto { Roles = [RoleNames.Citizen] });
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, removeOwnAdmin.StatusCode);
+
+        var deactivateSelf = await admin.PatchAsJsonAsync(
+            $"/api/v1/users/{adminAuth.UserId}",
+            new UpdateUserRequestDto { Status = UserStatus.Inactive });
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, deactivateSelf.StatusCode);
+
+        var users = await admin.GetAsync(
+            $"/api/v1/users?search={Uri.EscapeDataString(CmsWebApplicationFactory.AdminEmail)}");
+        users.EnsureSuccessStatusCode();
+        var page = await users.Content.ReadFromJsonAsync<PagedResultDto<UserSummaryDto>>(JsonOptions);
+        Assert.NotNull(page);
+        var stillAdmin = Assert.Single(page!.Items);
+        Assert.True(stillAdmin.IsActive);
+        Assert.Contains(RoleNames.SystemAdmin, stillAdmin.Roles);
+    }
 }
