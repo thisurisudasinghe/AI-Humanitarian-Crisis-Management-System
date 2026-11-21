@@ -209,6 +209,9 @@ public class EmailNotificationHandlerTests
                 Cms.Infrastructure.Services.DateTimeService>();
             services.AddSingleton<INotificationSender>(
                 new RecordingSender(failingSender));
+            services.AddScoped<InAppNotificationChannel>();
+            services.AddScoped<EmailNotificationChannel>();
+            services.AddScoped<INotificationChannelFactory, NotificationChannelFactory>();
             services.AddScoped<EmailNotificationHandler>();
 
             _provider = services.BuildServiceProvider();

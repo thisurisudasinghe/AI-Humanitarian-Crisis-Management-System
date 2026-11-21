@@ -28,6 +28,11 @@ public class AnnouncementConfiguration : IEntityTypeConfiguration<Announcement>
             .IsRequired()
             .HasMaxLength(50);
 
+        builder.Property(x => x.Language)
+            .IsRequired()
+            .HasMaxLength(10)
+            .HasDefaultValue("en");
+
         builder.Property(x => x.Status)
             .HasConversion<string>()
             .IsRequired()

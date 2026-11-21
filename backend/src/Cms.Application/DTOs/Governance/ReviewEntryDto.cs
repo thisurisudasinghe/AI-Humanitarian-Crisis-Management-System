@@ -29,6 +29,9 @@ public class ReviewEntryDto
 
     public DateTime? DecidedAt { get; set; }
 
+    /// <summary>Final request status at the time of review, if the target is a request.</summary>
+    public string FinalRequestStatus { get; set; } = string.Empty;
+
     /// <summary>True when the human modified or rejected the recommendation.</summary>
     public bool IsOverride { get; set; }
 }

@@ -15,7 +15,11 @@ import {
 } from "@/components/ui";
 import { formatDate } from "@/lib/admin";
 import { errorMessage } from "@/lib/api";
-import { getDecisionReviews, type ReviewEntryDto } from "@/lib/decisions";
+import {
+  DecisionOutcomes,
+  getDecisionReviews,
+  type ReviewEntryDto
+} from "@/lib/decisions";
 import type { CmsPagedResult } from "@/lib/admin";
 import { StaffRoles } from "@/lib/roles";
 
@@ -32,6 +36,11 @@ function isGuid(value: string): boolean {
 function confidencePercent(value: number): number {
   const scaled = value <= 1 ? value * 100 : value;
   return Math.round(Math.min(100, Math.max(0, scaled)));
+}
+
+/** Date inputs are local calendar dates; the review feed takes UTC bounds. */
+function toUtcBound(value: string, endOfDay: boolean): string {
+  return `${value}T${endOfDay ? "23:59:59" : "00:00:00"}Z`;
 }
 
 function JsonSnippet({ value, label }: { value?: string | null; label: string }) {
@@ -61,6 +70,14 @@ function JsonSnippet({ value, label }: { value?: string | null; label: string })
 export default function DecisionsReviewPage() {
   const [crisisInput, setCrisisInput] = useState("");
   const [crisisId, setCrisisId] = useState("");
+  const [fromInput, setFromInput] = useState("");
+  const [toInput, setToInput] = useState("");
+  const [outcomeInput, setOutcomeInput] = useState("");
+  const [filters, setFilters] = useState({
+    from: "",
+    to: "",
+    outcome: ""
+  });
   const [page, setPage] = useState(1);
   const [result, setResult] = useState<CmsPagedResult<ReviewEntryDto> | null>(null);
   const [loading, setLoading] = useState(true);
@@ -71,13 +88,22 @@ export default function DecisionsReviewPage() {
     setNotice(null);
 
     try {
-      setResult(await getDecisionReviews({ crisisId, page, pageSize }));
+      setResult(
+        await getDecisionReviews({
+          crisisId,
+          page,
+          pageSize,
+          from: filters.from ? toUtcBound(filters.from, false) : undefined,
+          to: filters.to ? toUtcBound(filters.to, true) : undefined,
+          outcome: filters.outcome || undefined
+        })
+      );
     } catch (error) {
       setNotice({ message: errorMessage(error), tone: "error" });
     } finally {
       setLoading(false);
     }
-  }, [crisisId, page]);
+  }, [crisisId, filters, page]);
 
   useEffect(() => {
     void load();
@@ -91,17 +117,57 @@ export default function DecisionsReviewPage() {
       return;
     }
 
-    const next = crisisInput.trim();
+    const nextCrisisId = crisisInput.trim();
+    const nextFrom = fromInput.trim();
+    const nextTo = toInput.trim();
+    const nextOutcome = outcomeInput;
+
+    if (nextFrom && nextTo && nextFrom > nextTo) {
+      setNotice({ message: "The start date must be before the end date.", tone: "error" });
+      return;
+    }
+
     setPage(1);
     setNotice(null);
 
-    if (next === crisisId) {
+    const unchanged =
+      nextCrisisId === crisisId &&
+      nextFrom === filters.from &&
+      nextTo === filters.to &&
+      nextOutcome === filters.outcome;
+
+    if (unchanged) {
       void load();
       return;
     }
 
-    setCrisisId(next);
+    setCrisisId(nextCrisisId);
+    setFilters({ from: nextFrom, to: nextTo, outcome: nextOutcome });
   }
+
+  // The date/outcome bounds are sent to the review feed. Older feeds ignore
+  // them, so narrow the returned page as well until the route adopts them.
+  const visibleRows = (result?.items ?? []).filter((entry) => {
+    if (filters.outcome && entry.outcome !== filters.outcome) {
+      return false;
+    }
+
+    if (!filters.from && !filters.to) {
+      return true;
+    }
+
+    const decidedAt = entry.decidedAt ? Date.parse(entry.decidedAt) : Number.NaN;
+
+    if (filters.from && (!Number.isFinite(decidedAt) || decidedAt < Date.parse(toUtcBound(filters.from, false)))) {
+      return false;
+    }
+
+    if (filters.to && (!Number.isFinite(decidedAt) || decidedAt > Date.parse(toUtcBound(filters.to, true)))) {
+      return false;
+    }
+
+    return true;
+  });
 
   const columns: Column<ReviewEntryDto>[] = [
     {
@@ -148,6 +214,13 @@ export default function DecisionsReviewPage() {
       )
     },
     {
+      key: "finalRequestStatus",
+      header: "Final request status",
+      render: (entry) => (
+        <span>{entry.finalRequestStatus ?? "—"}</span>
+      )
+    },
+    {
       key: "reason",
       header: "Reason & final payload",
       render: (entry) => (
@@ -176,7 +249,8 @@ export default function DecisionsReviewPage() {
           <p>POST-INCIDENT REVIEW</p>
           <h1>AI output vs human decisions</h1>
           <span>
-            Append-only review of every recommendation and the officer outcome recorded against it.
+            Append-only review of every recommendation, the officer outcome and the final request
+            status recorded against it.
           </span>
         </div>
         <div>
@@ -196,7 +270,7 @@ export default function DecisionsReviewPage() {
         <div className="card-heading">
           <div>
             <h3>Decision history</h3>
-            <p>From the decision review feed</p>
+            <p>From the post-incident review feed</p>
           </div>
           <Button variant="secondary" onClick={() => void load()} disabled={loading}>
             Refresh
@@ -210,8 +284,35 @@ export default function DecisionsReviewPage() {
             value={crisisInput}
             onChange={(event) => setCrisisInput(event.target.value)}
           />
+          <Input
+            label="From date (optional)"
+            type="date"
+            value={fromInput}
+            onChange={(event) => setFromInput(event.target.value)}
+          />
+          <Input
+            label="To date (optional)"
+            type="date"
+            value={toInput}
+            onChange={(event) => setToInput(event.target.value)}
+          />
+          <label className="field">
+            <span className="field__label">Outcome (optional)</span>
+            <select
+              className="input"
+              value={outcomeInput}
+              onChange={(event) => setOutcomeInput(event.target.value)}
+            >
+              <option value="">Any outcome</option>
+              {DecisionOutcomes.map((outcome) => (
+                <option key={outcome} value={outcome}>
+                  {outcome}
+                </option>
+              ))}
+            </select>
+          </label>
           <Button type="submit" disabled={loading}>
-            Apply filter
+            Apply filters
           </Button>
         </form>
 
@@ -221,7 +322,7 @@ export default function DecisionsReviewPage() {
           ) : (
             <ServerTable
               columns={columns}
-              rows={result?.items ?? []}
+              rows={visibleRows}
               page={result?.page ?? page}
               pageSize={result?.pageSize ?? pageSize}
               totalCount={result?.total ?? 0}

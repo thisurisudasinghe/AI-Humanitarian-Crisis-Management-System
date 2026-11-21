@@ -50,6 +50,15 @@ public static class RecommendationSources
     public static readonly string[] All = { Ai, Rule };
 }
 
+/// <summary>Lifecycle values for the required ai.recommendations.Status column.</summary>
+public static class RecommendationStatuses
+{
+    public const string Pending = "Pending";
+    public const string Decided = "Decided";
+
+    public static readonly string[] All = { Pending, Decided };
+}
+
 public static class OutboxTypes
 {
     public const string RequestSubmitted = "Request.Submitted";

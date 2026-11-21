@@ -74,7 +74,10 @@ public class RecommendationService : IRecommendationService
             PayloadJson = request.PayloadJson,
             Confidence = request.Confidence,
             Rationale = request.Rationale,
-            Source = request.Source
+            Source = request.Source,
+            Status = string.IsNullOrWhiteSpace(request.Status)
+                ? RecommendationStatuses.Pending
+                : request.Status
         };
 
         await _context.Recommendations.AddAsync(recommendation, cancellationToken);

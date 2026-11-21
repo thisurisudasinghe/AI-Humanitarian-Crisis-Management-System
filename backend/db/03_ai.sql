@@ -41,6 +41,16 @@ BEGIN
 END;
 GO
 
+-- Existing databases were created before the required Status column existed.
+-- Add it without replacing the table or its data.
+IF COL_LENGTH(N'[ai].[recommendations]', N'status') IS NULL
+BEGIN
+    ALTER TABLE [ai].[recommendations]
+        ADD [status] nvarchar(30) NOT NULL
+            CONSTRAINT [DF_recommendations_status] DEFAULT (N'Pending');
+END;
+GO
+
 -- ----------------------------------------------------------------------------
 -- ai.decision_records
 -- ----------------------------------------------------------------------------
@@ -61,6 +71,19 @@ BEGIN
             FOREIGN KEY ([recommendation_id])
             REFERENCES [ai].[recommendations] ([id]) ON DELETE NO ACTION
     );
+END;
+GO
+
+-- Human decisions are append-only. The service also prevents a second decision,
+-- but this trigger makes accidental UPDATE/DELETE code impossible at the DB edge.
+CREATE OR ALTER TRIGGER [ai].[TR_decision_records_immutable]
+    ON [ai].[decision_records]
+    AFTER UPDATE, DELETE
+AS
+BEGIN
+    SET NOCOUNT ON;
+    RAISERROR(N'Decision records are immutable; record a new decision instead.', 16, 1);
+    ROLLBACK TRANSACTION;
 END;
 GO
 
@@ -87,6 +110,15 @@ BEGIN
         [updated_at] datetime2 NULL,
         CONSTRAINT [PK_announcements] PRIMARY KEY ([id])
     );
+END;
+GO
+
+-- Existing announcements need the language used for multilingual drafts.
+IF COL_LENGTH(N'[ai].[announcements]', N'language') IS NULL
+BEGIN
+    ALTER TABLE [ai].[announcements]
+        ADD [language] nvarchar(10) NOT NULL
+            CONSTRAINT [DF_announcements_language] DEFAULT (N'en');
 END;
 GO
 

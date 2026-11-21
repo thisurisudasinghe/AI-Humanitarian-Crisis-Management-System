@@ -3,7 +3,6 @@ using System.Text.Json.Serialization;
 using Cms.Application.Contracts;
 using Cms.Application.DTOs.Notifications;
 using Cms.Application.Interfaces;
-using Cms.Domain.Constants;
 using Cms.Domain.Entities;
 using Cms.Domain.Enums;
 using Cms.Infrastructure.Data;
@@ -29,18 +28,18 @@ public sealed class EmailNotificationHandler : IOutboxHandler
         };
 
     private readonly CmsDbContext _db;
-    private readonly INotificationSender _sender;
+    private readonly INotificationChannelFactory _channelFactory;
     private readonly IDateTimeService _dateTimeService;
     private readonly ILogger<EmailNotificationHandler> _logger;
 
     public EmailNotificationHandler(
         CmsDbContext db,
-        INotificationSender sender,
+        INotificationChannelFactory channelFactory,
         IDateTimeService dateTimeService,
         ILogger<EmailNotificationHandler> logger)
     {
         _db = db;
-        _sender = sender;
+        _channelFactory = channelFactory;
         _dateTimeService = dateTimeService;
         _logger = logger;
     }
@@ -78,51 +77,36 @@ public sealed class EmailNotificationHandler : IOutboxHandler
         }
 
         var (subject, body) = NotificationTemplates.Render(payload);
+        var channels = _channelFactory.GetChannels(payload.Channel);
 
-        var channel = payload.Channel?.Trim();
-        var deliverInApp = string.IsNullOrEmpty(channel) ||
-                           string.Equals(channel, NotificationChannels.InApp, StringComparison.OrdinalIgnoreCase);
-        var deliverEmail = string.IsNullOrEmpty(channel) ||
-                           string.Equals(channel, NotificationChannels.Email, StringComparison.OrdinalIgnoreCase);
-
-        if (!deliverInApp && !deliverEmail)
+        foreach (var channel in channels)
         {
-            throw new InvalidOperationException(
-                $"Notification outbox message {message.Id} has unsupported channel '{payload.Channel}'.");
-        }
-
-        if (deliverInApp)
-        {
-            await UpsertAsync(
-                message,
-                user,
-                payload,
-                NotificationChannel.InApp,
-                subject,
-                body,
-                cancellationToken);
-        }
-
-        if (deliverEmail)
-        {
-            if (!string.IsNullOrWhiteSpace(user.EmailEncrypted))
-            {
-                await UpsertAsync(
-                    message,
-                    user,
-                    payload,
-                    NotificationChannel.Email,
-                    subject,
-                    body,
-                    cancellationToken);
-            }
-            else
+            if (channel.Channel == NotificationChannel.Email &&
+                string.IsNullOrWhiteSpace(user.EmailEncrypted))
             {
                 _logger.LogInformation(
                     "Notification {OutboxMessageId} has no email channel: recipient {RecipientUserId} has no address.",
                     message.Id,
                     user.Id);
+                continue;
             }
+
+            var notification = await UpsertAsync(
+                message,
+                user,
+                payload,
+                channel.Channel,
+                subject,
+                body,
+                cancellationToken);
+
+            if (notification.Status == NotificationStatus.Sent)
+            {
+                // A processor retry must never send the same event twice.
+                continue;
+            }
+
+            await channel.DeliverAsync(notification, cancellationToken);
         }
 
         await MarkAnnouncementDispatchedAsync(message, cancellationToken);
@@ -169,7 +153,7 @@ public sealed class EmailNotificationHandler : IOutboxHandler
         await _db.SaveChangesAsync(cancellationToken);
     }
 
-    private async Task UpsertAsync(
+    private async Task<Notification> UpsertAsync(
         OutboxMessage message,
         User user,
         NotificationPayloadDto payload,
@@ -184,13 +168,6 @@ public sealed class EmailNotificationHandler : IOutboxHandler
                     candidate.OutboxMessageId == message.Id &&
                     candidate.Channel == channel,
                 cancellationToken);
-
-        if (notification?.Status == NotificationStatus.Sent)
-        {
-            // The event was already delivered. A processor retry is a no-op so a
-            // duplicate email is never sent (FR-COM-07).
-            return;
-        }
 
         var now = _dateTimeService.UtcNow;
 
@@ -214,43 +191,11 @@ public sealed class EmailNotificationHandler : IOutboxHandler
 
         notification.User = user;
         notification.UpdatedAt = now;
+        notification.Subject = subject;
+        notification.Body = body;
 
-        if (channel == NotificationChannel.InApp)
-        {
-            notification.Status = NotificationStatus.Sent;
-            notification.SentAt = now;
-            await _db.SaveChangesAsync(cancellationToken);
-            return;
-        }
-
-        try
-        {
-            await _sender.SendAsync(notification, cancellationToken);
-
-            notification.Status = NotificationStatus.Sent;
-            notification.SentAt = now;
-            notification.UpdatedAt = _dateTimeService.UtcNow;
-
-            await _db.SaveChangesAsync(cancellationToken);
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (Exception exception)
-        {
-            notification.Status = NotificationStatus.Failed;
-            notification.SentAt = null;
-            notification.UpdatedAt = _dateTimeService.UtcNow;
-
-            // Persist the failed delivery before rethrowing, because the outbox
-            // processor discards the handler scope without saving on failure.
-            await _db.SaveChangesAsync(cancellationToken);
-
-            throw new InvalidOperationException(
-                $"Notification {notification.Id} could not be delivered over {channel}.",
-                exception);
-        }
+        await _db.SaveChangesAsync(cancellationToken);
+        return notification;
     }
 
     private static NotificationPayloadDto Deserialize(OutboxMessage message)

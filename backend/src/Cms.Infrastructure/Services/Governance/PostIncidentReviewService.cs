@@ -24,10 +24,15 @@ public sealed class PostIncidentReviewService : IPostIncidentReviewService
         Guid? crisisId = null,
         int page = 1,
         int pageSize = 20,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        DateTime? fromUtc = null,
+        DateTime? toUtc = null,
+        string? outcome = null)
     {
         page = Math.Max(1, page);
         pageSize = Math.Clamp(pageSize, 1, 100);
+
+        var outcomeFilter = string.IsNullOrWhiteSpace(outcome) ? null : outcome.Trim();
 
         var query =
             from recommendation in _context.Recommendations.AsNoTracking()
@@ -37,9 +42,14 @@ public sealed class PostIncidentReviewService : IPostIncidentReviewService
             join decision in _context.DecisionRecords.AsNoTracking()
                 on recommendation.Id equals decision.RecommendationId into decisions
             from decision in decisions.DefaultIfEmpty()
-            where crisisId == null ||
-                  (request != null && request.CrisisId == crisisId.Value) ||
-                  recommendation.TargetId == crisisId.Value
+            where
+                (crisisId == null ||
+                 (request != null && request.CrisisId == crisisId.Value) ||
+                 recommendation.TargetId == crisisId.Value) &&
+                (fromUtc == null || recommendation.CreatedAt >= fromUtc.Value) &&
+                (toUtc == null || recommendation.CreatedAt <= toUtc.Value) &&
+                (outcomeFilter == null ||
+                 (decision != null && decision.Outcome.ToString() == outcomeFilter))
             orderby recommendation.CreatedAt descending
             select new ReviewEntryDto
             {
@@ -56,6 +66,7 @@ public sealed class PostIncidentReviewService : IPostIncidentReviewService
                 FinalPayloadJson = decision == null ? null : decision.FinalPayloadJson,
                 DecidedBy = decision == null ? null : decision.DecidedByUserId,
                 DecidedAt = decision == null ? null : decision.DecidedAt,
+                FinalRequestStatus = request == null ? string.Empty : request.Status.ToString(),
                 IsOverride = decision != null &&
                     (decision.Outcome == DecisionOutcome.Modified ||
                      decision.Outcome == DecisionOutcome.Rejected)

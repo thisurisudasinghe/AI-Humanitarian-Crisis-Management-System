@@ -4,8 +4,10 @@ using Cms.Application.Governance;
 using Cms.Application.Interfaces;
 using Cms.Application.Interfaces.AI;
 using Cms.Application.Interfaces.Governance;
+using Cms.Domain.Constants;
 using Cms.Domain.Entities;
 using Cms.Domain.Enums;
+using Cms.Domain.Enums.Cases;
 using Cms.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using CurrentUserContract = Cms.Application.Contracts.ICurrentUser;
@@ -24,19 +26,22 @@ public sealed class DecisionService : Cms.Application.Interfaces.Governance.IDec
     private readonly CurrentUserContract _currentUser;
     private readonly IAuditLogger _auditLogger;
     private readonly IDateTimeService _dateTimeService;
+    private readonly IRequestStatusService _requestStatusService;
 
     public DecisionService(
         CmsDbContext context,
         IRecommendationService recommendations,
         CurrentUserContract currentUser,
         IAuditLogger auditLogger,
-        IDateTimeService dateTimeService)
+        IDateTimeService dateTimeService,
+        IRequestStatusService requestStatusService)
     {
         _context = context;
         _recommendations = recommendations;
         _currentUser = currentUser;
         _auditLogger = auditLogger;
         _dateTimeService = dateTimeService;
+        _requestStatusService = requestStatusService;
     }
 
     public async Task<DecisionDto> RecordAsync(
@@ -105,6 +110,30 @@ public sealed class DecisionService : Cms.Application.Interfaces.Governance.IDec
         };
 
         await _context.DecisionRecords.AddAsync(decision, cancellationToken);
+        await _context.SaveChangesAsync(cancellationToken);
+
+        recommendation.Status = RecommendationStatuses.Decided;
+        recommendation.UpdatedAt = now;
+
+        var advancesRequest =
+            outcome is DecisionOutcome.Approved or DecisionOutcome.Modified &&
+            recommendation.Type is RecommendationTypes.ResourceMatch or RecommendationTypes.ShelterMatch;
+
+        if (advancesRequest)
+        {
+            var targetRequest = await _context.Requests
+                .FirstOrDefaultAsync(r => r.Id == recommendation.TargetId, cancellationToken);
+
+            if (targetRequest?.Status == RequestStatus.Recommended)
+            {
+                await _requestStatusService.TransitionAsync(
+                    targetRequest.Id,
+                    RequestStatus.Approved,
+                    $"Human decision {decision.Id} ({outcome}) approved the {recommendation.Type} recommendation.",
+                    cancellationToken);
+            }
+        }
+
         await _context.SaveChangesAsync(cancellationToken);
 
         await _auditLogger.LogAsync(

@@ -24,7 +24,9 @@ public static class AiModule
         services.AddScoped<RuleBasedProvider>();
         services.AddScoped<LlmProvider>();
         services.AddScoped<IAiProvider, AiProviderSelector>();
+        services.AddScoped<IAiChatService, AiChatService>();
         services.AddScoped<IRecommendationService, RecommendationService>();
+        services.AddScoped<IMatchRecommendationService, MatchRecommendationService>();
         services.AddScoped<Cms.Application.Interfaces.AI.IDecisionService,
             Cms.Infrastructure.Services.AI.DecisionService>();
 

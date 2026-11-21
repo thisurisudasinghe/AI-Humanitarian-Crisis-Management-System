@@ -125,5 +125,14 @@ public class CmsDbContext : DbContext
                     "Audit events are append-only and cannot be modified or deleted.");
             }
         }
+
+        foreach (var entry in ChangeTracker.Entries<DecisionRecord>())
+        {
+            if (entry.State is EntityState.Modified or EntityState.Deleted)
+            {
+                throw new InvalidOperationException(
+                    "Decision records are immutable and cannot be modified or deleted.");
+            }
+        }
     }
 }

@@ -1,4 +1,6 @@
-﻿namespace Cms.Application.DTOs.AI;
+﻿using Cms.Domain.Constants;
+
+namespace Cms.Application.DTOs.AI;
 
 public class CreateRecommendationRequest
 {
@@ -13,4 +15,6 @@ public class CreateRecommendationRequest
     public string Rationale { get; set; } = string.Empty;
 
     public string Source { get; set; } = string.Empty;
+
+    public string Status { get; set; } = RecommendationStatuses.Pending;
 }

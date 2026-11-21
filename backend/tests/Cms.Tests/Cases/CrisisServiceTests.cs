@@ -5,6 +5,7 @@ using Cms.Domain.Enums.Cases;
 using Cms.Domain.Exceptions;
 using Cms.Infrastructure.Cases;
 using Cms.Infrastructure.Data;
+using Cms.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 
 namespace Cms.Tests.Cases;
@@ -160,6 +161,6 @@ public class CrisisServiceTests
             user,
             date,
             new OverduePolicy(options),
-            new CaseWriteHelper(context, date, options));
+            new CaseWriteHelper(context, date, options, new OutboxService(context, date)));
     }
 }

@@ -25,16 +25,23 @@ import { RoleNames, StaffRoles } from "@/lib/roles";
 type Notice = { message: string; tone: "error" | "success" } | null;
 type Filters = { type: string; targetId: string };
 
-// Mirrors Cms.Application.Governance.DecisionRolePolicy.RolesFor across all
-// recommendation types so the UI does not hide decisions the API would accept.
-const DecisionRoles = [
-  RoleNames.EmergencyCoordinator,
-  RoleNames.CaseManager,
-  RoleNames.LogisticsManager,
-  RoleNames.ShelterAdmin,
-  RoleNames.VolunteerCoordinator,
-  RoleNames.SystemAdmin
-];
+// Mirrors Cms.Application.Governance.DecisionRolePolicy.RolesFor. SystemAdmin
+// is deliberately not a decider; only the roles below can record a decision.
+function decisionRolesFor(type: string): readonly string[] {
+  switch (type) {
+    case "ResourceMatch":
+      return [RoleNames.LogisticsManager, RoleNames.EmergencyCoordinator];
+    case "ShelterMatch":
+      return [RoleNames.ShelterAdmin, RoleNames.EmergencyCoordinator];
+    case "VolunteerMatch":
+      return [RoleNames.VolunteerCoordinator, RoleNames.EmergencyCoordinator];
+    case "Announcement":
+    case "CloseCase":
+      return [RoleNames.EmergencyCoordinator];
+    default:
+      return [RoleNames.CaseManager, RoleNames.EmergencyCoordinator];
+  }
+}
 
 const guidPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -75,7 +82,6 @@ function PayloadDetails({ value }: { value?: string | null }) {
 
 export default function AiDecisionSupportPage() {
   const { can } = useAuth();
-  const canDecide = can(DecisionRoles);
   const [typeFilter, setTypeFilter] = useState("");
   const [targetFilter, setTargetFilter] = useState("");
   const [filters, setFilters] = useState<Filters>({ type: "", targetId: "" });
@@ -196,7 +202,7 @@ export default function AiDecisionSupportPage() {
   async function submitDecision(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!selected || !canDecide) {
+    if (!selected || !can(decisionRolesFor(selected.type))) {
       return;
     }
 
@@ -263,7 +269,10 @@ export default function AiDecisionSupportPage() {
             full history stays reviewable.
           </span>
         </div>
-        <div>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <Link className="btn btn-outline" href="/operations/ai/chat">
+            <Icon name="brain" /> FAQ chat
+          </Link>
           <Link className="btn btn-outline" href="/operations/decisions">
             <Icon name="file" /> Decision history
           </Link>
@@ -415,7 +424,7 @@ export default function AiDecisionSupportPage() {
               <PayloadDetails value={selected.payloadJson} />
             </div>
 
-            {canDecide ? (
+            {can(decisionRolesFor(selected.type)) ? (
               <form onSubmit={submitDecision} style={{ padding: "0 22px 20px" }}>
                 <label className="field">
                   <span className="field__label">Decision</span>
@@ -472,8 +481,9 @@ export default function AiDecisionSupportPage() {
               </form>
             ) : (
               <p className="metric__label" style={{ padding: "0 22px 20px" }}>
-                Your role can review recommendations, but only an Emergency Coordinator,
-                Case Manager or System Admin can record a decision.
+                Your role can review recommendations. AI advice never performs critical
+                actions; only the authorized human role for this recommendation type can
+                record a decision.
               </p>
             )}
 
@@ -531,13 +541,13 @@ export default function AiDecisionSupportPage() {
           <div>
             <span>
               <b>Advisory only</b>
-              <i>AI output never triggers a response on its own.</i>
+              <i>AI advice never performs critical actions or records a decision.</i>
             </span>
           </div>
           <div>
             <span>
               <b>Named approver</b>
-              <i>An authorized officer approves or rejects each recommendation.</i>
+              <i>Only authorized human roles make and record decisions.</i>
             </span>
           </div>
           <div>

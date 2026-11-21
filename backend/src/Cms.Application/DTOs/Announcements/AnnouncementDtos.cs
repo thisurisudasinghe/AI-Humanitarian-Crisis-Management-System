@@ -23,6 +23,9 @@ public class CreateAnnouncementRequest
 
     public string Channel { get; set; } = "InApp";
 
+    /// <summary>Template language for the draft. English and Spanish are seeded.</summary>
+    public string Language { get; set; } = "en";
+
     /// <summary>Optional client key; a generated one is used when omitted.</summary>
     public string? IdempotencyKey { get; set; }
 }
@@ -48,6 +51,8 @@ public class AnnouncementDto
     public AnnouncementAudienceDto Audience { get; set; } = new();
 
     public string Channel { get; set; } = string.Empty;
+
+    public string Language { get; set; } = "en";
 
     public string Status { get; set; } = string.Empty;
 
