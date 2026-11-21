@@ -4,6 +4,8 @@
 **Task:** D2-13 — evidence-based usability testing (NFR-USA-01..04)  
 **Status:** **Plan only. No participants have been recruited or tested. All results are blank.**
 
+> **Implementation note (not usability evidence):** Source-level accessibility/usability changes were made in DEV2-owned seams: controlled crisis status selection, queue filter debounce/reset and `crisisId`, `ReasonDialog` Escape/focus handling and focus return, public cross-links, mutually exclusive report status buckets, persisted free-text address with optional coordinates, and removal of unsupported contact-field copy. `frontend/` typecheck and build passed using `C:\Program Files\nodejs\npm.cmd`; no usability session, keyboard-only run, 360 px check, screenshot or satisfaction score was collected, so every result cell below remains blank.
+
 ---
 
 ## 1. Objective
@@ -15,7 +17,7 @@ Evaluate whether representative users can complete the core DEV2 flows — submi
 - errors and severity;
 - participant satisfaction and confusion points.
 
-Testing must focus on the existing DEV2 implementation and APIs. It must not assume the unfinished frontend pages are already integrated.
+Testing must focus on the existing DEV2 implementation and APIs. The active `frontend/` seams are implemented and pass typecheck/build; the separate `web/` pages under the allowed DEV2 paths have not been built here, and M1 navigation/runtime wiring is not confirmed.
 
 ---
 
@@ -39,11 +41,11 @@ Use anonymised participant codes only. Do not collect names, contact details or 
 
 | Constraint | Evidence | Effect on the session |
 |---|---|---|
-| DEV2 web pages exist but are not connected to M1's SAFEWAY navigation or build. | `web/app/(public)`, `web/app/(citizen)`, `web/app/(coordinator)`, `web/components/cases`, `frontend/lib/crisis.ts:42-54` | Until M1 approves navigation and the `develop` web scaffold is available, run tasks against the API plus `postman/dev2-cases.json`, and record the UI/API handoff as a finding. |
-| Runtime Cases DI is not wired in startup. | `backend/src/Cms.Api/Modules/CasesModule.cs:9-12`, `backend/src/Cms.Infrastructure/Cases/CasesModuleExtensions.cs:16-54` | Cases controller activation fails until Member 1 calls `AddCasesModule`; record as a blocker and attribute to integration, not to the participant. |
+| DEV2 `web/` pages exist but M1 SAFEWAY navigation and a `web/` build environment are not confirmed. The active `frontend/` seams are implemented and pass typecheck/build. | `web/app/(public)`, `web/app/(citizen)`, `web/app/(coordinator)`, `web/components/cases`, `frontend/lib/crisis.ts`, `frontend/components/safeway/ReportFlow.tsx` | Until M1 confirms navigation and a `web/` build, run tasks against the API plus `postman/dev2-cases.json` or the built `frontend/` seam, and record the UI/API handoff as a finding. |
+| Runtime Cases DI is source-wired through `CasesModule` and `ModuleRegistration`, but has not been confirmed in a clean API run. | `backend/src/Cms.Api/Modules/CasesModule.cs:11-21`, `backend/src/Cms.Api/Modules/ModuleRegistration.cs:17-20`, `backend/src/Cms.Infrastructure/Cases/CasesModuleExtensions.cs:21-60` | Verify controller activation before the session. Record a startup failure as an integration issue, not as a participant result. |
 | Public alerts endpoint exists and is anonymous. | `backend/src/Cms.Api/Controllers/PublicController.cs:19-30` | Task 4 can be tested through the API or a minimal public page once available. |
 | Map components live in Member 4's `web/` app. | `web/components/map/MapPicker.tsx`, `web/components/map/MapView.tsx` | Do not modify them. DEV2 pages import them read-only with a permanent lat/lng fallback. Record any need for shared map access as a cross-member finding. |
-| Web scaffold and form libraries are Member 1/Member 4 owned. | `develop:web/package.json`, `develop:web/lib/api.ts` | DEV2 pages use native accessible validation because React Hook Form/Zod are not declared. No usability session should claim a web build pass until the scaffold and navigation are integrated. |
+| `web/` scaffold and form libraries are Member 1/Member 4 owned; `frontend/` dependencies are installed. | `web/package.json`, `frontend/package.json`, `web/components/cases` | DEV2 `web/` pages use native accessible validation because React Hook Form/Zod are not declared. `frontend/` typecheck/build passed with `C:\Program Files\nodejs\npm.cmd`; no `web/` build claim is made because `web/node_modules` is absent. |
 
 **Environment / build record (complete before the first session)**
 

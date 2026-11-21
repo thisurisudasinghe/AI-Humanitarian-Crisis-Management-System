@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { casesApi, type ServiceCentre, type ShelterSummary } from "../../../components/cases/casesApi";
@@ -56,6 +57,10 @@ export default function ServiceCentresPage() {
   return (
     <div>
       <h1>Service centres and approved shelters</h1>
+      <p>
+        <Link href="/alerts">Read public alerts</Link> ·{" "}
+        <Link href="/requests/new">Request assistance</Link>
+      </p>
       {loading ? <LoadingState /> : null}
       {error ? <ErrorState message={error} /> : null}
       {!loading && markers.length === 0 ? (

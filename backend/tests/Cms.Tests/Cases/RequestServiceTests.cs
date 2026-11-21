@@ -42,6 +42,7 @@ public class RequestServiceTests
             Description = "Need food assistance",
             Lat = 6.9m,
             Lng = 79.9m,
+            Address = "Harbour Ward, Colombo",
             HouseholdSize = 4,
             AccessibilityNeeds = "Wheelchair access"
         });
@@ -49,6 +50,7 @@ public class RequestServiceTests
         var request = await context.Set<Request>().SingleAsync(r => r.Id == id);
         Assert.Equal(RequestStatus.Submitted, request.Status);
         Assert.Equal(now, request.SubmittedAt);
+        Assert.Equal("Harbour Ward, Colombo", request.Address);
         Assert.NotEqual("Wheelchair access", request.AccessibilityNeeds);
         Assert.Equal("Wheelchair access", protector.Unprotect(request.AccessibilityNeeds));
 
@@ -59,6 +61,55 @@ public class RequestServiceTests
         Assert.Equal(id, outbox.EntityId);
         Assert.Equal($"Request.Submitted:{id}:1", outbox.IdempotencyKey);
         Assert.Contains("requestId", outbox.Payload);
+
+        var detail = await service.GetDetailAsync(id);
+        Assert.NotNull(detail);
+        Assert.Equal("Harbour Ward, Colombo", detail!.Address);
+    }
+
+    [Fact]
+    public async Task Submit_rejects_undefined_category_and_urgency()
+    {
+        using var context = TestContext.Create();
+        var service = CreateService(context, new FakeCurrentUser(), DateTime.UtcNow);
+
+        var categoryError = await Assert.ThrowsAsync<ValidationException>(() =>
+            service.SubmitAsync(new CreateRequestDto
+            {
+                Category = (Category)999,
+                Urgency = Urgency.High,
+                Description = "Undefined category value"
+            }));
+        Assert.Equal("INVALID_CATEGORY", categoryError.Code);
+
+        var urgencyError = await Assert.ThrowsAsync<ValidationException>(() =>
+            service.SubmitAsync(new CreateRequestDto
+            {
+                Category = Category.Food,
+                Urgency = (Urgency)999,
+                Description = "Undefined urgency value"
+            }));
+        Assert.Equal("INVALID_URGENCY", urgencyError.Code);
+        Assert.Empty(await context.Set<Request>().ToListAsync());
+    }
+
+    [Fact]
+    public async Task Submit_rejects_preexisting_evidence_attachment_ids()
+    {
+        using var context = TestContext.Create();
+        var service = CreateService(context, new FakeCurrentUser(), DateTime.UtcNow);
+
+        var error = await Assert.ThrowsAsync<ValidationException>(() =>
+            service.SubmitAsync(new CreateRequestDto
+            {
+                Category = Category.Food,
+                Urgency = Urgency.High,
+                Description = "Evidence supplied before the request exists",
+                EvidenceAttachmentIds = new[] { Guid.NewGuid() }
+            }));
+
+        Assert.Equal("EVIDENCE_ATTACHMENT_IDS_NOT_SUPPORTED", error.Code);
+        Assert.Empty(await context.Set<Request>().ToListAsync());
     }
 
     [Fact]

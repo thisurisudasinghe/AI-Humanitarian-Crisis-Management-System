@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { casesApi, type AlertItem } from "../../../components/cases/casesApi";
 import { EmptyState, ErrorState, LoadingState } from "../../../components/cases/PageState";
@@ -25,6 +26,10 @@ export default function PublicAlertsPage() {
       <section className="panel" aria-labelledby="safety-guidance-heading">
         <h2 id="safety-guidance-heading">Safety guidance</h2>
         <p>Follow official instructions, keep a charged phone nearby, and avoid flooded or damaged roads.</p>
+        <p>
+          <Link href="/service-centres">Find service centres and shelters</Link> ·{" "}
+          <Link href="/requests/new">Request assistance</Link>
+        </p>
       </section>
 
       {loading ? <LoadingState /> : null}

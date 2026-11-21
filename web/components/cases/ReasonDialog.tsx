@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export default function ReasonDialog({
   title,
@@ -17,12 +17,53 @@ export default function ReasonDialog({
 }) {
   const [reason, setReason] = useState("");
   const [decisionId, setDecisionId] = useState("");
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const onCancelRef = useRef(onCancel);
+
+  useEffect(() => {
+    onCancelRef.current = onCancel;
+  }, [onCancel]);
+
+  useEffect(() => {
+    const previous = document.activeElement as HTMLElement | null;
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onCancelRef.current();
+        return;
+      }
+
+      if (event.key !== "Tab" || !dialogRef.current) return;
+      const focusable = Array.from(
+        dialogRef.current.querySelectorAll<HTMLElement>(
+          "button:not([disabled]), textarea:not([disabled]), input:not([disabled])"
+        )
+      );
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      previous?.focus();
+    };
+  }, []);
 
   const canConfirm =
     reason.trim().length >= 2 && (!decisionIdRequired || decisionId.trim().length > 0);
 
   return (
-    <div className="panel" role="dialog" aria-modal="true" aria-labelledby="dialog-title">
+    <div ref={dialogRef} className="panel" role="dialog" aria-modal="true" aria-labelledby="dialog-title">
       <h2 id="dialog-title">{title}</h2>
       <label htmlFor="dialog-reason">Reason</label>
       <textarea

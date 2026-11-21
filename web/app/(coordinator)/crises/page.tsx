@@ -44,6 +44,20 @@ export default function CoordinatorCrisesPage() {
     loadCrises();
   }, []);
 
+  async function updateSelectedStatus(status: CrisisStatus) {
+    if (!selectedId) return;
+    setError("");
+    try {
+      await casesApi.updateCrisis(selectedId, {
+        status,
+        endedAt: status === "Closed" ? new Date().toISOString() : undefined
+      });
+      loadCrises();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Crisis could not be updated.");
+    }
+  }
+
   useEffect(() => {
     if (!selectedId) return;
     casesApi.areas(selectedId).then(setAreas).catch(() => setAreas([]));
@@ -88,18 +102,11 @@ export default function CoordinatorCrisesPage() {
     if (!selectedId) return;
     setError("");
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL ?? "https://localhost:7001"}/api/v1/crises/${selectedId}/alerts`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ title: alertTitle, body: alertBody, publish: true })
-        }
-      );
-      if (!response.ok) {
-        const problem = await response.json().catch(() => null) as { message?: string } | null;
-        throw new Error(problem?.message ?? "Alert could not be created.");
-      }
+      await casesApi.createAlert(selectedId, {
+        title: alertTitle,
+        body: alertBody,
+        publish: true
+      });
       setAlertTitle("");
       setAlertBody("");
     } catch (cause) {
@@ -145,14 +152,8 @@ export default function CoordinatorCrisesPage() {
             <label htmlFor="crisis-status">Status</label>
             <select
               id="crisis-status"
-              onChange={(event) => {
-                void casesApi.updateCrisis(selectedId, {
-                  status: event.target.value as CrisisStatus,
-                  endedAt: event.target.value === "Closed" ? new Date().toISOString() : undefined
-                }).catch((cause: unknown) =>
-                  setError(cause instanceof Error ? cause.message : "Crisis could not be updated.")
-                );
-              }}
+              value={crises.find((crisis) => crisis.id === selectedId)?.status ?? ""}
+              onChange={(event) => void updateSelectedStatus(event.target.value as CrisisStatus)}
             >
               {CRISIS_STATUSES.map((status) => <option key={status} value={status}>{status}</option>)}
             </select>

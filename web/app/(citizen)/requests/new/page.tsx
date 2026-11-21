@@ -2,12 +2,14 @@
 
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import {
   CATEGORIES,
   URGENCIES,
   casesApi,
+  type Area,
   type Category,
+  type Crisis,
   type Urgency
 } from "../../../../components/cases/casesApi";
 import { ErrorState } from "../../../../components/cases/PageState";
@@ -29,9 +31,19 @@ export default function NewRequestPage() {
   const [accessibilityNeeds, setAccessibilityNeeds] = useState("");
   const [crisisId, setCrisisId] = useState("");
   const [areaId, setAreaId] = useState("");
+  const [crises, setCrises] = useState<Crisis[]>([]);
+  const [areas, setAreas] = useState<Area[]>([]);
   const [showMap, setShowMap] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    casesApi.crises().then(setCrises).catch(() => setCrises([]));
+  }, []);
+
+  useEffect(() => {
+    casesApi.areas(crisisId || undefined).then(setAreas).catch(() => setAreas([]));
+  }, [crisisId]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -124,6 +136,7 @@ export default function NewRequestPage() {
 
         <label htmlFor="request-address">Address (optional)</label>
         <input id="request-address" value={address} onChange={(event) => setAddress(event.target.value)} />
+        <p className="muted">Free-text address is saved with the request. Latitude and longitude remain the actionable map location.</p>
 
         <label htmlFor="request-household">Household size</label>
         <input
@@ -143,11 +156,24 @@ export default function NewRequestPage() {
           onChange={(event) => setAccessibilityNeeds(event.target.value)}
         />
 
-        <label htmlFor="request-crisis">Crisis ID (optional)</label>
-        <input id="request-crisis" value={crisisId} onChange={(event) => setCrisisId(event.target.value)} />
+        <label htmlFor="request-crisis">Crisis (optional)</label>
+        <select
+          id="request-crisis"
+          value={crisisId}
+          onChange={(event) => {
+            setCrisisId(event.target.value);
+            setAreaId("");
+          }}
+        >
+          <option value="">No crisis selected</option>
+          {crises.map((crisis) => <option key={crisis.id} value={crisis.id}>{crisis.name}</option>)}
+        </select>
 
-        <label htmlFor="request-area">Area ID (optional)</label>
-        <input id="request-area" value={areaId} onChange={(event) => setAreaId(event.target.value)} />
+        <label htmlFor="request-area">Area (optional)</label>
+        <select id="request-area" value={areaId} onChange={(event) => setAreaId(event.target.value)}>
+          <option value="">No area selected</option>
+          {areas.map((area) => <option key={area.id} value={area.id}>{area.name}</option>)}
+        </select>
 
         <button type="submit" disabled={busy}>{busy ? "Submitting…" : "Submit request"}</button>
       </form>

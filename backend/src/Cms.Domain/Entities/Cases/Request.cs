@@ -13,6 +13,7 @@ public class Request : BaseEntity
     public string Description { get; set; } = string.Empty;
     public decimal Lat { get; set; }
     public decimal Lng { get; set; }
+    public string? Address { get; set; }
     public int HouseholdSize { get; set; }
     public string? AccessibilityNeeds { get; set; }
     public RequestStatus Status { get; set; } = RequestStatus.Submitted;
