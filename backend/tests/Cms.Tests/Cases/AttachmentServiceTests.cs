@@ -117,6 +117,6 @@ public class AttachmentServiceTests
             store,
             new FakeCurrentUser { UserId = userId, Roles = new[] { Cms.Domain.Cases.CasesRoles.Citizen } },
             date,
-            new CaseWriteHelper(context, date, TestContext.Options(), new OutboxService(context, date)));
+            TestContext.CreateWriter(context, date));
     }
 }

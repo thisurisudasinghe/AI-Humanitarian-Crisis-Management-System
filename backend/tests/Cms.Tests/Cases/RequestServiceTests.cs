@@ -21,7 +21,7 @@ public class RequestServiceTests
         var now = new DateTime(2026, 11, 18, 8, 0, 0, DateTimeKind.Utc);
         var date = new FixedDateTimeService(now);
         var options = TestContext.Options();
-        var writer = new CaseWriteHelper(context, date, options, new OutboxService(context, date));
+        var writer = TestContext.CreateWriter(context, date, options);
         var policy = new OverduePolicy(options);
         var protector = TestContext.CreateProtector();
         var repository = new RequestRepository(context, policy, date);
@@ -56,6 +56,7 @@ public class RequestServiceTests
         Assert.Equal(1, await context.AuditEvents.CountAsync());
         var outbox = await context.OutboxMessages.SingleAsync();
         Assert.Equal("Request.Submitted", outbox.Type);
+        Assert.Equal(id, outbox.EntityId);
         Assert.Equal($"Request.Submitted:{id}:1", outbox.IdempotencyKey);
         Assert.Contains("requestId", outbox.Payload);
     }
@@ -83,7 +84,7 @@ public class RequestServiceTests
         var now = DateTime.UtcNow;
         var date = new FixedDateTimeService(now);
         var options = TestContext.Options();
-        var writer = new CaseWriteHelper(context, date, options, new OutboxService(context, date));
+        var writer = TestContext.CreateWriter(context, date, options);
         var service = new RequestService(
             context,
             new RequestRepository(context, new OverduePolicy(options), date),
@@ -204,6 +205,6 @@ public class RequestServiceTests
             policy,
             TestContext.CreateProtector(),
             options,
-            new CaseWriteHelper(context, date, options, new OutboxService(context, date)));
+            TestContext.CreateWriter(context, date, options));
     }
 }

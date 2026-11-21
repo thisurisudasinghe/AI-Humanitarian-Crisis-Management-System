@@ -74,6 +74,6 @@ public class HouseholdServiceTests
     {
         var date = new FixedDateTimeService(now);
         var options = TestContext.Options();
-        return new HouseholdService(context, user, date, protector, new CaseWriteHelper(context, date, options, new OutboxService(context, date)));
+        return new HouseholdService(context, user, date, protector, TestContext.CreateWriter(context, date, options));
     }
 }

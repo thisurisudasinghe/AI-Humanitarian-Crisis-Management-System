@@ -75,6 +75,9 @@ public sealed class CaseWriteHelper
         string idempotencyKey,
         CancellationToken cancellationToken)
     {
+        // Use the shared transactional writer so EntityId, IdempotencyKey and the
+        // payload shape match the common.outbox_messages contract and the
+        // registered Notification.Send handler.
         return _outbox.EnqueueAsync(type, entityId, payload, idempotencyKey, cancellationToken);
     }
 
@@ -89,6 +92,7 @@ public sealed class CaseWriteHelper
         var payload = new
         {
             RecipientUserId = recipientUserId,
+            RequestId = requestId,
             TemplateKey = templateKey,
             Language = _options.DefaultLanguage,
             Data = data

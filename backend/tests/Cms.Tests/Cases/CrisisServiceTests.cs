@@ -161,6 +161,6 @@ public class CrisisServiceTests
             user,
             date,
             new OverduePolicy(options),
-            new CaseWriteHelper(context, date, options, new OutboxService(context, date)));
+            TestContext.CreateWriter(context, date, options));
     }
 }
