@@ -1,0 +1,122 @@
+@startuml
+title DEV2 Cases & Citizen - Use Cases (implemented API)
+
+left to right direction
+
+actor "Citizen" as Citizen
+actor "EmergencyCoordinator" as Coordinator
+actor "CaseManager" as CaseManager
+actor "LogisticsManager" as Logistics
+actor "Anonymous visitor" as Anonymous
+actor "SystemAdmin (audit viewer)" as Admin
+
+rectangle "Cases API - api/v1" {
+  usecase "Submit request\nPOST /requests" as UC_SUBMIT
+  usecase "List my requests\nGET /requests/mine" as UC_MINE
+  usecase "Update own request\nPATCH /requests/{id}" as UC_UPDATE_OWN
+  usecase "Get request detail\nGET /requests/{id}" as UC_DETAIL
+  usecase "Get request timeline\nGET /requests/{id}/timeline" as UC_TIMELINE
+  usecase "Upload attachment\nPOST /requests/{id}/attachments" as UC_UPLOAD
+  usecase "Download attachment\nGET /requests/{id}/attachments/{attachmentId}" as UC_DOWNLOAD
+  usecase "Submit feedback\nPOST /requests/{id}/feedback" as UC_FEEDBACK
+  usecase "Get household profile\nGET /households/me" as UC_HH_GET
+  usecase "Save household profile\nPUT /households/me" as UC_HH_PUT
+
+  usecase "List staff queue\nGET /requests" as UC_QUEUE
+  usecase "List overdue\nGET /requests/overdue" as UC_OVERDUE
+  usecase "List unresolved\nGET /requests/unresolved" as UC_UNRESOLVED
+  usecase "Change status\nPOST /requests/{id}/transition" as UC_TRANSITION
+  usecase "Close request\nPOST /requests/{id}/transition (Closed)" as UC_CLOSE
+  usecase "Assign request\nPATCH /requests/{id}/assign" as UC_ASSIGN
+  usecase "Merge request\nPOST /requests/{id}/merge" as UC_MERGE
+  usecase "Allocation handoff\nPOST /api/v1/allocations (M4)" as UC_ALLOC
+
+  usecase "List crises\nGET /crises" as UC_CRISIS_LIST
+  usecase "Create crisis\nPOST /crises" as UC_CRISIS_CREATE
+  usecase "Update crisis\nPATCH /crises/{id}" as UC_CRISIS_UPDATE
+  usecase "Create area\nPOST /crises/{id}/areas" as UC_AREA_CREATE
+  usecase "List areas\nGET /areas" as UC_AREA_LIST
+  usecase "Create alert\nPOST /crises/{id}/alerts" as UC_ALERT_CREATE
+  usecase "Update alert\nPATCH /alerts/{id}" as UC_ALERT_UPDATE
+  usecase "Crisis summary\nGET /crises/{id}/summary" as UC_SUMMARY
+
+  usecase "Public alerts\nGET /public/alerts" as UC_PUBLIC_ALERTS
+  usecase "Public service centres\nGET /public/service-centres" as UC_PUBLIC_CENTRES
+}
+
+rectangle "Shared services (other members)" as SHARED {
+  usecase "Inbox\nGET /api/v1/notifications" as UC_INBOX
+  usecase "Audit events\nGET /api/v1/audit-events" as UC_AUDIT
+  usecase "AI recommendations / decisions" as UC_AI
+}
+
+Citizen --> UC_SUBMIT
+Citizen --> UC_MINE
+Citizen --> UC_UPDATE_OWN
+Citizen --> UC_DETAIL
+Citizen --> UC_TIMELINE
+Citizen --> UC_UPLOAD
+Citizen --> UC_DOWNLOAD
+Citizen --> UC_FEEDBACK
+Citizen --> UC_HH_GET
+Citizen --> UC_HH_PUT
+
+Coordinator --> UC_DETAIL
+Coordinator --> UC_TIMELINE
+Coordinator --> UC_QUEUE
+Coordinator --> UC_OVERDUE
+Coordinator --> UC_UNRESOLVED
+Coordinator --> UC_TRANSITION
+Coordinator --> UC_CLOSE
+Coordinator --> UC_ASSIGN
+Coordinator --> UC_MERGE
+Coordinator --> UC_ALLOC
+Coordinator --> UC_CRISIS_CREATE
+Coordinator --> UC_CRISIS_UPDATE
+Coordinator --> UC_AREA_CREATE
+Coordinator --> UC_ALERT_CREATE
+Coordinator --> UC_ALERT_UPDATE
+Coordinator --> UC_SUMMARY
+
+CaseManager --> UC_QUEUE
+CaseManager --> UC_OVERDUE
+CaseManager --> UC_UNRESOLVED
+CaseManager --> UC_TRANSITION
+CaseManager --> UC_CLOSE
+CaseManager --> UC_ASSIGN
+CaseManager --> UC_MERGE
+CaseManager --> UC_SUMMARY
+
+Coordinator --> UC_CRISIS_LIST
+Coordinator --> UC_AREA_LIST
+CaseManager --> UC_CRISIS_LIST
+CaseManager --> UC_AREA_LIST
+Citizen --> UC_CRISIS_LIST
+Citizen --> UC_AREA_LIST
+
+Logistics --> UC_ALLOC
+
+Anonymous --> UC_PUBLIC_ALERTS
+Anonymous --> UC_PUBLIC_CENTRES
+
+Citizen --> UC_INBOX
+Admin --> UC_AUDIT
+Coordinator ..> UC_AI : human review only
+CaseManager ..> UC_AI : human review only
+
+note right of UC_TRANSITION
+  Single sanctioned status-write path:
+  IRequestStatusService / RequestStatusService
+end note
+
+note right of UC_CLOSE
+  Critical close requires an approved
+  CloseCase decision decisionId.
+end note
+
+note bottom of UC_AI
+  No targetId-based recommendation read endpoint exists.
+  Critical close needs an approved CloseCase decision.
+end note
+
+@enduml

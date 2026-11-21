@@ -1,0 +1,203 @@
+@startuml
+title DEV2 Cases - Submission, AI Review, Allocation and Critical Close
+
+autonumber
+
+actor "Citizen" as Citizen
+actor "EmergencyCoordinator /\nCaseManager" as Staff
+actor "LogisticsManager" as Logistics
+actor "SystemAdmin" as Admin
+
+participant "RequestsController" as ReqCtrl
+participant "IRequestService /\nRequestService" as ReqSvc
+participant "IRequestWorkflowService /\nRequestWorkflowService" as Workflow
+participant "IRequestMergeService /\nRequestStatusService" as StatusSvc
+participant "RequestStateMachine" as StateMachine
+participant "CaseWriteHelper" as Writer
+participant "ICloseCaseDecisionGate" as Gate
+participant "CmsDbContext" as Db
+participant "AuditEventsController" as AuditCtrl
+participant "NotificationsController" as NotifyCtrl
+participant "RecommendationController (M3)" as RecCtrl
+participant "DecisionController (M3)" as DecisionCtrl
+participant "OperationsController (M4)" as OpsCtrl
+
+note over ReqCtrl, Db
+  Runtime prerequisite: backend/src/Cms.Api/Modules/CasesModule.cs is empty.
+  Member 1 must call Cms.Infrastructure.Cases.CasesModuleExtensions.AddCasesModule
+  or Cases controller activation fails with a DI resolution error.
+  Only NullRequestReader, NoOpRequestStatusService and DenyAllDecisionGate
+  have fail-closed fallbacks.
+end note
+
+== Citizen request submission ==
+
+Citizen -> ReqCtrl : POST /api/v1/requests (CreateRequestDto)
+ReqCtrl -> ReqSvc : SubmitAsync(request)
+ReqSvc -> ReqSvc : Validate ApprovedCategories\nand area/crisis match
+ReqSvc -> Db : Set<Area>().FirstOrDefaultAsync(AreaId)
+ReqSvc -> ReqSvc : Protect(AccessibilityNeeds)\nStatus = RequestStatus.Submitted
+ReqSvc -> Db : IRequestRepository.AddAsync(Request)
+ReqSvc -> Writer : AddHistoryAsync(Submitted -> Submitted,\nreason = "Request submitted")
+ReqSvc -> Writer : AddAuditAsync("Request.Submitted",\n"Request", id, details, userId)
+ReqSvc -> Writer : AddOutboxAsync("Request.Submitted",\nid, payload, idempotencyKey)
+ReqSvc -> Db : SaveChangesAsync()
+ReqCtrl --> Citizen : 201 Created { id }
+
+== AI recommendations appear; request status unchanged ==
+
+Staff -> RecCtrl : POST /api/recommendation/crisis/{crisisId}/generate
+RecCtrl --> Staff : 200 OK { recommendationId }
+Staff -> RecCtrl : GET /api/recommendation/{recommendationId}
+RecCtrl --> Staff : 200 OK (recommendation; advisory only)
+Staff -> ReqCtrl : GET /api/v1/requests/{id}
+ReqCtrl --> ReqSvc : GetDetailAsync(id)
+ReqSvc --> ReqCtrl : RequestDetailDto (still Submitted)
+ReqCtrl --> Staff : 200 OK (status unchanged)
+
+note over RecCtrl
+  No GET /api/v1/recommendations?targetId= endpoint exists.
+  Recommendation generation must not mutate request status.
+end note
+
+== Verify then triage ==
+
+Staff -> ReqCtrl : POST /api/v1/requests/{id}/transition\n{"to":"Verified","reason":"Verified against call centre record."}
+ReqCtrl -> Workflow : TransitionAsync(id, Verified, reason, null)
+Workflow -> StatusSvc : TransitionAsync(id, Verified, reason, null)
+StatusSvc -> StateMachine : Ensure(Submitted, Verified)
+StatusSvc -> Writer : AddHistoryAsync(Submitted -> Verified)
+StatusSvc -> Writer : AddAuditAsync("Request.StatusChanged")
+StatusSvc -> Writer : AddNotificationAsync("request.status.Verified")
+StatusSvc -> Db : SaveChangesAsync()
+ReqCtrl --> Staff : 204 No Content
+
+Staff -> ReqCtrl : POST /api/v1/requests/{id}/transition\n{"to":"Triaged","reason":"Food priority set."}
+ReqCtrl -> Workflow : TransitionAsync(id, Triaged, reason, null)
+Workflow -> StatusSvc : TransitionAsync(id, Triaged, reason, null)
+StatusSvc -> StateMachine : Ensure(Verified, Triaged)
+StatusSvc -> Writer : AddHistoryAsync(Verified -> Triaged)
+StatusSvc -> Writer : AddAuditAsync("Request.StatusChanged")
+StatusSvc -> Db : SaveChangesAsync()
+ReqCtrl --> Staff : 204 No Content
+
+== Coordinator verification and status transition ==
+
+Staff -> ReqCtrl : POST /api/v1/requests/{id}/transition\n(TransitionRequestDto)
+ReqCtrl -> Workflow : TransitionAsync(id, request)
+Workflow -> StatusSvc : TransitionAsync(id, To, Reason, DecisionId)
+StatusSvc -> Db : Set<Request>().FirstOrDefaultAsync(id)
+StatusSvc -> StateMachine : Ensure(currentStatus, to)
+
+alt to = Closed AND urgency = Critical
+    StatusSvc -> Gate : IsApprovedAsync(decisionId, requestId)
+    alt approved
+        Gate --> StatusSvc : true
+    else denied / missing decision
+        Gate --> StatusSvc : false
+        StatusSvc --> ReqCtrl : ForbiddenException\nCLOSE_DECISION_REQUIRED
+        ReqCtrl --> Staff : 403 Forbidden
+    end
+end
+
+StatusSvc -> Writer : NextRequestVersionAsync(requestId)
+StatusSvc -> Writer : AddHistoryAsync(from -> to,\nchangedByUserId, reason)
+StatusSvc -> Writer : AddAuditAsync("Request.StatusChanged",\n"Request", id, details, userId)
+StatusSvc -> Writer : AddNotificationAsync(requestId,\nrequesterUserId, "request.status.{to}", data, version)
+StatusSvc -> Db : SaveChangesAsync()
+ReqCtrl --> Staff : 204 No Content
+
+note over Gate
+  Production fallback UnavailableCloseCaseDecisionGate
+  always denies. Member 3 owns the real IDecisionGate adapter.
+end note
+
+== Human decision and allocation handoff ==
+
+Staff -> DecisionCtrl : POST /api/decision\n{"recommendationId": "...", "outcome": "Approved",\n"finalPayloadJson": "{\"requestId\":\"...\",\"inventoryId\":\"42000000-...0001\",\"quantity\":1}"}
+DecisionCtrl --> Staff : 201 Created { decisionId }
+Staff -> OpsCtrl : GET /api/v1/recommendations/match/resources/{id}
+OpsCtrl --> Staff : 200 OK (ranked candidates and explanations)
+Staff -> OpsCtrl : POST /api/v1/allocations\nIdempotency-Key: uat-alloc-{id}\n{"decisionId":"..."}
+OpsCtrl --> Staff : 201 Created { status: "Allocated" }
+Staff -> ReqCtrl : POST /api/v1/requests/{id}/transition\n{"to":"Allocated","decisionId":"..."}
+ReqCtrl -> Workflow : TransitionAsync(id, Allocated, reason, decisionId)
+Workflow -> StatusSvc : TransitionAsync(id, Allocated, reason, decisionId)
+StatusSvc -> StateMachine : Ensure(Approved, Allocated)
+StatusSvc -> Writer : AddAuditAsync("Request.StatusChanged")
+StatusSvc -> Db : SaveChangesAsync()
+ReqCtrl --> Staff : 204 No Content
+
+note over DecisionCtrl, OpsCtrl
+  M3 and M4 owned endpoints. Allocation currently checks
+  DecisionOutcome.Approve/Modify while the enum defines
+  Approved/Modified; report this integration issue, do not fix here.
+end note
+
+== Critical close with CloseCase decision ==
+
+Staff -> ReqCtrl : POST /api/v1/requests/{criticalId}/transition\n{"to":"Closed","decisionId":"..."}
+ReqCtrl -> Workflow : TransitionAsync(criticalId, Closed, reason, decisionId)
+Workflow -> StatusSvc : TransitionAsync(criticalId, Closed, reason, decisionId)
+StatusSvc -> StateMachine : Ensure(Fulfilled, Closed)
+StatusSvc -> Gate : IsApprovedAsync(decisionId, criticalId)
+alt approved CloseCase decision
+    Gate --> StatusSvc : true
+    StatusSvc -> Writer : AddHistoryAsync(Fulfilled -> Closed)
+    StatusSvc -> Writer : AddAuditAsync("Request.StatusChanged")
+    StatusSvc -> Writer : AddNotificationAsync("request.status.Closed")
+    StatusSvc -> Db : SaveChangesAsync()
+    ReqCtrl --> Staff : 204 No Content
+else denied or missing decisionId
+    Gate --> StatusSvc : false
+    StatusSvc --> ReqCtrl : ForbiddenException CLOSE_DECISION_REQUIRED
+    ReqCtrl --> Staff : 403 Forbidden; status remains Fulfilled
+end
+
+== Assignment ==
+
+Staff -> ReqCtrl : PATCH /api/v1/requests/{id}/assign\n(AssignRequestDto)
+ReqCtrl -> ReqSvc : AssignAsync(id, request)
+ReqSvc -> Db : Set<Request>().FirstOrDefaultAsync(id)
+ReqSvc -> ReqSvc : EnsureStaff()
+ReqSvc -> ReqSvc : AssignedToUserId = request.AssignedToUserId
+ReqSvc -> Writer : AddAuditAsync("Request.Assigned",\n"Request", id, details, userId)
+ReqSvc -> Db : SaveChangesAsync()
+ReqCtrl --> Staff : 204 No Content
+
+== Merge ==
+
+Staff -> ReqCtrl : POST /api/v1/requests/{id}/merge\n(MergeRequestDto)
+ReqCtrl -> StatusSvc : MergeAsync(sourceId, targetRequestId, reason)
+StatusSvc -> Db : Load source and target Request
+StatusSvc -> StateMachine : Ensure(source.Status, Merged,\nhasMergeTarget = true)
+StatusSvc -> Writer : AddHistoryAsync(source Merged)
+StatusSvc -> Writer : AddHistoryAsync(target unchanged)
+StatusSvc -> Db : Set<RequestLink>().AddAsync(Merged)
+StatusSvc -> Writer : AddAuditAsync("Request.Merged")
+StatusSvc -> Writer : AddAuditAsync("Request.MergeTarget")
+StatusSvc -> Writer : AddNotificationAsync(source and target)
+StatusSvc -> Db : SaveChangesAsync()
+ReqCtrl --> Staff : 204 No Content
+
+== Timeline and cross-member verification ==
+
+Citizen -> ReqCtrl : GET /api/v1/requests/{id}/timeline
+ReqCtrl -> ReqSvc : GetTimelineAsync(id)
+ReqSvc -> Db : Query RequestStatusHistory\nand identity.Users
+ReqCtrl --> Citizen : 200 OK (RequestTimelineEntryDto list)
+
+Admin -> AuditCtrl : GET /api/v1/audit-events
+AuditCtrl --> Admin : 200 OK (shared audit trail)
+Staff -> AuditCtrl : GET /api/v1/audit-events
+AuditCtrl --> Staff : 403 Forbidden (AdminOnly policy)
+
+Citizen -> NotifyCtrl : GET /api/v1/notifications
+NotifyCtrl --> Citizen : 200 OK (in-app inbox)
+
+note over NotifyCtrl
+  Inbox delivery depends on the Member 1/Member 3
+  outbox processor consuming Notification.Send messages.
+end note
+
+@enduml
