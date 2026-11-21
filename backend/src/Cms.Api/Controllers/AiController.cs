@@ -1,3 +1,4 @@
+using Cms.Api.Constants;
 using Cms.Application.DTOs.AI;
 using Cms.Application.Interfaces.AI;
 using Microsoft.AspNetCore.Authorization;
@@ -10,7 +11,7 @@ namespace Cms.Api.Controllers;
 /// critical action.
 /// </summary>
 [ApiController]
-[Authorize]
+[Authorize(Roles = AuthorizedRoles.All)]
 [Route("api/v1/ai")]
 public sealed class AiController : ControllerBase
 {

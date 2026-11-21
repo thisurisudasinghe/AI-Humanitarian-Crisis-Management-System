@@ -716,7 +716,7 @@
       ]
     },
     {
-      "name": "Placeholder module folders",
+      "name": "Module folders",
       "item": [
         { "name": "Cases (Member 2)", "item": [] },
         {
@@ -764,6 +764,19 @@
                   "raw": "{{baseUrl}}/api/v1/recommendations/{{recommendationId}}",
                   "host": ["{{baseUrl}}"],
                   "path": ["api", "v1", "recommendations", "{{recommendationId}}"]
+                }
+              }
+            },
+            {
+              "name": "Get recommendations by target",
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/recommendations/target/{{requestId}}?type=",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "recommendations", "target", "{{requestId}}"],
+                  "query": [{ "key": "type", "value": "" }]
                 }
               }
             },
@@ -954,7 +967,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"title\": \"Water distribution update\",\n  \"message\": \"Water points are open from 09:00.\",\n  \"audience\": { \"userIds\": [], \"roles\": [\"Citizen\"], \"allActiveUsers\": false },\n  \"channel\": \"InApp\",\n  \"language\": \"en\"\n}"
+                  "raw": "{\n  \"title\": \"Water distribution update\",\n  \"message\": \"Water points are open from 09:00.\",\n  \"audience\": { \"userIds\": [], \"roles\": [\"Citizen\"], \"areaIds\": [], \"allActiveUsers\": false },\n  \"channel\": \"InApp\",\n  \"language\": \"en\"\n}"
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/announcements",
@@ -977,6 +990,23 @@
                   "raw": "{{baseUrl}}/api/v1/announcements/{{announcementId}}/approve",
                   "host": ["{{baseUrl}}"],
                   "path": ["api", "v1", "announcements", "{{announcementId}}", "approve"]
+                }
+              }
+            },
+            {
+              "name": "Reject announcement",
+              "request": {
+                "description": "Records a rejection decision; no notification fan-out occurs.",
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+                ],
+                "body": { "mode": "raw", "raw": "{\n  \"reason\": \"Human review rejected this draft\"\n}" },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/announcements/{{announcementId}}/reject",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "announcements", "{{announcementId}}", "reject"]
                 }
               }
             }

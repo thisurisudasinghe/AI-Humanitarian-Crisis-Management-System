@@ -30,17 +30,20 @@ public sealed class EmailNotificationHandler : IOutboxHandler
     private readonly CmsDbContext _db;
     private readonly INotificationChannelFactory _channelFactory;
     private readonly IDateTimeService _dateTimeService;
+    private readonly IAuditLogger _auditLogger;
     private readonly ILogger<EmailNotificationHandler> _logger;
 
     public EmailNotificationHandler(
         CmsDbContext db,
         INotificationChannelFactory channelFactory,
         IDateTimeService dateTimeService,
+        IAuditLogger auditLogger,
         ILogger<EmailNotificationHandler> logger)
     {
         _db = db;
         _channelFactory = channelFactory;
         _dateTimeService = dateTimeService;
+        _auditLogger = auditLogger;
         _logger = logger;
     }
 
@@ -107,6 +110,20 @@ public sealed class EmailNotificationHandler : IOutboxHandler
             }
 
             await channel.DeliverAsync(notification, cancellationToken);
+
+            await _auditLogger.LogAsync(
+                null,
+                "Notification.Delivered",
+                "Notification",
+                notification.Id.ToString(),
+                new
+                {
+                    OutboxMessageId = message.Id,
+                    payload.TemplateKey,
+                    Channel = channel.Channel.ToString(),
+                    payload.RecipientUserId
+                },
+                cancellationToken);
         }
 
         await MarkAnnouncementDispatchedAsync(message, cancellationToken);

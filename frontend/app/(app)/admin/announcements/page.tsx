@@ -30,10 +30,7 @@ import { AllRoles, RoleNames, StaffRoles } from "@/lib/roles";
 
 type Notice = { message: string; tone: "error" | "success" } | null;
 
-const AnnouncementApproverRoles = [
-  RoleNames.EmergencyCoordinator,
-  RoleNames.SystemAdmin
-];
+const AnnouncementApproverRoles = [RoleNames.EmergencyCoordinator];
 
 const guidPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -45,6 +42,7 @@ const emptyForm = {
   channel: "InApp" as AnnouncementChannel,
   roles: [] as string[],
   userIds: "",
+  areaIds: "",
   allActiveUsers: false,
   idempotencyKey: ""
 };
@@ -66,6 +64,10 @@ function audienceSummary(announcement: AnnouncementDto): string {
 
   if (announcement.audience.userIds.length > 0) {
     parts.push(`${announcement.audience.userIds.length} named user(s)`);
+  }
+
+  if (announcement.audience.areaIds.length > 0) {
+    parts.push(`${announcement.audience.areaIds.length} area(s)`);
   }
 
   return parts.length > 0 ? parts.join(" · ") : "No audience selected";
@@ -131,17 +133,27 @@ export default function AnnouncementsPage() {
       .map((value) => value.trim())
       .filter(Boolean);
 
-    if (userIds.some((id) => !isGuid(id))) {
+    const areaIds = form.areaIds
+      .split(/[\s,;]+/)
+      .map((value) => value.trim())
+      .filter(Boolean);
+
+    if (userIds.some((id) => !isGuid(id)) || areaIds.some((id) => !isGuid(id))) {
       setNotice({
-        message: "Every recipient user ID must be a valid GUID.",
+        message: "Every recipient user and area ID must be a valid GUID.",
         tone: "error"
       });
       return;
     }
 
-    if (!form.allActiveUsers && form.roles.length === 0 && userIds.length === 0) {
+    if (
+      !form.allActiveUsers &&
+      form.roles.length === 0 &&
+      userIds.length === 0 &&
+      areaIds.length === 0
+    ) {
       setNotice({
-        message: "Select at least one audience: all active users, roles or user IDs.",
+        message: "Select at least one audience: all active users, roles, areas or user IDs.",
         tone: "error"
       });
       return;
@@ -158,6 +170,7 @@ export default function AnnouncementsPage() {
         audience: {
           userIds,
           roles: form.roles,
+          areaIds,
           allActiveUsers: form.allActiveUsers
         },
         idempotencyKey: form.idempotencyKey.trim() || undefined
@@ -379,6 +392,20 @@ export default function AnnouncementsPage() {
                 <span className="field__hint">Optional. Each entry must be a valid GUID.</span>
               </label>
 
+              <label className="field">
+                <span className="field__label">Area IDs</span>
+                <textarea
+                  className="input"
+                  rows={6}
+                  placeholder="Guid, comma or new-line separated"
+                  value={form.areaIds}
+                  onChange={(event) => setForm({ ...form, areaIds: event.target.value })}
+                />
+                <span className="field__hint">
+                  Optional. Active requesters with a request in any selected area.
+                </span>
+              </label>
+
               <div>
                 <label className="field">
                   <span className="field__label">Broadcast</span>
@@ -418,7 +445,7 @@ export default function AnnouncementsPage() {
             <p className="metric__label">
               {canApprove
                 ? "Approve to queue delivery, or reject with a reason."
-                : "Only Emergency Coordinators and System Admins can approve or reject."}
+                : "Only Emergency Coordinators can approve or reject."}
             </p>
           </div>
 

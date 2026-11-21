@@ -1,3 +1,4 @@
+using Cms.Api.Constants;
 using Cms.Application.DTOs.Governance;
 using Cms.Application.Exceptions;
 using Microsoft.AspNetCore.Authorization;
@@ -11,7 +12,7 @@ namespace Cms.Api.Controllers;
 /// The plural route remains available for existing clients.
 /// </summary>
 [ApiController]
-[Authorize]
+[Authorize(Roles = AuthorizedRoles.Deciders)]
 [Route("api/v1/recommendations")]
 public sealed class DecisionAliasController : ControllerBase
 {

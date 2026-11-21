@@ -1,3 +1,4 @@
+using Cms.Api.Constants;
 using Cms.Application.DTOs.AI;
 using Cms.Application.Exceptions;
 using Cms.Application.Interfaces.AI;
@@ -13,7 +14,7 @@ namespace Cms.Api.Controllers;
 /// through the governance endpoints is required for any approved action.
 /// </remarks>
 [ApiController]
-[Authorize]
+[Authorize(Roles = AuthorizedRoles.Staff)]
 [Route("api/v1/recommendations")]
 public class RecommendationsController : ControllerBase
 {

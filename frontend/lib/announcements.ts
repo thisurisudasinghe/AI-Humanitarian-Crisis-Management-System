@@ -21,6 +21,7 @@ export type AnnouncementStatus = (typeof AnnouncementStatuses)[number];
 export interface AnnouncementAudienceDto {
   userIds: string[];
   roles: string[];
+  areaIds: string[];
   allActiveUsers: boolean;
 }
 

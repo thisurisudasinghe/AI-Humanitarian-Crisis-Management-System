@@ -1,3 +1,4 @@
+using Cms.Api.Constants;
 using Cms.Application.Contracts;
 using Cms.Application.DTOs.Notifications;
 using Cms.Application.Interfaces;
@@ -10,7 +11,7 @@ namespace Cms.Api.Controllers;
 /// <remarks>Each outbox event produces at most one in-app notification per recipient.</remarks>
 [ApiController]
 [Route("api/v1/notifications")]
-[Authorize]
+[Authorize(Roles = AuthorizedRoles.All)]
 [Produces("application/json")]
 public sealed class NotificationsController : ControllerBase
 {

@@ -134,5 +134,14 @@ public class CmsDbContext : DbContext
                     "Decision records are immutable and cannot be modified or deleted.");
             }
         }
+
+        foreach (var entry in ChangeTracker.Entries<Recommendation>())
+        {
+            if (entry.State is EntityState.Modified or EntityState.Deleted)
+            {
+                throw new InvalidOperationException(
+                    "Recommendations are immutable and cannot be modified or deleted.");
+            }
+        }
     }
 }

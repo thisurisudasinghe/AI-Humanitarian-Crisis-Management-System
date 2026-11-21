@@ -1,3 +1,4 @@
+using Cms.Api.Constants;
 using Cms.Application.DTOs.Governance;
 using Cms.Application.Exceptions;
 using Cms.Application.Interfaces.Governance;
@@ -12,7 +13,7 @@ namespace Cms.Api.Controllers;
 /// type in the governance role policy; every decision is append-only.
 /// </remarks>
 [ApiController]
-[Authorize]
+[Authorize(Roles = AuthorizedRoles.Deciders)]
 [Route("api/v1")]
 public class DecisionsController : ControllerBase
 {
