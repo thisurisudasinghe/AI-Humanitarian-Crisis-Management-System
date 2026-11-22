@@ -42,7 +42,9 @@ public static class CasesModuleExtensions
         services.AddScoped<IOverduePolicy, OverduePolicy>();
         services.AddScoped<ISensitiveDataProtector, SensitiveDataProtector>();
         services.AddScoped<IFileStore, LocalFileStore>();
-        services.AddScoped<ICloseCaseDecisionGate, DecisionGateCloseCaseAdapter>();
+        // M3 registers the real governance adapter after this module. TryAdd keeps a
+        // safe default when M3 is unavailable without preventing that override.
+        services.TryAddScoped<ICloseCaseDecisionGate, DecisionGateCloseCaseAdapter>();
 
         services.AddScoped<RequestStatusService>();
         services.AddScoped<IRequestRepository, RequestRepository>();

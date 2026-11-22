@@ -250,7 +250,7 @@ package "Cms.Infrastructure - Cases implementations" {
     +IsApprovedAsync(Guid, Guid, CancellationToken) : bool
   }
 
-  class "UnavailableCloseCaseDecisionGate" as UnavailableCloseCaseDecisionGate {
+  class "UnavailableCloseCaseDecisionGate (legacy, not registered)" as UnavailableCloseCaseDecisionGate {
     +IsApprovedAsync(Guid, Guid, CancellationToken) : bool
   }
 
@@ -264,7 +264,7 @@ package "Cms.Infrastructure - Cases implementations" {
     +UploadRoot : string
     +DataProtectionKeyRing : string
     +DefaultLanguage : string
-    +ApprovedCategories : IReadOnlyList~Category~
+    +ApprovedCategories : IReadOnlyCollection~Category~
   }
 }
 
@@ -318,6 +318,7 @@ package "Cms.Domain - Cases" {
     +Description : string
     +Lat : decimal
     +Lng : decimal
+    +Address : string?
     +HouseholdSize : int
     +AccessibilityNeeds : string
     +Status : RequestStatus
@@ -554,14 +555,14 @@ note bottom of DecisionGateCloseCaseAdapter
 end note
 
 note bottom of UnavailableCloseCaseDecisionGate
-  Retained as the fail-closed fallback. Member 3 must implement
-  and register the real IDecisionGate; Member 1 currently
-  registers DenyAllDecisionGate.
+  Legacy type retained only for source compatibility; it is not
+  registered. CasesModuleExtensions uses TryAddScoped for
+  DecisionGateCloseCaseAdapter so M3 can override it.
 end note
 
 note bottom of LocalFileStore
-  Cms.Application.Contracts.IFileStore also exists with a different signature.
-  Member 1 must confirm which interface is canonical before freeze.
+  Module-local IFileStore is aliased and registered by CasesModuleExtensions.
+  Cms.Application.Contracts.IFileStore has a different signature and is not used here.
 end note
 
 @enduml

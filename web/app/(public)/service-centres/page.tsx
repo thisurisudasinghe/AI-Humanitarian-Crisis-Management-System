@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { casesApi, type ServiceCentre, type ShelterSummary } from "../../../components/cases/casesApi";
@@ -16,6 +17,7 @@ export default function ServiceCentresPage() {
   const [shelters, setShelters] = useState<ShelterSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [shelterError, setShelterError] = useState("");
 
   useEffect(() => {
     Promise.allSettled([casesApi.publicServiceCentres(), casesApi.publicShelters()])
@@ -31,6 +33,12 @@ export default function ServiceCentresPage() {
         }
         if (shelterResult.status === "fulfilled") {
           setShelters(shelterResult.value);
+        } else {
+          setShelterError(
+            shelterResult.reason instanceof Error
+              ? shelterResult.reason.message
+              : "Public shelters could not be loaded."
+          );
         }
       })
       .finally(() => setLoading(false));
@@ -56,8 +64,13 @@ export default function ServiceCentresPage() {
   return (
     <div>
       <h1>Service centres and approved shelters</h1>
+      <p>
+        <Link href="/alerts">Read public alerts</Link> ·{" "}
+        <Link href="/requests/new">Request assistance</Link>
+      </p>
       {loading ? <LoadingState /> : null}
       {error ? <ErrorState message={error} /> : null}
+      {shelterError ? <ErrorState message={shelterError} /> : null}
       {!loading && markers.length === 0 ? (
         <EmptyState message="No public locations are available yet." />
       ) : null}

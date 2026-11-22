@@ -89,7 +89,10 @@ public class RequestStatusServiceTests
     public async Task Critical_close_without_decision_is_forbidden()
     {
         using var context = TestContext.Create();
-        var request = TestContext.NewRequest(Guid.NewGuid(), urgency: Urgency.Critical);
+        var request = TestContext.NewRequest(
+            Guid.NewGuid(),
+            status: RequestStatus.Fulfilled,
+            urgency: Urgency.Critical);
         await context.Set<Request>().AddAsync(request);
         await context.SaveChangesAsync();
         var service = CreateService(context, new FakeCurrentUser(), DateTime.UtcNow);
@@ -98,6 +101,38 @@ public class RequestStatusServiceTests
             () => service.TransitionAsync(request.Id, RequestStatus.Closed));
 
         Assert.Equal("CLOSE_DECISION_REQUIRED", ex.Code);
+        Assert.Equal(0, await context.Set<RequestStatusHistory>().CountAsync());
+    }
+
+    [Fact]
+    public async Task Invalid_critical_transition_returns_conflict_before_gate()
+    {
+        using var context = TestContext.Create();
+        var request = TestContext.NewRequest(Guid.NewGuid(), urgency: Urgency.Critical);
+        await context.Set<Request>().AddAsync(request);
+        await context.SaveChangesAsync();
+        var service = CreateService(context, new FakeCurrentUser(), DateTime.UtcNow);
+
+        var ex = await Assert.ThrowsAsync<ConflictException>(
+            () => service.TransitionAsync(request.Id, RequestStatus.Closed));
+
+        Assert.Equal("INVALID_TRANSITION", ex.Code);
+        Assert.Equal(0, await context.Set<RequestStatusHistory>().CountAsync());
+    }
+
+    [Fact]
+    public async Task Direct_transition_to_merged_is_rejected_even_for_self_status()
+    {
+        using var context = TestContext.Create();
+        var request = TestContext.NewRequest(Guid.NewGuid(), RequestStatus.Merged);
+        await context.Set<Request>().AddAsync(request);
+        await context.SaveChangesAsync();
+        var service = CreateService(context, new FakeCurrentUser(), DateTime.UtcNow);
+
+        var ex = await Assert.ThrowsAsync<ConflictException>(
+            () => service.TransitionAsync(request.Id, RequestStatus.Merged));
+
+        Assert.Equal("MERGE_TARGET_REQUIRED", ex.Code);
         Assert.Equal(0, await context.Set<RequestStatusHistory>().CountAsync());
     }
 

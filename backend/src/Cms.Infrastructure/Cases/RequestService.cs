@@ -50,6 +50,39 @@ public sealed class RequestService : IRequestService
     {
         var userId = RequireUserId();
 
+        if (!Enum.IsDefined(request.Category))
+        {
+            throw new ValidationException(
+                "INVALID_CATEGORY",
+                new Dictionary<string, string[]>
+                {
+                    [nameof(request.Category)] = new[] { "Category must be a supported value." }
+                });
+        }
+
+        if (!Enum.IsDefined(request.Urgency))
+        {
+            throw new ValidationException(
+                "INVALID_URGENCY",
+                new Dictionary<string, string[]>
+                {
+                    [nameof(request.Urgency)] = new[] { "Urgency must be a supported value." }
+                });
+        }
+
+        if (request.EvidenceAttachmentIds is { Count: > 0 })
+        {
+            throw new ValidationException(
+                "EVIDENCE_ATTACHMENT_IDS_NOT_SUPPORTED",
+                new Dictionary<string, string[]>
+                {
+                    [nameof(request.EvidenceAttachmentIds)] = new[]
+                    {
+                        "Evidence must be uploaded after the request exists using POST /api/v1/requests/{id}/attachments."
+                    }
+                });
+        }
+
         if (!_options.ApprovedCategories.Contains(request.Category))
         {
             throw new ValidationException(
@@ -92,6 +125,7 @@ public sealed class RequestService : IRequestService
             Description = request.Description,
             Lat = request.Lat,
             Lng = request.Lng,
+            Address = string.IsNullOrWhiteSpace(request.Address) ? null : request.Address.Trim(),
             HouseholdSize = request.HouseholdSize,
             AccessibilityNeeds = _protector.Protect(request.AccessibilityNeeds),
             Status = RequestStatus.Submitted,
@@ -175,6 +209,7 @@ public sealed class RequestService : IRequestService
             Description = request.Description,
             Lat = request.Lat,
             Lng = request.Lng,
+            Address = request.Address,
             HouseholdSize = request.HouseholdSize,
             AccessibilityNeeds = _protector.Unprotect(request.AccessibilityNeeds),
             AssignedToUserId = request.AssignedToUserId,

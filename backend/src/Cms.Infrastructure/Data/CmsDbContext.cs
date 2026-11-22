@@ -55,6 +55,9 @@ public class CmsDbContext : DbContext
 
     public DbSet<DecisionRecord> DecisionRecords => Set<DecisionRecord>();
 
+    // Announcements (notif schema), owned by Dev 3 (M9). Restored after the M4 merge.
+    public DbSet<Announcement> Announcements => Set<Announcement>();
+
     // Member 4 — operations schemas (res, shelter, vol).
     public DbSet<ResourceType> ResourceTypes => Set<ResourceType>();
     public DbSet<Inventory> Inventories => Set<Inventory>();
@@ -111,6 +114,24 @@ public class CmsDbContext : DbContext
             {
                 throw new InvalidOperationException(
                     "Audit events are append-only and cannot be modified or deleted.");
+            }
+        }
+
+        foreach (var entry in ChangeTracker.Entries<DecisionRecord>())
+        {
+            if (entry.State is EntityState.Modified or EntityState.Deleted)
+            {
+                throw new InvalidOperationException(
+                    "Decision records are immutable and cannot be modified or deleted.");
+            }
+        }
+
+        foreach (var entry in ChangeTracker.Entries<Recommendation>())
+        {
+            if (entry.State is EntityState.Modified or EntityState.Deleted)
+            {
+                throw new InvalidOperationException(
+                    "Recommendations are immutable and cannot be modified or deleted.");
             }
         }
     }

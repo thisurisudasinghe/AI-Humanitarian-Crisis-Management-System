@@ -2,7 +2,9 @@
 
 **Owner:** Developer 2 (Member 2 — Cases & Citizen)  
 **Scope:** D2-12 User Acceptance Testing for the Cases workflow (D2-01–D2-08).  
-**Status:** Test script only. **No UAT has been executed yet.** All “Actual result” and “Pass/Fail” cells are intentionally blank.
+**Status:** Automated API runtime verification executed; **participant UAT has NOT been executed**. All manual “Actual result” and “Pass/Fail” cells remain intentionally blank. Runtime evidence is recorded separately in section 6 and `docs/evidence/dev2/20261122-37ed863/README.md`.
+
+> **Implementation and validation note (not UAT evidence):** The coordinator alert POST uses the authenticated `casesApi.createAlert()` client, and the active `frontend/` crisis-reporting, my-reports, incident-queue and crisis-detail screens read/write real DEV2 endpoints. `postman/dev2-cases.json` now contains role-login setup, status assertions and negative role/validation/state-machine cases. The historical DEV2 checkout recorded pre-existing Member 3 compile errors in `EmailNotificationHandler.cs` and `AnnouncementService.cs`; final `develop` (`5f337b2`) records those repairs. During this integration the merged tree passed `dotnet restore`, `dotnet build`, `dotnet test` (504 tests), frontend `npm.cmd run typecheck` and `npm.cmd run build` using `C:\Program Files\nodejs\npm.cmd` (the PowerShell `npm.ps1` shim is blocked by execution policy). The current reviewed tree passes `dotnet build` (0 warnings/0 errors), `dotnet test` (508 tests) and `web` `npm.cmd run build` (type checking included). A clean LocalDB API run and Postman execution were subsequently performed; see section 6 and `docs/evidence/dev2/20261122-37ed863/README.md`. Those are automated runtime checks only. No UAT, usability session or screenshot was collected, so all manual result cells remain blank.
 
 ---
 
@@ -20,13 +22,13 @@ This script verifies the complete humanitarian case workflow using the **actual 
 8. Complete the request.
 9. Verify the timeline and audit history.
 
-It is an **API-level UAT script**. The D2-09/D2-10 frontend pages are not yet integrated with these endpoints, so testers should use the DEV2 Postman collection at `postman/dev2-cases.json` for DEV2 routes, and the Member 1/Member 3/Member 4 collections or direct calls for the dependency steps below. The DEV2 collection intentionally contains no M3/M4 routes.
+It is an **API-level UAT script**. Source-level frontend integrations now exist, but they have not been executed or verified in this document; testers should still use the DEV2 Postman collection at `postman/dev2-cases.json` for DEV2 routes, and the Member 1/Member 3/Member 4 collections or direct calls for the dependency steps below. The DEV2 collection intentionally contains no M3/M4 routes.
 
 ---
 
 ## 2. Test environment and preconditions
 
-**Base URL:** `http://localhost:5210` (from `backend/src/Cms.Api/Properties/launchSettings.json`; adjust if running HTTPS on `https://localhost:7162`).
+**Base URL for the script:** `http://localhost:5210` (from `backend/src/Cms.Api/Properties/launchSettings.json`; adjust if running HTTPS on `https://localhost:7162`). The final automated runtime verification used `http://127.0.0.1:5212` with `--no-launch-profile`; see section 6.
 
 **Run metadata (complete at execution time)**
 
@@ -40,9 +42,10 @@ It is an **API-level UAT script**. The D2-09/D2-10 frontend pages are not yet in
 
 **Database setup**
 
-1. Run the canonical SQL scripts in this exact order (there is no `02_*.sql` in this repository):
+1. Run the canonical SQL scripts in this exact order:
    - `backend/db/00_common.sql`
    - `backend/db/01_cases.sql`
+   - `backend/db/02_notif.sql`
    - `backend/db/03_ai.sql`
    - `backend/db/04_res.sql`
    - `backend/db/05_shelter.sql`
@@ -79,17 +82,17 @@ These must be resolved before the full loop can pass end to end. They are **not*
 
 | ID | Dependency / blocker | Evidence | Impact on UAT |
 |---|---|---|---|
-| DEP-01 | **Runtime DI is not wired.** The real `Cms.Infrastructure.Cases.CasesModuleExtensions.AddCasesModule(IServiceCollection, IConfiguration)` is not called. The API module hook `backend/src/Cms.Api/Modules/CasesModule.cs:9-12` only returns `services`. | `backend/src/Cms.Api/Modules/CasesModule.cs:9-12`, `backend/src/Cms.Infrastructure/Cases/CasesModuleExtensions.cs:16-54`, `backend/src/Cms.Infrastructure/DependencyInjection.cs:107-115` | **BLOCKING.** DEV2 controller dependencies (`IRequestService`, `ICrisisService`, `IRequestWorkflowService`, `IRequestMergeService`, `IAttachmentService`, `IHouseholdService`) have no fallback registration, so controller activation fails with a DI resolution error. Only three foundation interfaces have fail-closed stubs (`NullRequestReader`, `NoOpRequestStatusService`, `DenyAllDecisionGate`). Member 1 must wire the real extension before UAT; do not expect stub responses. |
-| DEP-02 | **AI recommendation review has no target-based read endpoint.** Existing M3 routes are `POST /api/recommendation`, `GET /api/recommendation/{recommendationId:guid}`, `POST /api/recommendation/crisis/{crisisId:guid}/generate` and `GET /api/decision/recommendation/{recommendationId:guid}`. There is no `GET /api/v1/recommendations?targetId=`. | `backend/src/Cms.Api/Controllers/RecommendationController.cs:21-65`, `backend/src/Cms.Api/Controllers/DecisionController.cs:60-77` | Test UAT-04 is **BLOCKED** unless a recommendation/decision ID is supplied externally by Member 3 or a target-based read is agreed. |
-| DEP-03 | **Critical close requires an approved CloseCase decision.** DEV2 now has a composition adapter that calls the shared M3 contract `IDecisionGate.RequireApprovedAsync(decisionId, RecommendationType.CloseCase, requestId, ct)`, but Member 1's `DenyAllDecisionGate` is still the registered implementation. The main loop therefore uses the seeded **High** urgency request or creates a new High/Urgency request. | `backend/src/Cms.Infrastructure/Cases/RequestStatusService.cs:76-85`, `backend/src/Cms.Infrastructure/Cases/DecisionGateCloseCaseAdapter.cs`, `backend/src/Cms.Application/Contracts/IDecisionGate.cs` | Closing a Critical request still returns `403 CLOSE_DECISION_REQUIRED`. This is expected until Member 3 implements and registers the real `IDecisionGate`. |
-| DEP-04 | **Notification delivery depends on Member 1/Member 3 outbox processing.** DEV2 enqueues `Notification.Send`; delivery into the in-app inbox is not performed by DEV2. | `backend/src/Cms.Infrastructure/Cases/CaseWriteHelper.cs:108-129`, `backend/src/Cms.Api/Controllers/NotificationsController.cs:28-41` | UAT-07 verifies the outbox/inbox only if the shared processor is running. |
+| DEP-01 | **Runtime DI confirmed on a clean API run.** `CasesModule` delegates to `CasesModuleExtensions.AddCasesModule`, and `ModuleRegistration.AddCmsModules` calls it after the identity module. | `backend/src/Cms.Api/Modules/CasesModule.cs:11-21`, `backend/src/Cms.Api/Modules/ModuleRegistration.cs:17-20`, `backend/src/Cms.Infrastructure/Cases/CasesModuleExtensions.cs:21-60`, `backend/tests/Cms.Tests/Cases/CasesModuleTests.cs:17-44`, `docs/evidence/dev2/20261122-37ed863/newman-cli-run3.log` | Role logins returned 200 and all 39 DEV2 Postman requests executed against the composed API. This does not verify UI navigation. |
+| DEP-02 | **M3 recommendation read/decision write verified; M4 match blocked by schema dependency.** `GET /api/v1/recommendations?targetId={id}` and `POST /api/v1/recommendations/{id}/decisions` returned live data/201; the M4 match route returned 500. | `backend/src/Cms.Api/Controllers/RecommendationsController.cs:29-40`, `backend/src/Cms.Api/Controllers/OperationsController.cs:284`, `docs/evidence/dev2/20261122-37ed863/uat04-recommendation-decision.log`, `docs/evidence/dev2/20261122-37ed863/uat10-match-dependency.log` | UAT-04 endpoints executed, but the recommendation was `Priority`/`Classification`, not `CloseCase`. UAT-10 must remain unpassed: match failed with `Invalid object name 'res.resource_types'`. |
+| DEP-03 | **Critical close gate verified with a locally supplied approved decision; in-app discovery remains blocked.** DEV2 registers `DecisionGateCloseCaseAdapter` with `TryAddScoped`; M3 registers the real governance adapter after DEV2 in `AiModule`, so M3 wins in composed startup. | `backend/src/Cms.Infrastructure/Cases/CasesModuleExtensions.cs:45-47`, `backend/src/Cms.Api/Modules/AiModule.cs:40-42`, `backend/src/Cms.Api/Modules/ModuleRegistration.cs:17-20`, `backend/tests/Cms.Tests/Cases/CasesModuleTests.cs`, `backend/tests/Cms.Tests/Cases/RequestsControllerTransitionResponseTests.cs`, `docs/evidence/dev2/20261122-37ed863/critical-close-positive.log` | Negative `403 CLOSE_DECISION_REQUIRED` was observed in Newman. A positive close returned `200 OK` and DB status `Closed` only after an approved `CloseCase` decision was inserted directly into the temporary test database. Do not claim M3 in-app decision discovery works. |
+| DEP-04 | **Notification inbox delivery observed; outbox replay not executed.** DEV2 enqueues `Notification.Send`; delivery into the in-app inbox is not performed by DEV2. | `backend/src/Cms.Infrastructure/Cases/CaseWriteHelper.cs:108-129`, `backend/src/Cms.Api/Controllers/NotificationsController.cs:28-41`, `docs/evidence/dev2/20261122-37ed863/history-audit-notifications.log` | A `request.status.Closed` inbox row was returned for the closed request. NEG-04 remains `NOT EXECUTED`; dead-letter listing was empty but no replay was attempted. |
 | DEP-05 | **Outbox key defect fixed in DEV2 writer.** `CaseWriteHelper` now delegates to the shared `IOutbox`/`OutboxService`, which sets `EntityId` and `IdempotencyKey`, rejects empty values, and deduplicates against tracked and persisted rows. The payload is a direct `Notification.Send` DTO rather than a wrapped envelope. | `backend/src/Cms.Infrastructure/Cases/CaseWriteHelper.cs`, `backend/src/Cms.Infrastructure/Services/OutboxService.cs`, `backend/db/00_common.sql:101-103,267-272` | Regression coverage is in `CaseWriteHelperTests`. No UAT blocker remains from this item. |
-| DEP-06 | **Audit viewer is Member 1 owned and AdminOnly.** | `backend/src/Cms.Api/Controllers/AuditEventsController.cs:11-12` | UAT-09 requires a SystemAdmin token. |
+| DEP-06 | **Audit viewer is Member 1 owned and AdminOnly.** | `backend/src/Cms.Api/Controllers/AuditEventsController.cs:11-12`, `docs/evidence/dev2/20261122-37ed863/history-audit-notifications.log` | Runtime admin login succeeded for `admin@example.org` (not `systemadmin@example.org`) and `GET /api/v1/audit-events` returned 200. UAT-09 still requires a real tester result. |
 | DEP-07 | **No separate classification/prioritisation endpoint exists.** `Category` and `Urgency` are set on `POST /api/v1/requests` and are not editable afterwards. `PATCH /api/v1/requests/{id}` changes description/location/household/accessibility only (or assignment for staff). | `backend/src/Cms.Application/Cases/DTOs/RequestDtos.cs:7-39`, `backend/src/Cms.Infrastructure/Cases/RequestService.cs:194-254` | UAT-03 verifies classification via submission + staff filtering, not via a separate update call. |
-| DEP-08 | **DEV2 web pages now exist under the allowed `web/` paths, but are not wired into M1's SAFEWAY navigation or build.** The M1-owned `frontend/` shell seams still throw/notices. | `web/app/(public)`, `web/app/(citizen)`, `web/app/(coordinator)`, `web/components/cases`, `frontend/lib/crisis.ts:42-54` | Run API UAT through the Postman collection until Member 1 approves navigation and the web app is built with the `develop` scaffold. |
-| DEP-09 | **Member 4 allocation decision check is inconsistent with the shared enum.** `OperationsController.ApprovedDecision` checks `DecisionOutcome.Approve` / `DecisionOutcome.Modify`, but the shipped enum defines `Approved` / `Modified`. | `backend/src/Cms.Api/Controllers/OperationsController.cs:305-310`, `backend/src/Cms.Domain/Enums/DecisionOutcome.cs:4-10` | After the stale type names in DEP-10 are fixed, this will still fail to compile. UAT-10 cannot pass until Member 4 corrects the enum names. Report to Member 4; do not change the controller here. |
-| DEP-10 | **The current `develop` target does not build.** `OperationsController.cs` still references `ApplicationDbContext`, `ICurrentUserService` and `IAuditService`, which no longer exist after the shared-type renames. | `backend/src/Cms.Api/Controllers/OperationsController.cs:17-24`; verified by building an archive of `develop` at `77a7fa2` (6 × `CS0246`) | Member 4/Member 1 must fix these references before any merge can be accepted. The DEV2 feature branch itself builds cleanly; the failure is pre-existing on `develop` and is not caused by these seven files. |
-| DEP-11 | **DEV2 web pages cannot be built on this feature branch alone.** The `web/` scaffold (`package.json`, `lib/api.ts`, `app/layout.tsx`, map components) exists only on `develop`, and React Hook Form/Zod are not declared in the M1/M4-owned `web/package.json`. DEV2 pages therefore use native accessible validation and the existing `web/lib/api.ts` client. | `develop:web/package.json`, `develop:web/lib/api.ts`, `web/components/cases`, `web/app/(citizen)`, `web/app/(coordinator)` | M1/M4 must supply the scaffold and decide whether to add React Hook Form/Zod; M1 must add navigation to the DEV2 routes. No web build result can be claimed until those prerequisites are present. |
+| DEP-08 | **DEV2 `web/` pages exist under allowed paths and the active `frontend/` seams are implemented, but M1 navigation/runtime wiring is not confirmed.** Frontend `typecheck`/`build` passed; the separate `web/` production build also passed after a local dependency install. The coordinator queue is `/coordinator/requests` so it does not collide with the citizen `/requests` route. | `web/app/(public)`, `web/app/(citizen)`, `web/app/(coordinator)`, `web/components/cases`, `frontend/lib/crisis.ts`, `frontend/components/safeway/ReportFlow.tsx` | Run API UAT through the Postman collection until Member 1 confirms navigation and the shared auth guard. |
+| DEP-09 | **Source-level decision-outcome naming is consistent.** `OperationsController.ApprovedDecision` checks `DecisionOutcome.Approved` / `DecisionOutcome.Modified`, matching the shipped enum. | `backend/src/Cms.Api/Controllers/OperationsController.cs:306-310`, `backend/src/Cms.Domain/Enums/DecisionOutcome.cs` | This old blocker is resolved in source. Runtime allocation behaviour still depends on M4 services. |
+| DEP-10 | **Historical DEV2 build blocker superseded; build/test and clean API run PASS.** The DEV2 checkout recorded M3 notification/announcement compile errors; final develop records repairs in `docs/DEV3_REPORT.md`. | `docs/DEV3_REPORT.md` on `5f337b2`; historical integration `dotnet build`/`dotnet test` (504 passed); current reviewed tree `dotnet build` (0 warnings/0 errors) and `dotnet test` (508 passed); `docs/evidence/dev2/20261122-37ed863/newman-cli-run3.log` | Runtime gate is satisfied for API checks. No participant UAT result may be inferred from it. |
+| DEP-11 | **Frontend and `web/` builds passed; runtime navigation still unconfirmed.** The active `frontend/` project passed `npm.cmd run typecheck` and `npm.cmd run build`. The `web/` project passed `npm.cmd run build` after a temporary local dependency install; Next's auto-generated `tsconfig.json`/`next-env.d.ts` changes were not committed. | `frontend/package.json`, `frontend/node_modules`, `web/package.json`, `web/components/cases`, `web/app/(citizen)`, `web/app/(coordinator)` | M1/M4 must confirm runtime navigation and the shared auth guard. Use `C:\Program Files\nodejs\npm.cmd`; `npm.ps1` is blocked by PowerShell execution policy. |
 
 ---
 
@@ -141,7 +144,7 @@ Example body:
 }
 ```
 
-> Note: `address` and `evidenceAttachmentIds` are accepted by the DTO but are not persisted by the current implementation (`docs/DEV2_CONTRACT_REQUESTS.md:60`).
+> Note: `address` is persisted and returned by request detail. A non-empty `evidenceAttachmentIds` array is rejected with `422 EVIDENCE_ATTACHMENT_IDS_NOT_SUPPORTED`; upload evidence after creation through `POST /api/v1/requests/{id}/attachments`.
 
 ---
 
@@ -178,13 +181,13 @@ Example body:
 | Field | Value |
 |---|---|
 | **Objective** | A human reviewer can review an AI recommendation, record a human decision, and confirm that generating/viewing recommendations does not change the request status. |
-| **Preconditions** | DEP-02 must be resolved or a valid `recommendationId` supplied externally. M3 services available. Coordinator/CaseManager token available. Record the request status immediately before this test. |
-| **Test steps** | 1. If needed, generate M3 data with `POST {{baseUrl}}/api/recommendation/crisis/1a000000-0000-0000-0000-000000000001/generate`. 2. `GET {{baseUrl}}/api/v1/requests/{{requestId}}` and record the status (must be unchanged). 3. Using the M3-supplied ID, `GET {{baseUrl}}/api/recommendation/{{recommendationId}}`. 4. `POST {{baseUrl}}/api/decision` with `{"recommendationId":"{{recommendationId}}","outcome":"Approved","reason":"Human reviewer approves allocation.","finalPayloadJson":"{\"requestId\":\"{{requestId}}\",\"inventoryId\":\"42000000-0000-0000-0000-000000000001\",\"quantity\":1}"}` and record `decisionId`. 5. Repeat step 2 and confirm the status is still unchanged. 6. If a decision exists, `GET {{baseUrl}}/api/decision/recommendation/{{recommendationId}}`. |
-| **Expected result** | Steps 2 and 5 return `200 OK` with the same status as before the recommendation phase. Steps 3 and 6 return `200 OK` when the ID exists. Step 4 returns `201 Created` with `{ "decisionId": "<guid>" }`. A `404` in step 3 or 6 indicates the ID was not found; there is no target-based lookup in the current API. Recommendation data is advisory only. |
+| **Preconditions** | M3 recommendation data exists for the seeded crisis or request; alternatively a valid `recommendationId` is supplied externally. For UAT-10, use or create a `RecommendationType.ResourceMatch` recommendation so the approved decision can be consumed by M4 allocation. Coordinator/CaseManager token available. Record the request status immediately before this test. |
+| **Test steps** | 1. If needed, generate M3 data with `POST {{baseUrl}}/api/recommendation/crisis/1a000000-0000-0000-0000-000000000001/generate`. 2. `GET {{baseUrl}}/api/v1/requests/{{requestId}}` and record the status (must be unchanged). 3. `GET {{baseUrl}}/api/v1/recommendations?targetId={{requestId}}` or `GET {{baseUrl}}/api/v1/recommendations/target/{{requestId}}`; capture a `recommendationId`. 4. `POST {{baseUrl}}/api/decision` with `{"recommendationId":"{{recommendationId}}","outcome":"Approved","reason":"Human reviewer approves allocation.","finalPayloadJson":"{\"requestId\":\"{{requestId}}\",\"inventoryId\":\"42000000-0000-0000-0000-000000000001\",\"quantity\":1}"}` and record `decisionId`. 5. Repeat step 2 and confirm the status is still unchanged. 6. If a decision exists, `GET {{baseUrl}}/api/decision/recommendation/{{recommendationId}}`. |
+| **Expected result** | Steps 2 and 5 return `200 OK` with the same status as before the recommendation phase. Steps 3 and 6 return `200 OK` when the ID exists. Step 4 returns `201 Created` with `{ "decisionId": "<guid>" }`. A `404` in step 3 or 6 indicates the ID was not found. Recommendation data is advisory only. |
 | **Actual result** |  |
 | **Evidence / screenshot ref** |  |
 | **Pass/Fail** |  |
-| **Dependency status** | **BLOCKED until DEP-02 is resolved or a recommendation ID is supplied externally.** |
+| **Dependency status** | Requires M3 recommendation/decision data; no DEV2 code blocker is known. |
 
 ---
 
@@ -265,13 +268,13 @@ Example body:
 | Field | Value |
 |---|---|
 | **Objective** | The three urgent Food requests can be ranked against the single limited-resource bucket, and an approved decision can be handed to Member 4 allocation. |
-| **Preconditions** | `backend/db/90_seed_scenario.sql` and `backend/db/91_seed_ops.sql` have both run. R6–R8 exist. DEP-09 noted. EmergencyCoordinator token available. `decisionId` from UAT-04 includes `requestId`, `inventoryId` and `quantity` in `finalPayloadJson`. |
+| **Preconditions** | `backend/db/90_seed_scenario.sql` and `backend/db/91_seed_ops.sql` have both run. R6–R8 exist. EmergencyCoordinator token available. `decisionId` from UAT-04 is an approved `ResourceMatch` decision whose `finalPayloadJson` includes `requestId`, `inventoryId` and `quantity`. Confirm the M4 match/allocations routes are deployed. |
 | **Test steps** | 1. `GET {{baseUrl}}/api/v1/recommendations/match/resources/{{requestId}}` with EmergencyCoordinator token; repeat for R6, R7 and R8. 2. Confirm the same limited stock item appears in the ranked candidates. 3. `POST {{baseUrl}}/api/v1/allocations` with header `Idempotency-Key: uat-alloc-{{requestId}}` and body `{"decisionId":"{{decisionId}}"}`. 4. `GET {{baseUrl}}/api/v1/allocations` with the same token and confirm one allocation for the decision. |
 | **Expected result** | Match calls return `200 OK` with ranked candidates and explanations. Allocation returns `201 Created` (or `200 OK` on a valid idempotent replay) with `status: "Allocated"`. The allocation list shows one row linked to `decisionId`, and inventory available stock never goes below zero. |
 | **Actual result** |  |
 | **Evidence / screenshot ref** |  |
 | **Pass/Fail** |  |
-| **Dependency status** | Match and allocation controllers are Member 4 owned; DEP-09 and DEP-10 block allocation until fixed. |
+| **Dependency status** | Match and allocation controllers are Member 4/Member 3 owned. The `GET /api/v1/recommendations/match/resources/{requestId}` route is present in `OperationsController`; runtime behaviour and the `ResourceMatch` decision gate still need a clean API run. |
 
 ---
 
@@ -334,25 +337,89 @@ Example body:
 | Test ID | Scenario | Pass/Fail | Dependency status |
 |---|---|---|---|
 | UAT-01 | Submit citizen request |  |  |
-| UAT-02 | Verify request |  | DEP-01 |
+| UAT-02 | Verify request |  | DEP-01 runtime confirmation |
 | UAT-03 | Classify/prioritise |  | DEP-07 |
-| UAT-04 | Review recommendation |  | **BLOCKED — DEP-02** |
-| UAT-05 | Assign request |  | DEP-01 |
-| UAT-06 | Update status |  | DEP-01, DEP-03 |
+| UAT-04 | Review recommendation |  | Requires M3 data |
+| UAT-05 | Assign request |  | DEP-01 runtime confirmation |
+| UAT-06 | Update status |  | DEP-01 runtime, DEP-03 runtime |
 | UAT-07 | Notify user |  | DEP-04 |
-| UAT-08 | Complete request |  | DEP-03 |
+| UAT-08 | Complete request |  | DEP-03 runtime |
 | UAT-09 | Timeline and audit |  | DEP-06 |
-| UAT-10 | Request match and allocation handoff |  | DEP-09, DEP-10 (M4 owned) |
+| UAT-10 | Request match and allocation handoff |  | M4/M3 route confirmation |
 | NEG-01 | Invalid transition 409 |  |  |
-| NEG-02 | Citizen 403 on staff routes |  | DEP-01 |
-| NEG-03 | Critical close blocked |  | DEP-03 |
+| NEG-02 | Citizen 403 on staff routes |  | DEP-01 runtime confirmation |
+| NEG-03 | Critical close blocked |  | DEP-03 runtime |
 | NEG-04 | Duplicate outbox → one notification |  | DEP-04 |
 
-**Global merge gate:** DEP-10 must be resolved on `develop` before any UAT can be accepted, even if individual rows above are marked passed on the DEV2 feature branch.
+**Global runtime gate:** the merged tree passed build/tests, and a clean API run plus DEV2 Postman execution completed with 39/39 requests and 34/34 assertions passing. That runtime evidence is recorded in section 6 and does not constitute participant UAT. All actual/evidence/pass cells in this document remain blank and must not be filled from source-level, unit-test or automated API evidence.
 
 ---
 
-## 6. Sign-off
+## 6. Automated API runtime verification (not UAT evidence)
+
+A clean LocalDB API run was executed on 22 Nov 2026 against `dev2_runtime_verify_37ed863_run3` at commit `37ed863`. These observations are **API runtime evidence only**; they do not fill any UAT result cell above. Full commands, raw logs and redaction notes are in `docs/evidence/dev2/20261122-37ed863/README.md`.
+
+| Check | Runtime observation | Evidence |
+|---|---|---|
+| Schema and seed | Canonical SQL scripts exited 0; `90_seed_scenario.sql` exited 0; `90_seed_scenario.verify.sql` reported 19/19 PASS | `schema-verification-run3.log`, `seed_run3_90_seed_scenario.sql.log`, `verify_run3_90_seed_scenario.sql.log` |
+| DEV2 Postman collection | 39/39 requests, 34/34 assertions, 0 failed; attachment upload 201 and download 200 | `newman-cli-run3.log`, `newman-results-run3.json` |
+| Role and negative checks | Logins 200; invalid password 401; unauthenticated queue 401; citizen staff queue 403; invalid create/area mismatch 422; invalid transition 409; critical close without decision 403; citizen crisis write 403 | `newman-cli-run3.log` |
+| Critical close | Negative gate 403 in Newman. Positive close with a locally seeded approved `CloseCase` decision returned 200 and DB status `Closed` | `newman-cli-run3.log`, `critical-close-positive.log` |
+| M3 read/write endpoints | Recommendation list by target 200; decision POST 201. The recommendation was `Priority`/`Classification`, not `CloseCase`; in-app close-decision discovery remains blocked | `uat04-recommendation-decision.log` |
+| Timeline / notification / audit | Timeline 200 with runtime close entry; citizen notification list 200 with `request.status.Closed`; admin audit list 200; dead-letter list 200 with zero rows | `history-audit-notifications.log` |
+| M4 dependency | `91_seed_ops.sql` failed with `Invalid object name 'res.resource_types'`.; resource-match endpoint returned 500 with the same root cause | `seed_run2_91_seed_ops.sql.log`, `uat10-match-dependency.log`, `api_runtime_run3.log` |
+| Swagger readiness | Blocked by shared `FilesController.Upload` Swagger generation failure; login endpoint was used as readiness probe instead | `api_startup.log` |
+
+**Still NOT EXECUTED:** participant UAT, usability sessions, screenshots, outbox replay (NEG-04), allocation, and `web/` runtime navigation. No result above should be copied into the blank UAT cells as a human acceptance result.
+
+---
+
+## 7. Development seed verification (not UAT evidence)
+
+The following development check was run on 21 Nov 2026 in a temporary SQL Server LocalDB database named `dev2_seed_verify_20261121`. It verifies schema idempotency and the fixed DEV2 seed fixtures only; it is **not** a core-loop UAT result and does not replace the blank result cells above. It was executed on the DEV2 branch. A separate clean-database rerun on 22 Nov is recorded in section 6 and the evidence folder. The command list reflects the then-current foundation script name; use the canonical order in section 2 for a release-candidate run.
+
+Commands (run from the repository root, with `sqlcmd -S "(localdb)\MSSQLLocalDB" -E -I -b -d dev2_seed_verify_20261121`):
+
+```text
+-i backend\db\00_common.sql
+-i backend\db\01_cases.sql
+-i backend\db\01_cases.sql
+-i backend\db\99_seed_users.sql
+-Q "INSERT required demo identity.users rows ..."
+-i backend\db\90_seed_scenario.sql
+-i backend\db\90_seed_scenario.sql
+-i backend\db\90_seed_scenario.verify.sql
+```
+
+Result: both schema runs and both seed runs completed with exit code 0. All 19 checks in `backend/db/90_seed_scenario.verify.sql` reported `PASS`:
+
+```text
+back-dated Submitted request R10              1           1 PASS
+cases.alerts draft only                       1           1 PASS
+cases.alerts fixtures                         2           2 PASS
+cases.alerts published only                   1           1 PASS
+cases.areas fixed fixtures                    3           3 PASS
+cases.attachments metadata fixtures           2           2 PASS
+cases.crises fixed fixture                    1           1 PASS
+cases.feedback fixture                        1           1 PASS
+cases.households fixed fixture                1           1 PASS
+cases.partner_shares fixture                  1           1 PASS
+cases.request_links merge fixture             1           1 PASS
+cases.request_status_history rows            36          36 PASS
+cases.requests address column                 1           1 PASS
+cases.requests fixed fixtures                10          10 PASS
+cases.service_centres active only             2           2 PASS
+cases.service_centres fixtures                3           3 PASS
+plaintext sensitive seed values               0           0 PASS
+requests with Critical urgency                2           2 PASS
+shortage group R6-R8 Food                     3           3 PASS
+```
+
+Observed distributions: status `Closed 1, Dispatched 1, InProgress 1, Merged 1, Submitted 3, Triaged 1, Verified 2`; urgency `Critical 2, High 3, Low 2, Medium 3`. The full canonical order (M3/M4 schemas, `98_foreign_keys.sql`, `91_seed_ops.sql`) and the API core loop were not executed here.
+
+---
+
+## 8. Sign-off
 
 | Role | Name | Date | Signature |
 |---|---|---|---|

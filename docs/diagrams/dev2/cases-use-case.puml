@@ -110,17 +110,20 @@ note right of UC_TRANSITION
 end note
 
 note right of UC_CLOSE
-  An approved CloseCase decisionId is required.
+  For Critical requests, an approved
+  CloseCase decisionId is required.
 end note
 
 note right of UC_ALLOC
-  Member 4 owns this endpoint. It is a
-  planned handoff until M4 allocation ships.
+  Member 4 owns this endpoint. DEV2 hands
+  off an approved ResourceMatch decision.
 end note
 
 note bottom of UC_AI
-  No targetId-based recommendation read endpoint exists.
-  Critical close needs an approved CloseCase decision.
+  Target-based reads exist at GET /api/v1/recommendations?targetId=
+  and GET /api/v1/recommendations/target/{targetId:guid}.
+  Critical close needs an approved CloseCase decision;
+  effective M3 gate registration is runtime-unverified.
 end note
 
 @enduml

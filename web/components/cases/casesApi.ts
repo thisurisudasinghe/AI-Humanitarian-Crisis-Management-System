@@ -102,6 +102,12 @@ export interface AlertItem {
   createdAt: string;
 }
 
+export interface CreateAlertPayload {
+  title: string;
+  body: string;
+  publish: boolean;
+}
+
 export interface ServiceCentre {
   id: string;
   crisisId?: string | null;
@@ -167,10 +173,21 @@ export interface KpiReport {
   generatedAt: string;
 }
 
+export interface ShortageProposalItem {
+  requestId: string;
+  category: string;
+  urgency: string;
+  requestedQuantity: number;
+  availableAtStart: number;
+  priorityPosition: number;
+  proposedPartialFulfilment: number;
+  explanation: string;
+}
+
 export interface ShortageProposal {
   resourceTypeId: string;
   availableQuantity: number;
-  items: Array<{ resourceTypeId: string; name?: string; shortfall: number }>;
+  items: ShortageProposalItem[];
   humanApprovalRequired: boolean;
 }
 
@@ -182,7 +199,14 @@ export interface Recommendation {
   confidence: number;
   rationale: string;
   source: string;
+  status?: string;
   createdAt: string;
+}
+
+export interface NotificationInbox {
+  items: Array<{ id: string; templateKey: string; readAt?: string | null }>;
+  unreadCount: number;
+  totalCount: number;
 }
 
 export interface ResourceType {
@@ -275,25 +299,32 @@ export const casesApi = {
   crises: () => api<Crisis[]>("/crises"),
   createCrisis: (payload: { name: string; type: string; description?: string; startedAt: string }) =>
     api<{ id: string }>("/crises", { method: "POST", body: JSON.stringify(payload) }),
-  updateCrisis: (id: string, payload: { status?: CrisisStatus; endedAt?: string }) =>
-    api<void>(`/crises/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
+  updateCrisis: (
+    id: string,
+    payload: { name?: string; type?: string; description?: string; status?: CrisisStatus; endedAt?: string }
+  ) => api<void>(`/crises/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
   areas: (crisisId?: string) => api<Area[]>(`/areas${queryString({ crisisId })}`),
   createArea: (
     crisisId: string,
     payload: { name: string; description?: string; lat: number; lng: number; radiusKm?: number }
   ) => api<{ id: string }>(`/crises/${crisisId}/areas`, { method: "POST", body: JSON.stringify(payload) }),
   crisisSummary: (id: string) => api<CrisisSummary>(`/crises/${id}/summary`),
+  createAlert: (crisisId: string, payload: CreateAlertPayload) =>
+    api<{ id: string }>(`/crises/${crisisId}/alerts`, {
+      method: "POST",
+      body: JSON.stringify(payload)
+    }),
 
   kpis: (from: string, to: string) => api<KpiReport>(`/kpis${queryString({ from, to })}`),
   resourceTypes: () => api<ResourceType[]>("/resources/types"),
   shortageProposal: (resourceTypeId: string) =>
     api<ShortageProposal>(`/shortages/proposal${queryString({ resourceTypeId })}`),
 
-  // M3 dependency: this endpoint is documented for D2-10 but is not shipped yet.
+  // M3-owned endpoint consumed by D2-10; show an unavailable state when absent.
   recommendationsByTarget: (targetId: string) =>
     api<Recommendation[]>(`/recommendations${queryString({ targetId })}`),
 
-  notifications: () => api<Array<{ id: string; templateKey: string; readAt?: string | null }>>("/notifications"),
+  notifications: () => api<NotificationInbox>("/notifications"),
 
   uploadAttachment: async (requestId: string, file: File): Promise<void> => {
     const body = new FormData();
@@ -321,6 +352,7 @@ export const casesApi = {
     anchor.href = url;
     anchor.download = fileName;
     anchor.click();
-    URL.revokeObjectURL(url);
+    // Defer revocation so the browser has consumed the blob URL.
+    window.setTimeout(() => URL.revokeObjectURL(url), 0);
   }
 };

@@ -31,7 +31,7 @@ export default function RequestDetailPage() {
       .finally(() => setLoading(false));
     casesApi
       .notifications()
-      .then((items) => setUnread(items.filter((item) => !item.readAt).length))
+      .then((inbox) => setUnread(inbox.unreadCount))
       .catch(() => setUnread(0));
   }, [id]);
 
@@ -78,19 +78,24 @@ export default function RequestDetailPage() {
 
           <section className="panel" aria-labelledby="feedback-heading">
             <h2 id="feedback-heading">Feedback</h2>
-            <form onSubmit={(event) => void submitFeedback(event)}>
-              <label htmlFor="feedback-comment">Comment</label>
-              <textarea
-                id="feedback-comment"
-                required
-                minLength={2}
-                maxLength={2000}
-                value={comment}
-                onChange={(event) => setComment(event.target.value)}
-              />
-              <button type="submit" disabled={busy}>{busy ? "Sending…" : "Send feedback"}</button>
-            </form>
-            <p className="muted">Feedback is available on fulfilled or closed requests.</p>
+            {request.status === "Fulfilled" || request.status === "Closed" ? (
+              <form onSubmit={(event) => void submitFeedback(event)}>
+                <label htmlFor="feedback-comment">Comment</label>
+                <textarea
+                  id="feedback-comment"
+                  required
+                  minLength={2}
+                  maxLength={2000}
+                  value={comment}
+                  onChange={(event) => setComment(event.target.value)}
+                />
+                <button type="submit" disabled={busy}>{busy ? "Sending…" : "Send feedback"}</button>
+              </form>
+            ) : (
+              <p className="muted">
+                Feedback becomes available when this request is Fulfilled or Closed.
+              </p>
+            )}
           </section>
 
           <section className="panel" aria-labelledby="timeline-heading">

@@ -2,6 +2,7 @@ using Cms.Application.Cases.DTOs;
 using Cms.Domain.Entities.Cases;
 using Cms.Infrastructure.Cases;
 using Cms.Infrastructure.Data;
+using Cms.Infrastructure.Security;
 using Cms.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 
@@ -37,7 +38,7 @@ public class HouseholdServiceTests
         var audit = await context.AuditEvents.SingleAsync();
         Assert.DoesNotContain("771234567", audit.Details!);
         Assert.DoesNotContain("Wheelchair", audit.Details!);
-        Assert.Contains("***", audit.Details!);
+        Assert.Contains(SensitiveDataMasker.Redacted, audit.Details!);
 
         var dto = await service.GetMineAsync();
         Assert.NotNull(dto);

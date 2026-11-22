@@ -6,6 +6,7 @@ import type { Paged, RequestListItem } from "../../../components/cases/casesApi"
 import { casesApi } from "../../../components/cases/casesApi";
 import { EmptyState, ErrorState, LoadingState } from "../../../components/cases/PageState";
 import StatusBadge from "../../../components/cases/StatusBadge";
+import { CATEGORY_LABELS, URGENCY_LABELS } from "../../../components/cases/statusLabels";
 
 export default function MyRequestsPage() {
   const [result, setResult] = useState<Paged<RequestListItem> | null>(null);
@@ -16,6 +17,7 @@ export default function MyRequestsPage() {
 
   useEffect(() => {
     setLoading(true);
+    setError("");
     casesApi
       .myRequests(page, pageSize)
       .then(setResult)
@@ -45,8 +47,8 @@ export default function MyRequestsPage() {
               {result.items.map((item) => (
                 <tr key={item.id}>
                   <td><Link href={`/requests/${item.id}`}>{item.id.slice(0, 8)}</Link></td>
-                  <td>{item.category}</td>
-                  <td>{item.urgency}</td>
+                  <td>{CATEGORY_LABELS[item.category]}</td>
+                  <td>{URGENCY_LABELS[item.urgency]}</td>
                   <td><StatusBadge status={item.status} overdue={item.isOverdue} /></td>
                   <td>{new Date(item.submittedAt).toLocaleString()}</td>
                 </tr>

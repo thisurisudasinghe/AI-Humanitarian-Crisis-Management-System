@@ -2,19 +2,26 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import type { Paged, RequestListItem } from "../../../components/cases/casesApi";
-import { casesApi } from "../../../components/cases/casesApi";
-import { EmptyState, ErrorState, LoadingState } from "../../../components/cases/PageState";
-import QueueFilters, { EMPTY_FILTERS, type QueueFilterValues } from "../../../components/cases/QueueFilters";
-import StatusBadge from "../../../components/cases/StatusBadge";
+import type { Paged, RequestListItem } from "../../../../components/cases/casesApi";
+import { casesApi } from "../../../../components/cases/casesApi";
+import { EmptyState, ErrorState, LoadingState } from "../../../../components/cases/PageState";
+import QueueFilters, { EMPTY_FILTERS, type QueueFilterValues } from "../../../../components/cases/QueueFilters";
+import StatusBadge from "../../../../components/cases/StatusBadge";
+import { CATEGORY_LABELS, URGENCY_LABELS } from "../../../../components/cases/statusLabels";
 
 export default function CoordinatorRequestsPage() {
   const [filters, setFilters] = useState<QueueFilterValues>(EMPTY_FILTERS);
+  const [debouncedFilters, setDebouncedFilters] = useState<QueueFilterValues>(EMPTY_FILTERS);
   const [page, setPage] = useState(1);
   const [result, setResult] = useState<Paged<RequestListItem> | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const pageSize = 20;
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedFilters(filters), 250);
+    return () => window.clearTimeout(timer);
+  }, [filters]);
 
   useEffect(() => {
     setLoading(true);
@@ -23,22 +30,23 @@ export default function CoordinatorRequestsPage() {
       .staffRequests({
         page,
         pageSize,
-        status: filters.status || undefined,
-        urgency: filters.urgency || undefined,
-        category: filters.category || undefined,
-        areaId: filters.areaId || undefined,
-        assignedTo: filters.assignedTo || undefined,
-        overdue: filters.overdue || undefined,
-        q: filters.q || undefined,
-        sortBy: filters.sortBy,
-        sortDescending: filters.sortDescending
+        status: debouncedFilters.status || undefined,
+        urgency: debouncedFilters.urgency || undefined,
+        category: debouncedFilters.category || undefined,
+        crisisId: debouncedFilters.crisisId || undefined,
+        areaId: debouncedFilters.areaId || undefined,
+        assignedTo: debouncedFilters.assignedTo || undefined,
+        overdue: debouncedFilters.overdue || undefined,
+        q: debouncedFilters.q || undefined,
+        sortBy: debouncedFilters.sortBy,
+        sortDescending: debouncedFilters.sortDescending
       })
       .then(setResult)
       .catch((cause: unknown) =>
         setError(cause instanceof Error ? cause.message : "Queue could not be loaded.")
       )
       .finally(() => setLoading(false));
-  }, [filters, page]);
+  }, [debouncedFilters, page]);
 
   return (
     <div>
@@ -62,10 +70,10 @@ export default function CoordinatorRequestsPage() {
             <tbody>
               {result.items.map((item) => (
                 <tr key={item.id}>
-                  <td><Link href={`/requests/${item.id}`}>{item.id.slice(0, 8)}</Link></td>
-                  <td>{item.category}</td>
-                  <td>{item.urgency}</td>
-                  <td><StatusBadge status={item.status} /></td>
+                  <td><Link href={`/coordinator/requests/${item.id}`}>{item.id.slice(0, 8)}</Link></td>
+                  <td>{CATEGORY_LABELS[item.category]}</td>
+                  <td>{URGENCY_LABELS[item.urgency]}</td>
+                  <td><StatusBadge status={item.status} overdue={item.isOverdue} /></td>
                   <td>{item.slaAgeHours} h{item.isOverdue ? " · overdue" : ""}</td>
                   <td>{new Date(item.submittedAt).toLocaleString()}</td>
                 </tr>
