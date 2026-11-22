@@ -1,7 +1,19 @@
 "use client";
-import {MapContainer,TileLayer,Marker, useMapEvents} from "react-leaflet";
-import {useState} from "react";
-import L from "leaflet";
-const markerIcon=L.icon({iconUrl:"https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",iconRetinaUrl:"https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",shadowUrl:"https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",iconSize:[25,41],iconAnchor:[12,41]});
-function PickerEvents({onChange}:{onChange:(p:{lat:number,lng:number})=>void}){useMapEvents({click(e){onChange({lat:e.latlng.lat,lng:e.latlng.lng})}});return null}
-export default function MapPicker({value,onChange}:{value:{lat:number,lng:number},onChange:(p:{lat:number,lng:number})=>void}){return <div className="map"><MapContainer center={[value.lat,value.lng]} zoom={8} style={{height:"100%",width:"100%"}}><TileLayer attribution='&copy; OpenStreetMap contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"/><PickerEvents onChange={onChange}/><Marker position={[value.lat,value.lng]} icon={markerIcon}/></MapContainer></div>}
+
+// Member 4 / D4-03 stable public component.
+// Dynamic import with ssr:false is required: Leaflet touches `window` and must
+// never be imported by a server-rendered module. Member 2 can drop this into a
+// request form without changing its props.
+import dynamic from "next/dynamic";
+import type { MapPickerProps } from "./MapPickerInner";
+
+const MapPickerInner = dynamic(() => import("./MapPickerInner"), {
+  ssr: false,
+  loading: () => <div className="map map-loading">Loading map…</div>,
+});
+
+export type { MapPoint } from "./MapPickerInner";
+
+export default function MapPicker(props: MapPickerProps) {
+  return <MapPickerInner {...props} />;
+}
