@@ -2,6 +2,7 @@
 
 import { AuthGuard } from "@/components/AuthGuard";
 import { useAuth } from "@/lib/auth";
+import { hasAnyRole, RoleNames } from "@/lib/roles";
 
 // Member 4 / D4-11 volunteer workspace and coordinator queue. Verification,
 // assignment and status transitions are server-side rules; this page renders
@@ -41,10 +42,14 @@ const EMPTY_TASKS: Paged<VolunteerTask> = { items: [], total: 0, page: 1, pageSi
 function VolunteerWorkspaceContent() {
   const { user } = useAuth();
   const roles = user?.roles ?? [];
-  const canVolunteer = roles.includes("Volunteer");
-  const canCoordinate = roles.some((role) => ["VolunteerCoordinator", "EmergencyCoordinator", "SystemAdmin"].includes(role));
-  const canManageVolunteers = roles.includes("VolunteerCoordinator") || roles.includes("SystemAdmin");
-  const canMatchVolunteers = roles.includes("VolunteerCoordinator") || roles.includes("EmergencyCoordinator");
+  const canVolunteer = roles.includes(RoleNames.Volunteer);
+  const canCoordinate = hasAnyRole(roles, [
+    RoleNames.VolunteerCoordinator,
+    RoleNames.EmergencyCoordinator,
+    RoleNames.SystemAdmin
+  ]);
+  const canManageVolunteers = roles.includes(RoleNames.VolunteerCoordinator) || roles.includes(RoleNames.SystemAdmin);
+  const canMatchVolunteers = roles.includes(RoleNames.VolunteerCoordinator) || roles.includes(RoleNames.EmergencyCoordinator);
   const [tab, setTab] = useState<"volunteer" | "coordinator">(() => canCoordinate && !canVolunteer ? "coordinator" : "volunteer");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -345,7 +350,7 @@ function VolunteerWorkspaceContent() {
 
 export default function VolunteersPage() {
   return (
-    <AuthGuard allowedRoles={["Volunteer", "VolunteerCoordinator", "EmergencyCoordinator", "SystemAdmin"]}>
+    <AuthGuard allowedRoles={[RoleNames.Volunteer, RoleNames.VolunteerCoordinator, RoleNames.EmergencyCoordinator, RoleNames.SystemAdmin]}>
       <div className="dev4-operations">
         <VolunteerWorkspaceContent />
       </div>

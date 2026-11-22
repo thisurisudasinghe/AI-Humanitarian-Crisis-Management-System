@@ -333,11 +333,13 @@ Server instance. Frontend checks are `npm.cmd run typecheck` and
 
 ## 17. Final integration status (2026-11-22)
 
-PR #28 is merged into `develop`; the public SAFEWAY redesign (homepage, shared
-navigation/branding, public pages, scoped `public.css` and artwork) is present on
-`develop`. The full backend suite (587 tests), frontend typecheck and production
-build pass. End-to-end evidence is in
-`docs/evidence/final-integration-20261122.md`.
+PR #28, #29 and #30 are merged into `develop`. Final professionalization,
+coursework compliance mapping, and verification evidence are in:
+
+- `docs/COURSEWORK_COMPLIANCE.md`
+- `docs/FINAL_VERIFICATION.md`
+- `docs/DEVELOPER_HANDOVER.md`
+- `docs/evidence/final-integration-20261122.md`
 
 ### Start a clean demo (do not use the original `CmsDb`)
 
@@ -378,7 +380,15 @@ Open `http://localhost:3000`. Demo accounts include `citizen@example.org`,
 `admin@example.org`, `volunteercoordinator@example.org` and `donor@example.org`
 (password `Demo1234!`). Health check: `GET http://localhost:5210/api/health`.
 
-**Known limitation:** Nominatim currently answers the application's compliant
-User-Agent with HTTP `403`; geocoding returns `404 GEOCODE_NOT_FOUND` while
-routing, stored coordinates and Haversine fallback keep mapping workflows usable.
-No provider restriction was bypassed.
+**Known limitations:**
+
+- Nominatim currently answers the application's compliant User-Agent with HTTP
+  `403`; geocoding returns `404 GEOCODE_NOT_FOUND` while routing, stored
+  coordinates and Haversine fallback keep mapping workflows usable. No provider
+  restriction was bypassed.
+- Notification delivery is in-app and log/email in demo mode; no real email or
+  SMS is sent. SMS/push payment and advanced forecasting dashboard remain out of
+  prototype scope or bonus/optional where the coursework allows.
+- Automated tests and live API evidence cover the core workflow; formal
+  participant UAT/usability sessions are not recorded in this repository unless
+  added to `docs/UAT_CORE_LOOP.md` and `docs/USABILITY_TEST.md`.

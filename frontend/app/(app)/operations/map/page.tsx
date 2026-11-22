@@ -1,6 +1,7 @@
 "use client";
 
 import { AuthGuard } from "@/components/AuthGuard";
+import { RoleNames } from "@/lib/roles";
 
 // Member 4 / D4-11 operations map. Data comes through the integrated SAFEWAY operations API adapter.
 // Each source reports its own loading/error state so a 403 on areas never
@@ -144,7 +145,7 @@ function OperationsMapContent() {
 
 export default function OperationsMapPage() {
   return (
-    <AuthGuard allowedRoles={["LogisticsManager", "ShelterAdmin", "VolunteerCoordinator", "EmergencyCoordinator", "SystemAdmin"]}>
+    <AuthGuard allowedRoles={[RoleNames.LogisticsManager, RoleNames.ShelterAdmin, RoleNames.VolunteerCoordinator, RoleNames.EmergencyCoordinator, RoleNames.SystemAdmin]}>
       <div className="dev4-operations">
         <OperationsMapContent />
       </div>

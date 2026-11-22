@@ -62,23 +62,25 @@ GO
 
 IF NOT EXISTS (SELECT 1 FROM [vol].[volunteers] WHERE [id] = '45000000-0000-0000-0000-000000000001')
     INSERT [vol].[volunteers] ([id], [user_id], [skills_json], [languages_json], [verification_status], [active], [lat], [lng], [created_at])
-    VALUES ('45000000-0000-0000-0000-000000000001', '45100000-0000-0000-0000-000000000001', N'["First aid","Driving"]', N'["English","Sinhala"]', N'Verified', 1, 7.2088, 79.8358, SYSUTCDATETIME());
+    -- user_id must reference a real DevelopmentDemoSeeder account so assignment
+    -- notifications have a deliverable recipient (FR-COM-02).
+    VALUES ('45000000-0000-0000-0000-000000000001', '0b000000-0000-0000-0000-000000000007', N'["First aid","Driving"]', N'["English","Sinhala"]', N'Verified', 1, 7.2088, 79.8358, SYSUTCDATETIME());
 GO
 IF NOT EXISTS (SELECT 1 FROM [vol].[volunteers] WHERE [id] = '45000000-0000-0000-0000-000000000002')
     INSERT [vol].[volunteers] ([id], [user_id], [skills_json], [languages_json], [verification_status], [active], [lat], [lng], [created_at])
-    VALUES ('45000000-0000-0000-0000-000000000002', '45100000-0000-0000-0000-000000000002', N'["Food distribution"]', N'["Sinhala"]', N'Verified', 1, 7.0744, 79.8919, SYSUTCDATETIME());
+    VALUES ('45000000-0000-0000-0000-000000000002', '0b000000-0000-0000-0000-000000000006', N'["Food distribution"]', N'["Sinhala"]', N'Verified', 1, 7.0744, 79.8919, SYSUTCDATETIME());
 GO
 IF NOT EXISTS (SELECT 1 FROM [vol].[volunteers] WHERE [id] = '45000000-0000-0000-0000-000000000003')
     INSERT [vol].[volunteers] ([id], [user_id], [skills_json], [languages_json], [verification_status], [active], [lat], [lng], [created_at])
-    VALUES ('45000000-0000-0000-0000-000000000003', '45100000-0000-0000-0000-000000000003', N'["Medical support"]', N'["English"]', N'Verified', 1, 6.9890, 79.8910, SYSUTCDATETIME());
+    VALUES ('45000000-0000-0000-0000-000000000003', '0b000000-0000-0000-0000-000000000011', N'["Medical support"]', N'["English"]', N'Verified', 1, 6.9890, 79.8910, SYSUTCDATETIME());
 GO
 IF NOT EXISTS (SELECT 1 FROM [vol].[volunteers] WHERE [id] = '45000000-0000-0000-0000-000000000004')
     INSERT [vol].[volunteers] ([id], [user_id], [skills_json], [languages_json], [verification_status], [active], [lat], [lng], [created_at])
-    VALUES ('45000000-0000-0000-0000-000000000004', '45100000-0000-0000-0000-000000000004', N'["Logistics"]', N'["Sinhala","Tamil"]', N'Pending', 1, 7.2088, 79.8358, SYSUTCDATETIME());
+    VALUES ('45000000-0000-0000-0000-000000000004', '0b000000-0000-0000-0000-000000000009', N'["Logistics"]', N'["Sinhala","Tamil"]', N'Pending', 1, 7.2088, 79.8358, SYSUTCDATETIME());
 GO
 IF NOT EXISTS (SELECT 1 FROM [vol].[volunteers] WHERE [id] = '45000000-0000-0000-0000-000000000005')
     INSERT [vol].[volunteers] ([id], [user_id], [skills_json], [languages_json], [verification_status], [active], [lat], [lng], [created_at])
-    VALUES ('45000000-0000-0000-0000-000000000005', '45100000-0000-0000-0000-000000000005', N'["Shelter support"]', N'["Tamil"]', N'Verified', 1, 7.0744, 79.8919, SYSUTCDATETIME());
+    VALUES ('45000000-0000-0000-0000-000000000005', '0b000000-0000-0000-0000-000000000003', N'["Shelter support"]', N'["Tamil"]', N'Verified', 1, 7.0744, 79.8919, SYSUTCDATETIME());
 GO
 
 -- Availability windows are required by IVolunteerMatcher and task assignment.

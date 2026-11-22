@@ -106,7 +106,7 @@ public class RequestsController : ControllerBase
 
     [HttpPost("{id:guid}/attachments")]
     [Authorize(Roles = CasesRoles.Citizen)]
-    [RequestSizeLimit(5L * 1024 * 1024)]
+    [RequestSizeLimit(1_000_000)]
     public async Task<IActionResult> UploadAttachment(
         Guid id,
         IFormFile file,

@@ -2,6 +2,7 @@
 
 import { AuthGuard } from "@/components/AuthGuard";
 import { useAuth } from "@/lib/auth";
+import { RoleNames } from "@/lib/roles";
 
 // Member 4 / D4-11 shelter admin. Capacity and occupancy guards are enforced by
 // the SQL CHECK constraint and the guarded UPDATE; messages here only explain
@@ -55,11 +56,11 @@ const EMPTY_FORM: FormState = {
 function SheltersContent() {
   const { user } = useAuth();
   const roles = user?.roles ?? [];
-  const canManageShelters = roles.includes("ShelterAdmin") || roles.includes("SystemAdmin");
-  const canApproveShelters = roles.includes("EmergencyCoordinator") || roles.includes("SystemAdmin");
-  const canAllocateShelter = roles.includes("ShelterAdmin") || roles.includes("EmergencyCoordinator");
-  const canMatchShelters = roles.includes("ShelterAdmin") || roles.includes("EmergencyCoordinator");
-  const canRequestAssistance = roles.includes("ShelterAdmin") || roles.includes("SystemAdmin");
+  const canManageShelters = roles.includes(RoleNames.ShelterAdmin) || roles.includes(RoleNames.SystemAdmin);
+  const canApproveShelters = roles.includes(RoleNames.EmergencyCoordinator) || roles.includes(RoleNames.SystemAdmin);
+  const canAllocateShelter = roles.includes(RoleNames.ShelterAdmin) || roles.includes(RoleNames.EmergencyCoordinator);
+  const canMatchShelters = roles.includes(RoleNames.ShelterAdmin) || roles.includes(RoleNames.EmergencyCoordinator);
+  const canRequestAssistance = roles.includes(RoleNames.ShelterAdmin) || roles.includes(RoleNames.SystemAdmin);
   const [shelters, setShelters] = useState<Paged<Shelter>>({ items: [], total: 0, page: 1, pageSize: 50 });
   const [publicShelters, setPublicShelters] = useState<Shelter[]>([]);
   const [resourceTypes, setResourceTypes] = useState<ResourceType[]>([]);
@@ -367,7 +368,7 @@ function SheltersContent() {
 
 export default function SheltersPage() {
   return (
-    <AuthGuard allowedRoles={["ShelterAdmin", "EmergencyCoordinator", "SystemAdmin"]}>
+    <AuthGuard allowedRoles={[RoleNames.ShelterAdmin, RoleNames.EmergencyCoordinator, RoleNames.SystemAdmin]}>
       <div className="dev4-operations">
         <SheltersContent />
       </div>

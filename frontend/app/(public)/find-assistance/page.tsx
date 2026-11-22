@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Icon } from "@/components/safeway/Icon";
+import { PublicCaseUpdates } from "@/components/safeway/PublicCaseUpdates";
 
 export const metadata: Metadata = {
   title: "Find assistance · SAFEWAY",
@@ -35,10 +36,10 @@ export default function FindAssistancePage() {
             <Icon name="info" size={20} />
           </span>
           <div>
-            <b>Live availability is not connected yet</b>
+            <b>Verified public information</b>
             <p>
-              Shelter and resource availability will appear here when those services are ready.
-              Until then, report what you need so a response team can review it.
+              Published alerts and active service centres are shown below when available. For
+              individual shelter allocation or case status, use the signed-in citizen portal.
             </p>
           </div>
         </aside>
@@ -54,6 +55,8 @@ export default function FindAssistancePage() {
             </article>
           ))}
         </section>
+
+        <PublicCaseUpdates />
 
         <section className="service-choice public-single-choice">
           <div>

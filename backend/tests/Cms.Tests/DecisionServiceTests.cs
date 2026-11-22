@@ -44,6 +44,38 @@ public class DecisionServiceTests
     }
 
     [Fact]
+    public async Task RecordAsync_AuditIncludesRecommendationConfidence()
+    {
+        using var context = TestDb.Create();
+        context.Recommendations.Add(MakeRecommendation());
+        await context.SaveChangesAsync();
+
+        var audit = new Mock<Cms.Application.Contracts.IAuditLogger>();
+        var service = MakeService(context, Roles.EmergencyCoordinator, auditLogger: audit);
+
+        await service.RecordAsync(
+            RecommendationId,
+            new DecisionRequestDto
+            {
+                Outcome = "Approved",
+                Reason = "Verified by coordinator"
+            });
+
+        audit.Verify(
+            logger => logger.LogAsync(
+                "Decision.Recorded",
+                "DecisionRecord",
+                It.IsAny<string?>(),
+                It.Is<object?>(details => HasConfidence(details, 0.8m)),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    private static bool HasConfidence(object? details, decimal expected) =>
+        details?.GetType().GetProperty("Confidence")?.GetValue(details) is decimal value &&
+        value == expected;
+
+    [Fact]
     public async Task RecordAsync_Twice_IsRejectedBecauseRecordsAreImmutable()
     {
         using var context = TestDb.Create();
@@ -163,7 +195,8 @@ public class DecisionServiceTests
     private static DecisionService MakeService(
         CmsDbContext context,
         string role,
-        IRequestStatusService? requestStatusService = null)
+        IRequestStatusService? requestStatusService = null,
+        Mock<Cms.Application.Contracts.IAuditLogger>? auditLogger = null)
     {
         var userId = Guid.NewGuid();
 
@@ -171,7 +204,7 @@ public class DecisionServiceTests
         currentUser.SetupGet(u => u.UserId).Returns(userId);
         currentUser.SetupGet(u => u.Roles).Returns(new[] { role });
 
-        var audit = new Mock<Cms.Application.Contracts.IAuditLogger>();
+        var audit = auditLogger ?? new Mock<Cms.Application.Contracts.IAuditLogger>();
         audit.Setup(a => a.LogAsync(
                 It.IsAny<Guid?>(),
                 It.IsAny<string>(),

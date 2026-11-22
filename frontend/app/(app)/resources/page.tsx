@@ -2,6 +2,7 @@
 
 import { AuthGuard } from "@/components/AuthGuard";
 import { useAuth } from "@/lib/auth";
+import { RoleNames } from "@/lib/roles";
 
 // Member 4 / D4-11 logistics dashboard. The server owns every guard; this page
 // only collects input, displays ProblemDetails and prevents double submits.
@@ -100,9 +101,9 @@ function query(params: Record<string, string | number | boolean | undefined | nu
 function LogisticsContent() {
   const { user } = useAuth();
   const roles = user?.roles ?? [];
-  const canManageInventory = roles.includes("LogisticsManager") || roles.includes("SystemAdmin");
-  const canDispatch = roles.includes("LogisticsManager");
-  const canAllocate = roles.includes("LogisticsManager") || roles.includes("EmergencyCoordinator");
+  const canManageInventory = roles.includes(RoleNames.LogisticsManager) || roles.includes(RoleNames.SystemAdmin);
+  const canDispatch = roles.includes(RoleNames.LogisticsManager);
+  const canAllocate = roles.includes(RoleNames.LogisticsManager) || roles.includes(RoleNames.EmergencyCoordinator);
   const canMatchResources = canAllocate;
   const [types, setTypes] = useState<ResourceType[]>([]);
   const [inventories, setInventories] = useState<Paged<Inventory>>(EMPTY_PAGE);
@@ -603,7 +604,7 @@ function LogisticsContent() {
 
 export default function LogisticsPage() {
   return (
-    <AuthGuard allowedRoles={["LogisticsManager", "EmergencyCoordinator", "SystemAdmin"]}>
+    <AuthGuard allowedRoles={[RoleNames.LogisticsManager, RoleNames.EmergencyCoordinator, RoleNames.SystemAdmin]}>
       <div className="dev4-operations">
         <LogisticsContent />
       </div>

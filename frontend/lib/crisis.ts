@@ -149,12 +149,18 @@ export interface StaffCaseQuery {
  * to values that exist in the backend Category and Urgency enums.
  */
 const reportCategoryToCaseCategory: Record<string, CaseCategory> = {
+  Food: "Food",
+  Medicine: "Medicine",
+  Shelter: "Shelter",
+  Transport: "Transport",
+  Accessibility: "Accessibility",
+  Other: "Other",
+  // Backward-compatible mappings for older UI labels.
   Flooding: "Other",
   Fire: "Other",
   "Medical emergency": "Medicine",
   Displacement: "Shelter",
-  "Food or water": "Food",
-  Other: "Other"
+  "Food or water": "Food"
 };
 
 const reportSeverityToCaseUrgency: Record<string, CaseUrgency> = {
@@ -232,6 +238,40 @@ export async function uploadCrisisReportEvidence(
     `/api/v1/requests/${encodeURIComponent(reference)}/attachments`,
     { method: "POST", body }
   );
+}
+
+export interface HouseholdProfile {
+  id: string;
+  size: number;
+  accessibilityNeeds?: string | null;
+  contactPhone?: string | null;
+}
+
+export interface SaveHouseholdProfileInput {
+  size: number;
+  accessibilityNeeds?: string;
+  contactPhone?: string;
+}
+
+export async function getMyHousehold(): Promise<HouseholdProfile | null> {
+  try {
+    return await api<HouseholdProfile>("/api/v1/households/me");
+  } catch (cause) {
+    if (cause instanceof ApiError && cause.status === 404) {
+      return null;
+    }
+    throw cause;
+  }
+}
+
+export function saveMyHousehold(input: SaveHouseholdProfileInput): Promise<{ id: string }> {
+  return apiJson<{ id: string }>("/api/v1/households/me", "PUT", input);
+}
+
+export function submitRequestFeedback(id: string, comment: string): Promise<{ id: string }> {
+  return apiJson<{ id: string }>(`/api/v1/requests/${encodeURIComponent(id)}/feedback`, "POST", {
+    comment: comment.trim()
+  });
 }
 
 export function listMyCaseRequests(

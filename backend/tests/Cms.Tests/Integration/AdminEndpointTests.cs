@@ -209,7 +209,7 @@ public sealed class AdminEndpointTests : IClassFixture<CmsWebApplicationFactory>
         Assert.Equal(HttpStatusCode.OK, adminResponse.StatusCode);
         var report = await adminResponse.Content.ReadFromJsonAsync<KpiReportDto>();
         Assert.NotNull(report);
-        Assert.True(report!.IsPlaceholder);
+        Assert.False(report!.IsPlaceholder);
         Assert.Equal(DateTimeKind.Utc, report.GeneratedAt.Kind);
 
         Assert.Equal(HttpStatusCode.OK, (await officer.GetAsync($"/api/v1/kpis?{period}")).StatusCode);

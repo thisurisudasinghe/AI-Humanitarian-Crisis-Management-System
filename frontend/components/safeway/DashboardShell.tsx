@@ -251,7 +251,6 @@ export function DashboardShell({ children }: { children: ReactNode }) {
                   placeholder="Search cases, locations, resources..."
                   aria-label="Search cases, locations and resources"
                 />
-                <kbd>⌘ K</kbd>
               </label>
             </form>
             <Link
