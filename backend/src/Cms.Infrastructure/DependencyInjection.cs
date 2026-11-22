@@ -95,7 +95,7 @@ public static class DependencyInjection
 
             return string.IsNullOrWhiteSpace(options.Host)
                 ? ActivatorUtilities.CreateInstance<LogNotificationSender>(provider)
-                : ActivatorUtilities.CreateInstance<SmtpNotificationSender>(provider);
+                : ActivatorUtilities.CreateInstance<SmtpNotificationSender>(provider, options);
         });
         services.TryAddScoped<InAppNotificationChannel>();
         services.TryAddScoped<EmailNotificationChannel>();

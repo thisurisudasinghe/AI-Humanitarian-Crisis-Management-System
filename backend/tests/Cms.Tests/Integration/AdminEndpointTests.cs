@@ -420,4 +420,24 @@ public sealed class AdminEndpointTests : IClassFixture<CmsWebApplicationFactory>
         Assert.True(stillAdmin.IsActive);
         Assert.Contains(RoleNames.SystemAdmin, stillAdmin.Roles);
     }
+
+    [Fact]
+    public async Task Admin_cannot_suspend_self()
+    {
+        await _factory.EnsureSeededAsync();
+        var adminAuth = await _factory.LoginAsync(CmsWebApplicationFactory.AdminEmail);
+        using var admin = await _factory.CreateAuthenticatedClientAsync(CmsWebApplicationFactory.AdminEmail);
+
+        var suspendSelf = await admin.PatchAsJsonAsync(
+            $"/api/v1/users/{adminAuth.UserId}",
+            new UpdateUserRequestDto { Status = UserStatus.Suspended });
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, suspendSelf.StatusCode);
+
+        var users = await admin.GetAsync(
+            $"/api/v1/users?search={Uri.EscapeDataString(CmsWebApplicationFactory.AdminEmail)}");
+        users.EnsureSuccessStatusCode();
+        var page = await users.Content.ReadFromJsonAsync<PagedResultDto<UserSummaryDto>>(JsonOptions);
+        Assert.NotNull(page);
+        Assert.True(Assert.Single(page!.Items).IsActive);
+    }
 }
