@@ -10,23 +10,23 @@ export type InfoKind = "about" | "services" | "how" | "contact";
 const infoContent: Record<InfoKind, [string, string, string]> = {
   about: [
     "About SAFEWAY",
-    "Technology that keeps people, judgment and accountability at the centre.",
+    "Technology that keeps people at the centre.",
     "SAFEWAY makes access to help clearer for communities and response work more coordinated for authorized teams."
   ],
   services: [
     "Humanitarian services",
-    "Practical support, connected through one trusted platform.",
-    "Essential public assistance and authorized response tools come together in one clear, consistent experience."
+    "Practical support, connected in one place.",
+    "Public assistance and authorized response tools work together through a single, consistent experience."
   ],
   how: [
     "How it works",
-    "From a report to a responsible response, every step stays visible.",
-    "The experience is simple for people in crisis and structured for the teams responsible for acting."
+    "From a report to a responsible response.",
+    "Every step stays clear for people in need and structured for the teams responsible for acting."
   ],
   contact: [
     "Contact & support",
-    "A clear place to ask questions and find the right support.",
-    "For general platform questions, use this prototype support centre. In immediate danger, contact local emergency services first."
+    "A clear place to ask questions.",
+    "For general platform questions, use this support centre. In immediate danger, contact local emergency services first."
   ]
 };
 
@@ -34,7 +34,7 @@ export function InfoPageView({ kind }: { kind: InfoKind }) {
   const [eyebrow, title, intro] = infoContent[kind];
 
   return (
-    <main>
+    <main className="public-info">
       <header className="page-hero">
         <div className="page-hero-lines" />
         <div className="eyebrow">
@@ -62,23 +62,23 @@ function AboutBody() {
         </div>
         <div>
           <p>
-            A person in crisis should understand what to do without technical knowledge. Every
-            workflow favors clarity, reassurance and meaningful feedback.
+            A person in crisis should know what to do without technical knowledge. Every workflow
+            favors clear language, reassurance and meaningful feedback.
           </p>
           <p>
-            For response organizations, SAFEWAY creates shared situational awareness while
-            preserving human review for critical decisions.
+            For response organizations, SAFEWAY creates shared situational awareness while keeping
+            human review in charge of critical decisions.
           </p>
         </div>
       </section>
 
-      <section className="value-grid">
+      <section className="value-grid" aria-label="SAFEWAY values">
         {(
           [
             ["Clarity", "Simple language and focused actions reduce uncertainty.", "eye"],
             ["Responsibility", "Authorized people review and approve critical actions.", "shield"],
             ["Connection", "Reports, resources and teams share one clear picture.", "map"],
-            ["Hope", "Progress and positive outcomes remain visible.", "heart"]
+            ["Hope", "Progress and positive outcomes stay visible.", "heart"]
           ] as const
         ).map(([title, copy, icon]) => (
           <article key={title}>
@@ -100,9 +100,6 @@ function AboutBody() {
             SAFEWAY can organize information and highlight risk patterns, but trained and
             accountable people remain responsible for verification, approval and action.
           </p>
-          <Link className="btn btn-white" href="/how-it-works">
-            See our process <Icon name="arrow" />
-          </Link>
         </div>
       </section>
     </div>
@@ -121,7 +118,7 @@ function ServicesBody() {
 
   return (
     <div className="page-body">
-      <section className="service-catalog">
+      <section className="service-catalog" aria-label="SAFEWAY services">
         {services.map(([title, copy, icon, access], index) => (
           <article key={title}>
             <span>0{index + 1}</span>
@@ -141,10 +138,7 @@ function ServicesBody() {
           <h2>Start with the action that fits your situation.</h2>
         </div>
         <Link className="btn btn-primary" href="/report">
-          Report a crisis <Icon name="arrow" />
-        </Link>
-        <Link className="btn btn-outline" href="/find-assistance">
-          Find assistance
+          Report a Crisis <Icon name="arrow" />
         </Link>
       </section>
     </div>
@@ -162,7 +156,7 @@ function HowBody() {
 
   return (
     <div className="page-body">
-      <section className="process-list">
+      <section className="process-list" aria-label="Response process">
         {steps.map(([number, label, title, copy, icon]) => (
           <article key={number}>
             <span>{number}</span>
@@ -187,7 +181,7 @@ function HowBody() {
           </span>
         </div>
         <Link className="btn btn-white" href="/report">
-          Start a report <Icon name="arrow" />
+          Report a Crisis <Icon name="arrow" />
         </Link>
       </section>
     </div>
@@ -237,14 +231,14 @@ function ContactBody() {
 
       <section className="contact-form">
         {sent ? (
-          <div className="contact-success">
+          <div className="contact-success" aria-live="polite">
             <i>
               <Icon name="check" size={30} />
             </i>
-            <h2>Message recorded in this browser.</h2>
+            <h2>Your message was not sent.</h2>
             <p>
-              Support messaging is not connected to a backend yet, so nothing was transmitted. In
-              an emergency, contact local emergency services.
+              Support messaging is not connected to a backend yet, so nothing was transmitted. In an
+              emergency, contact local emergency services.
             </p>
             <button type="button" onClick={() => setSent(false)}>
               Write another message

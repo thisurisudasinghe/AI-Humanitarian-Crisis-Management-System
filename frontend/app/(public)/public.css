@@ -1,0 +1,1515 @@
+/* Public-only presentation layer.
+   Every selector is scoped to .public-shell so dashboards and shared layouts
+   keep their existing styling. Palette tokens come from the existing theme. */
+
+.public-shell {
+    overflow: visible;
+    background: var(--white);
+    color: var(--ink);
+    font-family: "DM Sans", sans-serif;
+}
+
+.public-shell h1,
+.public-shell h2,
+.public-shell h3 {
+    font-family: "Manrope", sans-serif;
+}
+
+/* ---------- Brand ---------- */
+
+.public-shell .public-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    flex: 0 0 auto;
+    color: var(--midnight);
+    text-decoration: none;
+}
+
+.public-shell .public-brand__mark {
+    width: 46px;
+    height: 46px;
+    border-radius: 50% 50% 50% 12px;
+    display: grid;
+    place-items: center;
+    background: var(--blue);
+    color: var(--white);
+    transform: rotate(-8deg);
+    box-shadow: 0 8px 20px rgba(67, 143, 197, 0.22);
+}
+
+.public-shell .public-brand__mark svg {
+    transform: rotate(8deg);
+}
+
+.public-shell .public-brand--compact .public-brand__mark {
+    width: 42px;
+    height: 42px;
+}
+
+.public-shell .public-brand__text {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+}
+
+.public-shell .public-brand__name {
+    font: 800 20px/1 "Manrope", sans-serif;
+    letter-spacing: 0.08em;
+}
+
+.public-shell .public-brand__subtitle {
+    display: none;
+    font: 600 10px/1.35 "Manrope", sans-serif;
+    letter-spacing: 0.02em;
+    color: var(--muted);
+}
+
+.public-shell .public-brand--light {
+    color: var(--white);
+}
+
+.public-shell .public-brand--light .public-brand__mark {
+    background: var(--white);
+    color: var(--blue);
+    box-shadow: none;
+}
+
+.public-shell .public-brand--light .public-brand__subtitle {
+    display: block;
+    color: #b9d3e3;
+}
+
+/* ---------- Navigation ---------- */
+
+.public-shell .public-nav {
+    position: sticky;
+    top: 0;
+    z-index: 60;
+    height: 78px;
+    padding: 0 clamp(20px, 4vw, 68px);
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: clamp(18px, 2.4vw, 40px);
+    background: var(--white);
+    border-bottom: 1px solid var(--line);
+    box-shadow: 0 6px 24px rgba(23, 54, 79, 0.05);
+}
+
+.public-shell .public-menu {
+    display: none;
+}
+
+/* The panel is layout-only on desktop so links sit in the true centre of the
+   header and the action group stays aligned to the right edge. */
+.public-shell .public-nav__panel {
+    min-width: 0;
+    display: contents;
+}
+
+.public-shell .public-nav__links {
+    grid-column: 2;
+    justify-self: center;
+    display: flex;
+    align-items: center;
+    gap: clamp(16px, 2vw, 30px);
+    margin: 0;
+}
+
+.public-shell .public-nav__links a {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 10px 2px;
+    color: var(--deep);
+    font: 700 14px/1 "DM Sans", sans-serif;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: color 0.2s ease;
+}
+
+.public-shell .public-nav__links a svg {
+    flex: 0 0 auto;
+    color: var(--blue);
+}
+
+.public-shell .public-nav__links a::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    right: 50%;
+    bottom: 0;
+    height: 3px;
+    border-radius: 3px 3px 0 0;
+    background: var(--blue);
+    transition: left 0.2s ease, right 0.2s ease;
+}
+
+.public-shell .public-nav__links a:hover,
+.public-shell .public-nav__links a.active {
+    color: var(--blue);
+}
+
+.public-shell .public-nav__links a:hover::after,
+.public-shell .public-nav__links a.active::after {
+    left: 0;
+    right: 0;
+}
+
+.public-shell .public-nav__actions {
+    grid-column: 3;
+    justify-self: end;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 0 0 auto;
+}
+
+.public-shell .public-nav__actions .public-action {
+    min-height: 44px;
+    padding: 0 16px;
+    border-radius: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font: 700 13.5px/1 "DM Sans", sans-serif;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
+}
+
+.public-shell .public-action--login {
+    background: var(--white);
+    color: var(--deep);
+    border: 1px solid var(--line);
+}
+
+.public-shell .public-action--login:hover {
+    background: var(--pale);
+    border-color: var(--blue);
+    color: var(--deep);
+}
+
+.public-shell .public-action--report {
+    background: var(--deep);
+    color: var(--white);
+    border: 1px solid var(--deep);
+    box-shadow: 0 8px 18px rgba(36, 87, 122, 0.18);
+}
+
+.public-shell .public-action--report:hover {
+    background: var(--midnight);
+    border-color: var(--midnight);
+    color: var(--white);
+    transform: translateY(-1px);
+}
+
+.public-shell a:focus-visible,
+.public-shell button:focus-visible,
+.public-shell input:focus-visible,
+.public-shell select:focus-visible,
+.public-shell textarea:focus-visible {
+    outline: 3px solid var(--focus);
+    outline-offset: 3px;
+    box-shadow: 0 0 0 6px rgba(23, 54, 79, 0.22);
+}
+
+/* ---------- Button contrast layer ----------
+   The shared stylesheet gives anchors `color: inherit`, which can hide button
+   labels. These scoped rules restore explicit text/background pairs for every
+   public button state without touching the shared stylesheet. */
+
+.public-shell .btn,
+.public-shell a.btn,
+.public-shell button.btn {
+    min-height: 46px;
+    padding: 0 20px;
+    border-radius: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    font: 700 14px/1 "DM Sans", sans-serif;
+    text-decoration: none;
+    transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.public-shell .btn-primary,
+.public-shell a.btn-primary,
+.public-shell button.btn-primary {
+    background: var(--deep);
+    border: 1px solid var(--deep);
+    color: var(--white);
+    box-shadow: 0 10px 24px rgba(36, 87, 122, 0.18);
+}
+
+.public-shell .btn-primary:hover,
+.public-shell a.btn-primary:hover,
+.public-shell button.btn-primary:hover,
+.public-shell .public-action--report:hover {
+    background: var(--midnight);
+    border-color: var(--midnight);
+    color: var(--white);
+}
+
+.public-shell .btn-white,
+.public-shell a.btn-white {
+    background: var(--white);
+    border: 1px solid var(--white);
+    color: var(--deep);
+}
+
+.public-shell .btn-white:hover,
+.public-shell a.btn-white:hover {
+    background: var(--pale);
+    border-color: var(--blue-2);
+    color: var(--deep);
+}
+
+.public-shell .btn-outline,
+.public-shell a.btn-outline {
+    background: var(--white);
+    border: 1px solid var(--blue-2);
+    color: var(--deep);
+}
+
+.public-shell .btn-outline:hover,
+.public-shell a.btn-outline:hover {
+    background: var(--pale);
+    border-color: var(--blue);
+    color: var(--deep);
+}
+
+.public-shell .btn-ghost,
+.public-shell a.btn-ghost {
+    background: transparent;
+    border: 1px solid var(--blue-2);
+    color: var(--white);
+}
+
+.public-shell .btn-ghost:hover,
+.public-shell a.btn-ghost:hover {
+    background: var(--deep);
+    color: var(--white);
+}
+
+.public-shell .btn:disabled,
+.public-shell button.btn:disabled,
+.public-shell a.btn[aria-disabled="true"] {
+    background: var(--pale);
+    border-color: var(--line);
+    color: var(--deep);
+    box-shadow: none;
+    opacity: 1;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* ---------- Shared public hero ---------- */
+
+.public-shell .public-hero,
+.public-shell .page-hero {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    color: var(--white);
+    text-align: center;
+    background: radial-gradient(circle at 50% 16%, rgba(120, 183, 225, 0.2), transparent 36%),
+        linear-gradient(160deg, var(--deep), var(--midnight) 78%);
+    overflow: hidden;
+}
+
+.public-shell .public-hero {
+    min-height: 0;
+    padding: 82px 24px 44px;
+}
+
+.public-shell .page-hero {
+    min-height: 420px;
+    padding: 82px 24px 64px;
+}
+
+.public-shell .public-hero::before,
+.public-shell .page-hero::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    opacity: 0.07;
+    background-image: linear-gradient(rgba(255, 255, 255, 0.5) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.5) 1px, transparent 1px);
+    background-size: 64px 64px;
+    mask-image: linear-gradient(to bottom, black, transparent 82%);
+    pointer-events: none;
+}
+
+.public-shell .public-hero > :not(.hero-orbit),
+.public-shell .page-hero > :not(.page-hero-lines) {
+    position: relative;
+    z-index: 1;
+}
+
+.public-shell .centered-hero-copy {
+    max-width: 900px;
+}
+
+.public-shell .public-hero .eyebrow,
+.public-shell .page-hero .eyebrow {
+    justify-content: center;
+    color: #b9d3e3;
+    font: 700 12px/1.4 "Manrope", sans-serif;
+    letter-spacing: 0.16em;
+}
+
+.public-shell .public-hero h1,
+.public-shell .page-hero h1 {
+    max-width: 900px;
+    margin: 20px 0 18px;
+    font: 600 clamp(42px, 5vw, 66px)/1.08 "Manrope", sans-serif;
+    letter-spacing: -0.015em;
+}
+
+.public-shell .public-hero__line {
+    display: block;
+}
+
+.public-shell .public-hero h1 em,
+.public-shell .page-hero h1 em {
+    color: var(--blue-2);
+    font-style: normal;
+}
+
+.public-shell .centered-hero-copy > p,
+.public-shell .page-hero p {
+    max-width: 690px;
+    margin: 0 auto;
+    color: #d7e6f0;
+    font: 400 16px/1.75 "DM Sans", sans-serif;
+}
+
+.public-shell .centered-actions {
+    margin-top: 28px;
+    justify-content: center;
+}
+
+.public-shell .public-hero__cta {
+    min-height: 52px;
+    padding: 0 24px;
+    border-radius: 10px;
+    box-shadow: 0 12px 28px rgba(4, 28, 46, 0.22);
+}
+
+.public-shell .public-hero__emergency {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin: 16px 0 0;
+    color: #c9ddea;
+    font: 500 13px/1.6 "DM Sans", sans-serif;
+}
+
+/* Calm, staggered entrance used only on the homepage hero. */
+.public-shell .public-hero .eyebrow,
+.public-shell .public-hero h1,
+.public-shell .public-hero .centered-hero-copy > p:not(.public-hero__emergency),
+.public-shell .public-hero .centered-actions,
+.public-shell .public-hero__emergency {
+    animation: safeway-enter 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+.public-shell .public-hero .eyebrow { animation-delay: 0.04s; }
+.public-shell .public-hero h1 { animation-delay: 0.12s; }
+.public-shell .public-hero .centered-hero-copy > p:not(.public-hero__emergency) { animation-delay: 0.2s; }
+.public-shell .public-hero .centered-actions { animation-delay: 0.28s; }
+.public-shell .public-hero__emergency { animation-delay: 0.36s; }
+
+@keyframes safeway-enter {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.public-shell .hero-trust-bar {
+    width: min(1080px, 100%);
+    min-height: 0;
+    margin: 22px 0 0;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    background: transparent;
+    color: var(--white);
+    box-shadow: none;
+}
+
+.public-shell .hero-trust-bar > span {
+    min-width: 0;
+    padding: 20px 22px;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    column-gap: 12px;
+    align-items: center;
+    border: 1px solid rgba(120, 183, 225, 0.3);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.07);
+}
+
+.public-shell .hero-trust-bar svg {
+    grid-row: 1 / 3;
+    color: var(--blue-2);
+}
+
+.public-shell .hero-trust-bar b {
+    color: var(--white);
+    font: 700 13px/1.3 "Manrope", sans-serif;
+}
+
+.public-shell .hero-trust-bar small {
+    margin-top: 4px;
+    color: #d7e6f0;
+    font: 500 12px/1.4 "DM Sans", sans-serif;
+}
+
+.public-shell .public-hero__fade {
+    height: 72px;
+    margin-top: -1px;
+    background: linear-gradient(to bottom, var(--midnight), var(--pale) 72%, var(--white));
+}
+
+/* ---------- Network animation ---------- */
+
+.public-shell .public-network {
+    position: relative;
+    z-index: 2;
+    width: min(820px, 92vw);
+    height: 420px;
+    margin: 34px auto 28px;
+    overflow: hidden;
+}
+
+.public-shell .public-network__canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+.public-shell .public-network__halo {
+    fill: rgba(120, 183, 225, 0.08);
+}
+
+.public-shell .public-network__orbit {
+    transform-box: view-box;
+    transform-origin: 50% 50%;
+    animation: safeway-orbit 90s linear infinite;
+}
+
+.public-shell .public-network__orbit-ring {
+    fill: none;
+    stroke: rgba(120, 183, 225, 0.48);
+    stroke-width: 1.5;
+    stroke-dasharray: 4 12;
+    animation: safeway-orbit-path 22s linear infinite;
+}
+
+.public-shell .public-network__orbit-dot {
+    fill: var(--blue-2);
+    animation: safeway-pulse 5s ease-in-out infinite;
+}
+
+.public-shell .public-network__spokes line {
+    stroke: rgba(120, 183, 225, 0.55);
+    stroke-width: 1.5;
+    stroke-dasharray: 6 10;
+    animation: safeway-flow 18s linear infinite;
+}
+
+.public-shell .public-network__spokes line:nth-child(2) { animation-delay: -3s; }
+.public-shell .public-network__spokes line:nth-child(3) { animation-delay: -6s; }
+.public-shell .public-network__spokes line:nth-child(4) { animation-delay: -9s; }
+.public-shell .public-network__spokes line:nth-child(5) { animation-delay: -12s; }
+
+.public-shell .public-network__signals circle {
+    fill: var(--blue);
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: safeway-pulse 4s ease-in-out infinite;
+}
+
+.public-shell .public-network__signals circle:nth-child(2) {
+    fill: var(--blue-2);
+}
+
+.public-shell .public-network__signal--delay {
+    animation-delay: -1.8s;
+}
+
+.public-shell .public-network__core {
+    position: absolute;
+    z-index: 2;
+    left: 50%;
+    top: 50%;
+    width: 130px;
+    height: 130px;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background: var(--white);
+    color: var(--deep);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 18px 50px rgba(4, 28, 46, 0.28);
+}
+
+.public-shell .public-network__heart {
+    width: 46px;
+    height: 46px;
+    margin-bottom: 8px;
+    border-radius: 50% 50% 50% 12px;
+    display: grid;
+    place-items: center;
+    background: var(--blue);
+    color: var(--white);
+    transform: rotate(-8deg);
+}
+
+.public-shell .public-network__heart svg {
+    transform: rotate(8deg);
+}
+
+.public-shell .public-network__core b {
+    color: var(--deep);
+    font: 800 12px/1 "Manrope", sans-serif;
+    letter-spacing: 0.1em;
+}
+
+.public-shell .public-network__core small {
+    margin-top: 5px;
+    color: var(--deep);
+    font: 600 10px/1.2 "DM Sans", sans-serif;
+}
+
+.public-shell .public-network__nodes {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.public-shell .public-network__node {
+    position: absolute;
+    width: 164px;
+    padding: 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.98);
+    color: var(--deep);
+    box-shadow: 0 12px 28px rgba(4, 28, 46, 0.18);
+}
+
+.public-shell .public-network__node-icon {
+    width: 34px;
+    height: 34px;
+    flex: 0 0 auto;
+    border-radius: 8px;
+    display: grid;
+    place-items: center;
+    background: var(--pale);
+    color: var(--blue);
+    animation: safeway-node-glow 5s ease-in-out infinite;
+}
+
+.public-shell .public-network__node:nth-child(2) .public-network__node-icon { animation-delay: -1s; }
+.public-shell .public-network__node:nth-child(3) .public-network__node-icon { animation-delay: -2s; }
+.public-shell .public-network__node:nth-child(4) .public-network__node-icon { animation-delay: -3s; }
+.public-shell .public-network__node:nth-child(5) .public-network__node-icon { animation-delay: -4s; }
+
+.public-shell .public-network__node-copy {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.public-shell .public-network__node-copy b {
+    color: var(--deep);
+    font: 700 11px/1.25 "Manrope", sans-serif;
+}
+
+.public-shell .public-network__node-copy small {
+    color: var(--deep);
+    font: 500 10px/1.25 "DM Sans", sans-serif;
+}
+
+.public-shell .public-network__node--report { left: 10%; top: 18%; }
+.public-shell .public-network__node--coordination { right: 10%; top: 18%; }
+.public-shell .public-network__node--shelters { left: 4%; top: 51%; }
+.public-shell .public-network__node--resources { right: 4%; top: 51%; }
+.public-shell .public-network__node--volunteers {
+    left: 50%;
+    bottom: 6%;
+    transform: translateX(-50%);
+}
+
+@keyframes safeway-orbit {
+    to { transform: rotate(360deg); }
+}
+
+@keyframes safeway-orbit-path {
+    to { stroke-dashoffset: -64; }
+}
+
+@keyframes safeway-flow {
+    to { stroke-dashoffset: -32; }
+}
+
+@keyframes safeway-pulse {
+    0%, 100% { opacity: 0.35; transform: scale(0.8); }
+    50% { opacity: 0.85; transform: scale(1.2); }
+}
+
+@keyframes safeway-node-glow {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(120, 183, 225, 0); }
+    50% { box-shadow: 0 0 0 5px rgba(120, 183, 225, 0.14); }
+}
+
+/* ---------- Home sections ---------- */
+
+.public-shell .section-kicker {
+    color: var(--deep);
+    font: 700 12px/1.4 "Manrope", sans-serif;
+    letter-spacing: 0.14em;
+}
+
+.public-shell .section-kicker.light {
+    color: #b9d3e3;
+}
+
+.public-shell .home-intro {
+    max-width: 1160px;
+    padding: 76px 28px 64px;
+    gap: 8%;
+}
+
+.public-shell .home-intro h2 {
+    font-size: clamp(34px, 4vw, 50px);
+    line-height: 1.16;
+}
+
+.public-shell .home-intro p {
+    color: var(--deep);
+    font-size: 16px;
+    line-height: 1.8;
+}
+
+.public-shell .home-pathways {
+    max-width: 1160px;
+    padding: 0 28px 88px;
+    gap: 20px;
+}
+
+.public-shell .pathway {
+    min-height: 340px;
+    padding: 38px;
+    border: 1px solid var(--blue-2);
+    border-top: 3px solid var(--blue-2);
+    border-radius: 14px;
+    background: var(--pale);
+    color: var(--deep);
+    box-shadow: 0 12px 34px rgba(25, 64, 89, 0.06);
+}
+
+.public-shell .pathway-public {
+    background: var(--pale);
+}
+
+.public-shell .pathway-operations {
+    background: linear-gradient(140deg, var(--pale), var(--white));
+    color: var(--deep);
+    border-color: var(--blue-2);
+}
+
+.public-shell .pathway > span {
+    color: var(--deep);
+    font: 700 11px/1.4 "Manrope", sans-serif;
+    letter-spacing: 0.14em;
+    opacity: 1;
+}
+
+.public-shell .pathway > i {
+    width: 50px;
+    height: 50px;
+    margin: 30px 0;
+    border-radius: 10px;
+    background: var(--white);
+    color: var(--blue);
+}
+
+.public-shell .pathway h3 {
+    color: var(--deep);
+    font-size: 24px;
+    line-height: 1.22;
+}
+
+.public-shell .pathway p {
+    max-width: 440px;
+    margin: 12px 0 0;
+    color: var(--deep);
+    font-size: 15px;
+    line-height: 1.65;
+    opacity: 1;
+}
+
+.public-shell .home-steps {
+    padding: 84px max(24px, calc((100vw - 1160px) / 2));
+    grid-template-columns: 1.15fr repeat(3, 1fr);
+}
+
+.public-shell .home-steps > div,
+.public-shell .home-steps > article {
+    min-height: 280px;
+    padding: 30px;
+}
+
+.public-shell .home-steps-heading h2 {
+    font-size: 36px;
+    line-height: 1.2;
+}
+
+.public-shell .home-steps article > span {
+    color: #b9d3e3;
+    font: 700 11px/1.3 "Manrope", sans-serif;
+}
+
+.public-shell .home-steps article > i {
+    margin-top: 40px;
+    border-radius: 10px;
+    color: #b9d3e3;
+}
+
+.public-shell .home-steps article h3 {
+    color: var(--white);
+    font-size: 17px;
+}
+
+.public-shell .home-steps article p {
+    color: #d7e6f0;
+    font-size: 13.5px;
+    line-height: 1.65;
+}
+
+.public-shell .public-guidance {
+    min-height: 0;
+    padding: 48px max(24px, calc((100vw - 1160px) / 2));
+    border-top: 1px solid var(--blue-2);
+    border-bottom: 1px solid var(--blue-2);
+    background: var(--pale);
+    color: var(--deep);
+}
+
+.public-shell .public-guidance > span {
+    width: 56px;
+    height: 56px;
+    border-radius: 50% 50% 50% 12px;
+    background: var(--deep);
+    color: var(--white);
+}
+
+.public-shell .public-guidance small {
+    color: var(--deep);
+    font: 700 11px/1.4 "Manrope", sans-serif;
+    letter-spacing: 0.14em;
+    opacity: 1;
+}
+
+.public-shell .public-guidance h2 {
+    margin-top: 6px;
+    color: var(--deep);
+    font-size: 30px;
+    line-height: 1.2;
+}
+
+.public-shell .public-guidance p {
+    max-width: 620px;
+    margin-top: 8px;
+    color: var(--deep);
+    font-size: 14px;
+    line-height: 1.7;
+}
+
+/* ---------- Inner pages ---------- */
+
+/* Inner-page heroes use the shared treatment above so all public pages keep
+   the same width, spacing, decoration and typographic hierarchy. */
+.public-shell .page-body {
+    max-width: 1160px;
+    padding: 80px 28px;
+}
+
+.public-shell .mission-grid {
+    gap: 8%;
+}
+
+.public-shell .mission-grid h2 {
+    font-size: clamp(32px, 3.6vw, 46px);
+    line-height: 1.18;
+}
+
+.public-shell .mission-grid p {
+    color: var(--deep);
+    font-size: 15px;
+    line-height: 1.8;
+}
+
+.public-shell .value-grid,
+.public-shell .service-catalog {
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 12px 34px rgba(25, 64, 89, 0.06);
+}
+
+.public-shell .value-grid article,
+.public-shell .service-catalog article {
+    min-height: 220px;
+    padding: 30px;
+}
+
+.public-shell .value-grid i,
+.public-shell .service-catalog article > i {
+    border-radius: 10px;
+    background: var(--pale);
+    color: var(--blue);
+}
+
+.public-shell .value-grid h3 {
+    margin-top: 34px;
+    color: var(--deep);
+    font-size: 19px;
+}
+
+.public-shell .value-grid p,
+.public-shell .service-catalog p {
+    color: var(--deep);
+    font-size: 14px;
+    line-height: 1.7;
+}
+
+.public-shell .service-catalog article > span {
+    color: var(--deep);
+    font: 700 10px/1.3 "Manrope", sans-serif;
+}
+
+.public-shell .service-catalog small,
+.public-shell .process-list small {
+    color: var(--deep);
+    font: 700 11px/1.4 "Manrope", sans-serif;
+    letter-spacing: 0.12em;
+    opacity: 1;
+}
+
+.public-shell .service-catalog h2 {
+    color: var(--deep);
+    font-size: 20px;
+    line-height: 1.25;
+}
+
+.public-shell .human-oversight {
+    margin-top: 72px;
+    border-radius: 16px;
+    background: linear-gradient(140deg, var(--midnight), var(--deep));
+}
+
+.public-shell .human-oversight .public-network {
+    width: 100%;
+    height: 380px;
+    margin: 0;
+    transform: scale(0.86);
+    transform-origin: left center;
+}
+
+.public-shell .human-oversight > div:last-child {
+    padding: 48px;
+}
+
+.public-shell .human-oversight h2 {
+    color: var(--white);
+    font-size: 34px;
+    line-height: 1.18;
+}
+
+.public-shell .human-oversight p {
+    color: #d7e6f0;
+    font-size: 15px;
+    line-height: 1.75;
+}
+
+.public-shell .service-choice,
+.public-shell .process-cta {
+    border-radius: 14px;
+}
+
+.public-shell .service-choice {
+    border: 1px solid var(--blue-2);
+    background: var(--pale);
+    box-shadow: 0 12px 34px rgba(25, 64, 89, 0.06);
+}
+
+.public-shell .service-choice small {
+    color: var(--deep);
+    font: 700 11px/1.4 "Manrope", sans-serif;
+    letter-spacing: 0.12em;
+    opacity: 1;
+}
+
+.public-shell .service-choice h2 {
+    color: var(--deep);
+    font-size: 26px;
+    line-height: 1.22;
+}
+
+.public-shell .process-list article {
+    min-height: 140px;
+}
+
+.public-shell .process-list article > span {
+    color: var(--deep);
+    font: 700 12px/1.3 "Manrope", sans-serif;
+}
+
+.public-shell .process-list article > i {
+    border-radius: 50%;
+}
+
+.public-shell .process-list h2 {
+    color: var(--deep);
+    font-size: 22px;
+}
+
+.public-shell .process-list p {
+    color: var(--deep);
+    font-size: 14px;
+    line-height: 1.7;
+}
+
+.public-shell .process-cta {
+    background: var(--deep);
+    color: var(--white);
+}
+
+.public-shell .process-cta small {
+    color: #b9d3e3;
+    font: 700 11px/1.4 "Manrope", sans-serif;
+    letter-spacing: 0.12em;
+    opacity: 1;
+}
+
+.public-shell .process-cta h2 {
+    color: var(--white);
+    font-size: 26px;
+    line-height: 1.22;
+}
+
+.public-shell .public-availability-note {
+    display: flex;
+    gap: 14px;
+    margin-bottom: 34px;
+    padding: 18px 20px;
+    border: 1px solid var(--blue-2);
+    border-left: 4px solid var(--blue);
+    border-radius: 12px;
+    background: var(--pale);
+    color: var(--deep);
+}
+
+.public-shell .public-availability-note > span {
+    width: 38px;
+    height: 38px;
+    flex: 0 0 auto;
+    border-radius: 10px;
+    display: grid;
+    place-items: center;
+    background: var(--white);
+    color: var(--blue);
+}
+
+.public-shell .public-availability-note b {
+    color: var(--deep);
+    font-size: 14px;
+}
+
+.public-shell .public-availability-note p {
+    margin: 5px 0 0;
+    color: var(--deep);
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.public-shell .public-single-choice .btn {
+    margin-left: auto;
+}
+
+/* ---------- Contact ---------- */
+
+.public-shell .two-fields {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+.public-shell .contact-options small {
+    color: var(--deep);
+    font: 700 11px/1.4 "Manrope", sans-serif;
+    letter-spacing: 0.12em;
+    opacity: 1;
+}
+
+.public-shell .contact-options h3 {
+    color: var(--deep);
+    font-size: 18px;
+}
+
+.public-shell .contact-options p {
+    color: var(--deep);
+    font-size: 14px;
+    line-height: 1.7;
+}
+
+.public-shell .contact-form label {
+    display: block;
+    margin-bottom: 16px;
+}
+
+.public-shell .field-label {
+    display: block;
+    margin-bottom: 7px;
+    color: var(--deep);
+    font: 700 13px/1.4 "DM Sans", sans-serif;
+}
+
+.public-shell .contact-form input,
+.public-shell .contact-form select,
+.public-shell .contact-form textarea {
+    border-radius: 8px;
+    padding: 14px;
+    font: 400 14px/1.5 "DM Sans", sans-serif;
+}
+
+.public-shell .contact-success > i {
+    background: var(--pale);
+    color: var(--deep);
+}
+
+.public-shell .contact-success h2 {
+    color: var(--deep);
+}
+
+.public-shell .contact-success p {
+    color: var(--deep);
+    font-size: 14px;
+    line-height: 1.7;
+}
+
+.public-shell .contact-success button {
+    min-height: 42px;
+    padding: 10px 16px;
+    border: 1px solid var(--blue-2);
+    border-radius: 8px;
+    background: var(--white);
+    color: var(--deep);
+    font: 700 14px/1 "DM Sans", sans-serif;
+}
+
+.public-shell .contact-success button:hover {
+    background: var(--pale);
+    border-color: var(--blue);
+}
+
+/* ---------- Footer ---------- */
+
+.public-shell .public-footer {
+    padding: 64px clamp(24px, 6vw, 90px) 24px;
+    background: var(--midnight);
+    color: var(--white);
+}
+
+.public-shell .public-footer__main {
+    max-width: 1160px;
+    margin: 0 auto 48px;
+    padding: 0;
+    display: grid;
+    grid-template-columns: 1.6fr 1fr 1fr;
+    gap: 48px;
+}
+
+.public-shell .public-footer__main nav {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 11px;
+}
+
+.public-shell .public-footer__main b {
+    margin-bottom: 6px;
+    color: var(--blue-2);
+    font: 700 12px/1.3 "Manrope", sans-serif;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.public-shell .public-footer__main a {
+    color: #c7d8e3;
+    font-size: 14px;
+    text-decoration: none;
+}
+
+.public-shell .public-footer__main a:hover {
+    color: var(--white);
+}
+
+.public-shell .public-footer__brand p {
+    max-width: 360px;
+    margin: 18px 0 0;
+    color: #c7d8e3;
+    font-size: 14px;
+    line-height: 1.7;
+}
+
+.public-shell .public-footer__bottom {
+    max-width: 1160px;
+    margin: 0 auto;
+    padding-top: 22px;
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    color: #b9d3e3;
+    font-size: 12px;
+}
+
+.public-shell .public-footer__bottom a {
+    color: #b9d3e3;
+    text-decoration: none;
+}
+
+.public-shell .public-footer__bottom a:hover {
+    color: var(--white);
+}
+
+/* ---------- Responsive ---------- */
+
+@media (min-width: 1180px) {
+    .public-shell .public-brand--compact .public-brand__subtitle {
+        display: block;
+    }
+}
+
+@media (max-width: 1080px) {
+    .public-shell .public-nav__links {
+        gap: 14px;
+    }
+    .public-shell .public-nav__links a {
+        font-size: 12px;
+    }
+    .public-shell .public-nav__actions .public-action {
+        padding: 0 12px;
+        font-size: 12px;
+    }
+    .public-shell .public-nav__actions .public-action svg {
+        display: none;
+    }
+}
+
+@media (max-width: 1100px) {
+    .public-shell .public-nav {
+        height: 70px;
+        padding-inline: 18px;
+    }
+    .public-shell .public-menu {
+        width: 42px;
+        height: 42px;
+        margin-left: auto;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        display: grid;
+        place-items: center;
+        background: var(--white);
+        color: var(--deep);
+    }
+    .public-shell .public-nav__panel {
+        display: none;
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 100%;
+        padding: 12px 18px 20px;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+        background: var(--white);
+        border-bottom: 1px solid var(--line);
+        box-shadow: 0 18px 30px rgba(23, 54, 79, 0.12);
+    }
+    .public-shell .public-nav__panel.is-open {
+        display: flex;
+    }
+    .public-shell .public-nav__links {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0;
+    }
+    .public-shell .public-nav__links a {
+        padding: 13px 8px;
+        border-bottom: 1px solid var(--line);
+        font-size: 15px;
+    }
+    .public-shell .public-nav__links a::after {
+        display: none;
+    }
+    .public-shell .public-nav__links a.active {
+        color: var(--blue);
+    }
+    .public-shell .public-nav__actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .public-shell .public-nav__actions .public-action {
+        width: 100%;
+        font-size: 14px;
+    }
+    .public-shell .public-nav__actions .public-action svg {
+        display: block;
+    }
+    .public-shell .home-intro,
+    .public-shell .mission-grid,
+    .public-shell .contact-layout {
+        grid-template-columns: 1fr;
+        gap: 36px;
+    }
+    .public-shell .home-pathways {
+        grid-template-columns: 1fr;
+    }
+    .public-shell .home-steps {
+        grid-template-columns: 1fr 1fr;
+    }
+    .public-shell .value-grid,
+    .public-shell .service-catalog {
+        grid-template-columns: 1fr 1fr;
+    }
+    .public-shell .human-oversight {
+        grid-template-columns: 1fr;
+    }
+    .public-shell .human-oversight .public-network {
+        transform: none;
+    }
+    .public-shell .human-oversight > div:last-child {
+        padding: 10px 40px 44px;
+    }
+    .public-shell .public-footer__main {
+        grid-template-columns: 1fr 1fr;
+    }
+    .public-shell .public-footer__brand {
+        grid-column: 1 / -1;
+    }
+}
+
+@media (max-width: 620px) {
+    .public-shell .public-brand__mark,
+    .public-shell .public-brand--compact .public-brand__mark {
+        width: 40px;
+        height: 40px;
+    }
+    .public-shell .public-brand__name {
+        font-size: 18px;
+    }
+    .public-shell .public-hero {
+        padding: 64px 18px 36px;
+    }
+    .public-shell .centered-hero h1,
+    .public-shell .page-hero h1 {
+        font-size: 40px;
+    }
+    .public-shell .centered-hero-copy > p {
+        font-size: 14px;
+    }
+    .public-shell .centered-actions,
+    .public-shell .centered-actions .public-hero__cta {
+        width: 100%;
+    }
+    .public-shell .public-hero__emergency {
+        align-items: flex-start;
+        text-align: left;
+    }
+    .public-shell .public-network {
+        width: 100%;
+        height: 400px;
+        margin: 26px auto 34px;
+    }
+    .public-shell .public-network__core {
+        width: 104px;
+        height: 104px;
+    }
+    .public-shell .public-network__heart {
+        width: 40px;
+        height: 40px;
+        margin-bottom: 6px;
+    }
+    .public-shell .public-network__node {
+        width: 132px;
+        padding: 9px;
+        gap: 7px;
+    }
+    .public-shell .public-network__node-icon {
+        width: 30px;
+        height: 30px;
+    }
+    .public-shell .public-network__node-copy b {
+        font-size: 11px;
+        line-height: 1.2;
+    }
+    .public-shell .public-network__node-copy small {
+        display: none;
+    }
+    .public-shell .public-network__node--report { left: 0; top: 8%; }
+    .public-shell .public-network__node--coordination { right: 0; top: 8%; }
+    .public-shell .public-network__node--shelters { left: 0; top: 44%; }
+    .public-shell .public-network__node--resources { right: 0; top: 44%; }
+    .public-shell .public-network__node--volunteers { bottom: 4%; }
+    .public-shell .hero-trust-bar {
+        width: 100%;
+        grid-template-columns: 1fr;
+    }
+    .public-shell .hero-trust-bar > span {
+        min-height: 64px;
+        border: 1px solid rgba(120, 183, 225, 0.3);
+    }
+    .public-shell .home-intro {
+        padding: 76px 22px 52px;
+    }
+    .public-shell .home-pathways {
+        padding: 0 22px 76px;
+    }
+    .public-shell .pathway {
+        min-height: 300px;
+        padding: 28px;
+    }
+    .public-shell .home-steps {
+        grid-template-columns: 1fr;
+        padding: 64px 22px;
+    }
+    .public-shell .home-steps > div,
+    .public-shell .home-steps > article {
+        min-height: 230px;
+    }
+    .public-shell .public-guidance {
+        flex-direction: column;
+        padding: 42px 22px;
+        text-align: left;
+    }
+    .public-shell .page-hero {
+        min-height: 370px;
+        padding: 70px 22px;
+    }
+    .public-shell .page-hero h1 {
+        font-size: 38px;
+    }
+    .public-shell .page-body {
+        padding: 64px 20px;
+    }
+    .public-shell .value-grid,
+    .public-shell .service-catalog {
+        grid-template-columns: 1fr;
+    }
+    .public-shell .human-oversight .public-network {
+        height: 350px;
+    }
+    .public-shell .human-oversight > div:last-child {
+        padding: 10px 24px 40px;
+    }
+    .public-shell .service-choice,
+    .public-shell .process-cta {
+        align-items: stretch;
+        flex-direction: column;
+        padding: 28px;
+    }
+    .public-shell .public-single-choice .btn {
+        margin-left: 0;
+    }
+    .public-shell .process-list article {
+        grid-template-columns: 40px 48px 1fr;
+        gap: 8px;
+    }
+    .public-shell .two-fields {
+        grid-template-columns: 1fr;
+        gap: 0;
+    }
+    .public-shell .public-footer__main {
+        grid-template-columns: 1fr;
+        gap: 32px;
+    }
+    .public-shell .public-footer__brand {
+        grid-column: auto;
+    }
+    .public-shell .public-footer__bottom {
+        flex-direction: column;
+        gap: 8px;
+    }
+}
+
+@media (max-width: 420px) {
+    .public-shell .public-network__node {
+        width: 116px;
+        padding: 8px;
+        gap: 6px;
+    }
+    .public-shell .public-network__node-icon {
+        width: 27px;
+        height: 27px;
+    }
+    .public-shell .public-network__node-copy b {
+        font-size: 10px;
+    }
+    .public-shell .public-network__core {
+        width: 96px;
+        height: 96px;
+    }
+    .public-shell .public-network__core b {
+        font-size: 11px;
+    }
+    .public-shell .public-network__core small {
+        font-size: 9px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .public-shell .public-hero .eyebrow,
+    .public-shell .public-hero h1,
+    .public-shell .public-hero .centered-hero-copy > p:not(.public-hero__emergency),
+    .public-shell .public-hero .centered-actions,
+    .public-shell .public-hero__emergency,
+    .public-shell .public-network__orbit,
+    .public-shell .public-network__orbit-ring,
+    .public-shell .public-network__orbit-dot,
+    .public-shell .public-network__spokes line,
+    .public-shell .public-network__signals circle,
+    .public-shell .public-network__node-icon {
+        animation: none !important;
+    }
+    .public-shell .public-nav__links a,
+    .public-shell .public-nav__actions .public-action,
+    .public-shell .public-nav__links a::after,
+    .public-shell .btn,
+    .public-shell a.btn,
+    .public-shell button.btn {
+        transition: none !important;
+    }
+}

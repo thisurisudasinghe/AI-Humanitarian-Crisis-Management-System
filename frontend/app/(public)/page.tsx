@@ -3,8 +3,8 @@ import { Icon } from "@/components/safeway/Icon";
 import { NetworkArtwork } from "@/components/safeway/NetworkArtwork";
 
 const trustPoints: [string, string, string][] = [
-  ["shield", "Protected reporting", "Information handled responsibly"],
-  ["brain", "AI-assisted", "Always under human oversight"],
+  ["shield", "Responsible reporting", "Information handled with care"],
+  ["brain", "Human oversight", "AI supports, people decide"],
   ["heart", "Built for people", "Clear support at every step"]
 ];
 
@@ -16,8 +16,8 @@ const steps: [string, string, string, string][] = [
 
 export default function HomePage() {
   return (
-    <main>
-      <section className="centered-hero">
+    <main className="public-home">
+      <section className="centered-hero public-hero">
         <div className="hero-orbit hero-orbit-left" />
         <div className="hero-orbit hero-orbit-right" />
         <div className="centered-hero-copy">
@@ -25,20 +25,26 @@ export default function HomePage() {
             <span /> Humanitarian response, connected
           </div>
           <h1>
-            When crisis happens, help should be <em>within reach.</em>
+            <span className="public-hero__line">When crisis happens,</span>{" "}
+            <span className="public-hero__line">
+              help should be <em>within reach.</em>
+            </span>
           </h1>
           <p>
             SAFEWAY connects communities with humanitarian assistance and gives response teams a
             clear, responsible way to coordinate support when it matters most.
           </p>
           <div className="centered-actions">
-            <Link className="btn btn-white" href="/report">
-              Report a crisis <Icon name="arrow" />
-            </Link>
-            <Link className="btn btn-ghost" href="/find-assistance">
-              Find assistance
+            <Link className="btn btn-white public-hero__cta" href="/report">
+              <Icon name="alert" size={18} />
+              Report a Crisis
+              <Icon name="arrow" size={18} />
             </Link>
           </div>
+          <p className="public-hero__emergency">
+            <Icon name="info" size={15} />
+            In immediate danger, contact local emergency services first.
+          </p>
         </div>
         <NetworkArtwork />
         <div className="hero-trust-bar">
@@ -52,6 +58,8 @@ export default function HomePage() {
         </div>
       </section>
 
+      <div className="public-hero__fade" aria-hidden="true" />
+
       <section className="home-intro">
         <div>
           <div className="section-kicker">One connected response</div>
@@ -61,37 +69,28 @@ export default function HomePage() {
         </div>
         <div>
           <p>
-            Emergencies are already overwhelming. SAFEWAY creates a calm, accessible bridge between
-            people asking for help and authorized teams organizing a response.
+            Emergencies are overwhelming. SAFEWAY gives people asking for help a calm place to
+            start and gives authorized teams a shared picture of what is needed.
           </p>
-          <Link className="inline-link" href="/about">
-            Discover SAFEWAY <Icon name="arrow" size={17} />
-          </Link>
         </div>
       </section>
 
-      <section className="home-pathways">
+      <section className="home-pathways" aria-label="Who SAFEWAY serves">
         <article className="pathway pathway-public">
           <span>FOR COMMUNITIES</span>
           <i>
             <Icon name="heart" />
           </i>
-          <h3>Find the right help, without the confusion.</h3>
-          <p>Report a crisis, locate verified support, and follow updates in plain language.</p>
-          <Link href="/services">
-            Explore public services <Icon name="arrow" />
-          </Link>
+          <h3>Find help when you need it.</h3>
+          <p>Report urgent needs, see clear guidance and follow updates in plain language.</p>
         </article>
         <article className="pathway pathway-operations">
-          <span>FOR RESPONSE TEAMS</span>
+          <span>FOR AUTHORIZED TEAMS</span>
           <i>
             <Icon name="grid" />
           </i>
-          <h3>Turn information into accountable action.</h3>
-          <p>Verify needs, coordinate resources, review recommendations and track response.</p>
-          <Link href="/login">
-            Authorized access <Icon name="arrow" />
-          </Link>
+          <h3>Coordinate the right response.</h3>
+          <p>Review urgent needs, assign resources and keep every action accountable.</p>
         </article>
       </section>
 
@@ -103,9 +102,6 @@ export default function HomePage() {
             <br />
             One responsible response.
           </h2>
-          <Link href="/how-it-works">
-            See the full process <Icon name="arrow" size={16} />
-          </Link>
         </div>
         {steps.map(([number, title, copy, icon]) => (
           <article key={number}>
@@ -119,17 +115,18 @@ export default function HomePage() {
         ))}
       </section>
 
-      <section className="home-cta">
+      <section className="home-cta public-guidance" aria-label="Emergency guidance">
         <span>
-          <Icon name="heart" size={30} />
+          <Icon name="info" size={26} />
         </span>
         <div>
-          <small>WHENEVER YOU ARE READY</small>
-          <h2>Help begins with one clear step.</h2>
+          <small>IF SOMEONE IS IN IMMEDIATE DANGER</small>
+          <h2>Contact local emergency services first.</h2>
+          <p>
+            SAFEWAY supports coordination and access to assistance; it does not replace emergency
+            services.
+          </p>
         </div>
-        <Link className="btn btn-white" href="/report">
-          Report a crisis <Icon name="arrow" />
-        </Link>
       </section>
     </main>
   );
