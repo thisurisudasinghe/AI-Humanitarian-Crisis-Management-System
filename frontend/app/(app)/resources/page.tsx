@@ -581,6 +581,7 @@ function LogisticsContent() {
             <label htmlFor="allocate-decision">Approved decision ID</label>
             <input id="allocate-decision" value={decisionId} onChange={(event) => setDecisionId(event.target.value)} placeholder="Decision GUID" />
             <p className="muted small">Idempotency-Key: <code>{idempotencyKey}</code></p>
+            <p className="muted small">This key is reused if the request fails, so retrying cannot allocate twice. Generate a new key only when starting a different allocation attempt.</p>
             <button type="button" disabled={!decisionId.trim()} onClick={() => setIdempotencyKey(newIdempotencyKey())}>
               Generate a new key
             </button>

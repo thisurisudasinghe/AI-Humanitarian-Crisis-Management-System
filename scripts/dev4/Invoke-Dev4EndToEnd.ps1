@@ -43,9 +43,12 @@ $profile = Invoke-CmsApi $VolunteerToken 'POST' '/volunteers/profile' @{
     lat = 7.2088; lng = 79.8358; active = $true
 }
 if (-not $profile.id) { throw 'Volunteer profile response did not include an id.' }
-$starts = $now.AddMinutes(-1).ToString('o'); $ends = $now.AddDays(7).ToString('o')
+# The API rejects availability windows that start in the past. Open the window a
+# few seconds from now, then let it become active before attempting assignment.
+$starts = $now.AddSeconds(5).ToString('o'); $ends = $now.AddDays(7).ToString('o')
 Invoke-CmsApi $VolunteerToken 'POST' '/volunteers/availability' @{ startsAt = $starts; endsAt = $ends } | Out-Null
 Invoke-CmsApi $VolunteerCoordinatorToken 'POST' "/volunteers/$($profile.id)/verify" @{ approved = $true; reason = 'Automated Dev4 LocalDB verification run' } | Out-Null
+Start-Sleep -Seconds 6
 $task = Invoke-CmsApi $VolunteerCoordinatorToken 'POST' '/volunteer-tasks' @{
     requestId = $null; title = 'Dev4 end-to-end verification task';
     requiredSkillsJson = '["Food distribution"]'; lat = 7.2088; lng = 79.8358; scheduledAt = $null

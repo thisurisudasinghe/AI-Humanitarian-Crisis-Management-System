@@ -1,0 +1,59 @@
+
+> cms-web@1.0.0 build
+> next build
+
+Γû▓ Next.js 16.4.6 (Turbopack)
+Γ£ô Running next.config.ts took 54ms
+
+  Creating an optimized production build ...
+Γ£ô Compiled successfully in 1076ms
+  Running TypeScript ...
+  Finished TypeScript in 4.4s ...
+  Collecting page data using 11 workers ...
+  Generating static pages using 11 workers (0/34) ...
+  Generating static pages using 11 workers (8/34) 
+  Generating static pages using 11 workers (16/34) 
+  Generating static pages using 11 workers (25/34) 
+Γ£ô Generating static pages using 11 workers (34/34) in 1025ms
+  Finalizing page optimization ...
+
+Route (app)
+Γöî Γùï /
+Γö£ Γùï /_not-found
+Γö£ Γùï /403
+Γö£ Γùï /about
+Γö£ Γùï /account
+Γö£ Γùï /admin/announcements
+Γö£ Γùï /admin/audit
+Γö£ Γùï /admin/config
+Γö£ Γùï /admin/notifications
+Γö£ Γùï /admin/organisations
+Γö£ Γùï /admin/outbox
+Γö£ Γùï /admin/users
+Γö£ Γùï /contact
+Γö£ Γùï /dashboard
+Γö£ Γùï /donations
+Γö£ Γùï /find-assistance
+Γö£ Γùï /how-it-works
+Γö£ Γùï /kpis
+Γö£ Γùï /login
+Γö£ Γùï /my-reports
+Γö£ Γùï /notifications
+Γö£ Γùï /operations
+Γö£ Γùï /operations/ai
+Γö£ Γùï /operations/ai/chat
+Γö£ Γùï /operations/crises
+Γö£ ╞Æ /operations/crises/[id]
+Γö£ Γùï /operations/decisions
+Γö£ Γùï /operations/map
+Γö£ Γùï /register
+Γö£ Γùï /report
+Γö£ Γùï /resources
+Γö£ Γùï /services
+Γö£ Γùï /shelters
+Γöö Γùï /volunteers
+
+
+Γùï  (Static)   prerendered as static content
+╞Æ  (Dynamic)  server-rendered on demand
+

@@ -1,0 +1,8 @@
+ResourceLastUnit guarded race: PASS (20/20 iterations; 0:1)
+ShelterLastPlace guarded race: PASS (20/20 iterations; 1:1)
+Concurrent idempotency-key uniqueness: PASS (20/20 iterations; one row per key)
+Inventory and shelter CHECK constraints: PASS
+NOTE: These are real SQL Server guard/unique-index tests. They do not replace concurrent API tests of 
+OperationsService, decision gates, audit, outbox or Phase-3 recovery.
+SQL process output retained in: C:\Users\Shamila\AppData\Local\Temp\opencode\latest_develop\AI-Humanitarian-Crisis-Mana
+gement-System\scripts\dev4\..\..\docs\evidence\dev4\runs\sql-guards-05f407ece241428380d07e219be110d3

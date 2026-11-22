@@ -1,0 +1,23 @@
+Test run for C:\Users\Shamila\AppData\Local\Temp\opencode\latest_develop\AI-Humanitarian-Crisis-Management-System\backend\tests\Cms.Tests\bin\Debug\net10.0\Cms.Tests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v3.1.4+50e68bbb8b (64-bit .NET 10.0.15)
+[xUnit.net 00:00:00.19]   Discovering: Cms.Tests
+[xUnit.net 00:00:00.38]   Discovered:  Cms.Tests
+[xUnit.net 00:00:00.43]   Starting:    Cms.Tests
+  Passed Cms.Tests.OperationsGeoTests.Haversine_ReturnsExpectedApproximateDistance_ForNegomboToColombo [6 ms]
+  Passed Cms.Tests.OperationsGeoTests.Haversine_ReturnsZero_ForSamePoint [< 1 ms]
+  Passed Cms.Tests.OperationsGeoTests.Haversine_RejectsInvalidCoordinates [< 1 ms]
+  Passed Cms.Tests.Operations.OperationsGeoAdapterTests.GetDistance_OsrmDown_FallsBackToHaversineWithNullMinutes [31 ms]
+  Passed Cms.Tests.Operations.OperationsGeoAdapterTests.GetDistance_InvalidCoordinates_ThrowsWithoutCallingAnyProvider [2 ms]
+  Passed Cms.Tests.Operations.OperationsGeoAdapterTests.Geocode_RealClock_SeparatesProviderRequestsByAtLeastOneSecond [1 s]
+  Passed Cms.Tests.Operations.OperationsGeoAdapterTests.Geocode_NominatimDown_ReturnsNullAndCachesTheFailure [988 ms]
+  Passed Cms.Tests.Operations.OperationsGeoAdapterTests.GetDistance_OsrmSuccess_IsPreciseAndCached [15 ms]
+  Passed Cms.Tests.Operations.OperationsGeoAdapterTests.Haversine_LondonToParis_IsAbout343Km [< 1 ms]
+  Passed Cms.Tests.Operations.OperationsGeoAdapterTests.Geocode_NominatimClient_UsesTheConfiguredUserAgent [989 ms]
+[xUnit.net 00:00:04.77]   Finished:    Cms.Tests
+  Passed Cms.Tests.Operations.OperationsGeoAdapterTests.Geocode_Success_IsCachedUnderNormalizedAddress [1 s]
+
+Test Run Successful.
+Total tests: 11
+     Passed: 11
+ Total time: 5.6537 Seconds

@@ -1,0 +1,396 @@
+Using launch settings from src\Cms.Api\Properties\launchSettings.json...
+info: Cms.Infrastructure.Services.OutboxProcessor[0]
+      Outbox processor started with a 5s poll interval.
+info: Microsoft.Hosting.Lifetime[14]
+      Now listening on: http://localhost:5210
+info: Microsoft.Hosting.Lifetime[0]
+      Application started. Press Ctrl+C to shut down.
+info: Microsoft.Hosting.Lifetime[0]
+      Hosting environment: Development
+info: Microsoft.Hosting.Lifetime[0]
+      Content root path: C:\Users\Shamila\AppData\Local\Temp\opencode\latest_develop\AI-Humanitarian-Crisis-Management-System\backend\src\Cms.Api
+info: System.Net.Http.HttpClient.osrm.LogicalHandler[100]
+      Start processing HTTP request GET https://router.project-osrm.org/route/v1/driving/80.6605,7.3005;79.8358,7.2088?*
+info: System.Net.Http.HttpClient.osrm.ClientHandler[100]
+      Sending HTTP request GET https://router.project-osrm.org/route/v1/driving/80.6605,7.3005;79.8358,7.2088?*
+info: System.Net.Http.HttpClient.osrm.ClientHandler[101]
+      Received HTTP response headers after 1190.0493ms - 200
+info: Polly[3]
+      Execution attempt. Source: 'osrm-standard//Standard-Retry', Operation Key: '', Result: '200', Handled: 'False', Attempt: '0', Execution Time: 1230.0106ms
+info: System.Net.Http.HttpClient.osrm.LogicalHandler[101]
+      End processing HTTP request after 1301.8666ms - 200
+info: System.Net.Http.HttpClient.osrm.LogicalHandler[100]
+      Start processing HTTP request GET https://router.project-osrm.org/route/v1/driving/80.6605,7.3005;79.8919,7.0744?*
+info: System.Net.Http.HttpClient.osrm.ClientHandler[100]
+      Sending HTTP request GET https://router.project-osrm.org/route/v1/driving/80.6605,7.3005;79.8919,7.0744?*
+info: System.Net.Http.HttpClient.osrm.ClientHandler[101]
+      Received HTTP response headers after 277.1396ms - 200
+info: Polly[3]
+      Execution attempt. Source: 'osrm-standard//Standard-Retry', Operation Key: '', Result: '200', Handled: 'False', Attempt: '0', Execution Time: 277.661ms
+info: System.Net.Http.HttpClient.osrm.LogicalHandler[101]
+      End processing HTTP request after 278.6852ms - 200
+warn: Microsoft.EntityFrameworkCore.Database.Transaction[30004]
+      Savepoints are disabled because Multiple Active Result Sets (MARS) is enabled. If 'SaveChanges' fails, then the transaction cannot be automatically rolled back to a known clean state. Instead, the transaction should be rolled back by the application before retrying 'SaveChanges'. See https://go.microsoft.com/fwlink/?linkid=2149338 for more information and examples. To identify the code which triggers this warning, call 'ConfigureWarnings(w => w.Throw(SqlServerEventId.SavepointsDisabledBecauseOfMARS))'.
+warn: Microsoft.EntityFrameworkCore.Database.Transaction[30004]
+      Savepoints are disabled because Multiple Active Result Sets (MARS) is enabled. If 'SaveChanges' fails, then the transaction cannot be automatically rolled back to a known clean state. Instead, the transaction should be rolled back by the application before retrying 'SaveChanges'. See https://go.microsoft.com/fwlink/?linkid=2149338 for more information and examples. To identify the code which triggers this warning, call 'ConfigureWarnings(w => w.Throw(SqlServerEventId.SavepointsDisabledBecauseOfMARS))'.
+warn: Microsoft.EntityFrameworkCore.Database.Transaction[30004]
+      Savepoints are disabled because Multiple Active Result Sets (MARS) is enabled. If 'SaveChanges' fails, then the transaction cannot be automatically rolled back to a known clean state. Instead, the transaction should be rolled back by the application before retrying 'SaveChanges'. See https://go.microsoft.com/fwlink/?linkid=2149338 for more information and examples. To identify the code which triggers this warning, call 'ConfigureWarnings(w => w.Throw(SqlServerEventId.SavepointsDisabledBecauseOfMARS))'.
+warn: Microsoft.EntityFrameworkCore.Database.Transaction[30004]
+      Savepoints are disabled because Multiple Active Result Sets (MARS) is enabled. If 'SaveChanges' fails, then the transaction cannot be automatically rolled back to a known clean state. Instead, the transaction should be rolled back by the application before retrying 'SaveChanges'. See https://go.microsoft.com/fwlink/?linkid=2149338 for more information and examples. To identify the code which triggers this warning, call 'ConfigureWarnings(w => w.Throw(SqlServerEventId.SavepointsDisabledBecauseOfMARS))'.
+info: Cms.Infrastructure.Notifications.LogNotificationSender[0]
+      SMTP is not configured. Notification 3b62315c-d3ea-49ee-9737-80642ff3d42f (request.status.Recommended) for recipient 0b000000-0000-0000-0000-000000000010 was recorded without an external email. Subject: recommended
+info: Cms.Infrastructure.Notifications.LogNotificationSender[0]
+      SMTP is not configured. Notification b8c9bbda-9ee6-4a29-b1f8-0acca83aa152 (request.status.Approved) for recipient 0b000000-0000-0000-0000-000000000010 was recorded without an external email. Subject: approved
+warn: Cms.Infrastructure.Services.OutboxProcessor[0]
+      Outbox message aeace522-41d1-4613-af71-fec06c82f641 of type Notification.Send failed.
+      System.InvalidOperationException: Notification outbox message aeace522-41d1-4613-af71-fec06c82f641 has no recipient.
+         at Cms.Infrastructure.Notifications.EmailNotificationHandler.HandleAsync(OutboxMessage message, CancellationToken cancellationToken) in C:\Users\Shamila\AppData\Local\Temp\opencode\latest_develop\AI-Humanitarian-Crisis-Management-System\backend\src\Cms.Infrastructure\Notifications\EmailNotificationHandler.cs:line 62
+         at Cms.Infrastructure.Services.OutboxProcessor.TryHandleAsync(Guid id, CancellationToken cancellationToken) in C:\Users\Shamila\AppData\Local\Temp\opencode\latest_develop\AI-Humanitarian-Crisis-Management-System\backend\src\Cms.Infrastructure\Services\OutboxProcessor.cs:line 176
+info: Cms.Infrastructure.Notifications.LogNotificationSender[0]
+      SMTP is not configured. Notification 27c9b227-f154-40c6-90da-0aaae2f27b16 (request.status.Allocated) for recipient 0b000000-0000-0000-0000-000000000010 was recorded without an external email. Subject: allocated
+info: Cms.Infrastructure.Notifications.LogNotificationSender[0]
+      SMTP is not configured. Notification 98db5b8b-24a8-4e8f-8218-ddbfd1356133 (request.status.Dispatched) for recipient 0b000000-0000-0000-0000-000000000010 was recorded without an external email. Subject: dispatched
+info: Cms.Infrastructure.Notifications.LogNotificationSender[0]
+      SMTP is not configured. Notification b2d03f81-a69c-406f-8c4d-1dcc2e010993 (request.status.Fulfilled) for recipient 0b000000-0000-0000-0000-000000000010 was recorded without an external email. Subject: fulfilled
+warn: Cms.Infrastructure.Services.OutboxProcessor[0]
+      Outbox message 31fcac23-cd70-4130-b8c0-61fe0b0bbc43 of type Notification.Send failed.
+      System.InvalidOperationException: Notification outbox message 31fcac23-cd70-4130-b8c0-61fe0b0bbc43 has no recipient.
+         at Cms.Infrastructure.Notifications.EmailNotificationHandler.HandleAsync(OutboxMessage message, CancellationToken cancellationToken) in C:\Users\Shamila\AppData\Local\Temp\opencode\latest_develop\AI-Humanitarian-Crisis-Management-System\backend\src\Cms.Infrastructure\Notifications\EmailNotificationHandler.cs:line 62
+         at Cms.Infrastructure.Services.OutboxProcessor.TryHandleAsync(Guid id, CancellationToken cancellationToken) in C:\Users\Shamila\AppData\Local\Temp\opencode\latest_develop\AI-Humanitarian-Crisis-Management-System\backend\src\Cms.Infrastructure\Services\OutboxProcessor.cs:line 176
+warn: Cms.Infrastructure.Services.OutboxProcessor[0]
+      Outbox message 1611df0e-f26b-4bd5-aa44-f7f40fd3e202 of type Notification.Send failed.
+      System.InvalidOperationException: Notification outbox message 1611df0e-f26b-4bd5-aa44-f7f40fd3e202 has no recipient.
+         at Cms.Infrastructure.Notifications.EmailNotificationHandler.HandleAsync(OutboxMessage message, CancellationToken cancellationToken) in C:\Users\Shamila\AppData\Local\Temp\opencode\latest_develop\AI-Humanitarian-Crisis-Management-System\backend\src\Cms.Infrastructure\Notifications\EmailNotificationHandler.cs:line 62
+         at Cms.Infrastructure.Services.OutboxProcessor.TryHandleAsync(Guid id, CancellationToken cancellationToken) in C:\Users\Shamila\AppData\Local\Temp\opencode\latest_develop\AI-Humanitarian-Crisis-Management-System\backend\src\Cms.Infrastructure\Services\OutboxProcessor.cs:line 176
+info: System.Net.Http.HttpClient.osrm.LogicalHandler[100]
+      Start processing HTTP request GET https://router.project-osrm.org/route/v1/driving/80.661,7.301;79.8358,7.2088?*
+info: System.Net.Http.HttpClient.osrm.ClientHandler[100]
+      Sending HTTP request GET https://router.project-osrm.org/route/v1/driving/80.661,7.301;79.8358,7.2088?*
+info: System.Net.Http.HttpClient.osrm.ClientHandler[101]
+      Received HTTP response headers after 282.7936ms - 200
+info: Polly[3]
+      Execution attempt. Source: 'osrm-standard//Standard-Retry', Operation Key: '', Result: '200', Handled: 'False', Attempt: '0', Execution Time: 283.1264ms
+info: System.Net.Http.HttpClient.osrm.LogicalHandler[101]
+      End processing HTTP request after 283.5569ms - 200
+warn: Microsoft.EntityFrameworkCore.Database.Transaction[30004]
+      Savepoints are disabled because Multiple Active Result Sets (MARS) is enabled. If 'SaveChanges' fails, then the transaction cannot be automatically rolled back to a known clean state. Instead, the transaction should be rolled back by the application before retrying 'SaveChanges'. See https://go.microsoft.com/fwlink/?linkid=2149338 for more information and examples. To identify the code which triggers this warning, call 'ConfigureWarnings(w => w.Throw(SqlServerEventId.SavepointsDisabledBecauseOfMARS))'.
+info: System.Net.Http.HttpClient.osrm.LogicalHandler[100]
+      Start processing HTTP request GET https://router.project-osrm.org/route/v1/driving/80.661,7.301;79.8919,7.0744?*
+info: System.Net.Http.HttpClient.osrm.ClientHandler[100]
+      Sending HTTP request GET https://router.project-osrm.org/route/v1/driving/80.661,7.301;79.8919,7.0744?*
+info: System.Net.Http.HttpClient.osrm.ClientHandler[101]
+      Received HTTP response headers after 355.0015ms - 200
+info: Polly[3]
+      Execution attempt. Source: 'osrm-standard//Standard-Retry', Operation Key: '', Result: '200', Handled: 'False', Attempt: '0', Execution Time: 355.1519ms
+info: System.Net.Http.HttpClient.osrm.LogicalHandler[101]
+      End processing HTTP request after 355.3864ms - 200
+warn: Cms.Api.Middleware.ExceptionHandlingMiddleware[0]
+      Request rejected with 409 (SHELTER_FULL). TraceId: 0HNQ8F40IJ8UT:0000001E
+warn: Microsoft.EntityFrameworkCore.Database.Transaction[30004]
+      Savepoints are disabled because Multiple Active Result Sets (MARS) is enabled. If 'SaveChanges' fails, then the transaction cannot be automatically rolled back to a known clean state. Instead, the transaction should be rolled back by the application before retrying 'SaveChanges'. See https://go.microsoft.com/fwlink/?linkid=2149338 for more information and examples. To identify the code which triggers this warning, call 'ConfigureWarnings(w => w.Throw(SqlServerEventId.SavepointsDisabledBecauseOfMARS))'.
+warn: Microsoft.EntityFrameworkCore.Database.Transaction[30004]
+      Savepoints are disabled because Multiple Active Result Sets (MARS) is enabled. If 'SaveChanges' fails, then the transaction cannot be automatically rolled back to a known clean state. Instead, the transaction should be rolled back by the application before retrying 'SaveChanges'. See https://go.microsoft.com/fwlink/?linkid=2149338 for more information and examples. To identify the code which triggers this warning, call 'ConfigureWarnings(w => w.Throw(SqlServerEventId.SavepointsDisabledBecauseOfMARS))'.
+fail: Microsoft.EntityFrameworkCore.Database.Command[20102]
+      Failed executing DbCommand (5ms) [Parameters=[@p0='?' (DbType = Guid), @p1='?' (DbType = DateTime2), @p2='?' (DbType = Guid), @p3='?' (DbType = Int32), @p4='?' (DbType = Guid), @p5='?' (DbType = Guid), @p6='?' (DbType = DateTime2)], CommandType='Text', CommandTimeout='30']
+      SET IMPLICIT_TRANSACTIONS OFF;
+      SET NOCOUNT ON;
+      INSERT INTO [shelter].[shelter_allocations] ([id], [created_at], [decision_id], [household_size], [request_id], [shelter_id], [updated_at])
+      VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6);
+fail: Microsoft.EntityFrameworkCore.Update[10000]
+      An exception occurred in the database while saving changes for context type 'Cms.Infrastructure.Data.CmsDbContext'.
+      Microsoft.EntityFrameworkCore.DbUpdateException: An error occurred while saving the entity changes. See the inner exception for details.
+       ---> Microsoft.Data.SqlClient.SqlException (0x80131904): Cannot insert duplicate key row in object 'shelter.shelter_allocations' with unique index 'UQ_shelter_allocations_decision'. The duplicate key value is (7776a142-b0ae-47b7-87bf-6185e8be98ab).
+      The statement has been terminated.
+         at System.Threading.Tasks.ContinuationResultTaskFromResultTask`2.InnerInvoke()
+         at System.Threading.ExecutionContext.RunInternal(ExecutionContext executionContext, ContextCallback callback, Object state)
+      --- End of stack trace from previous location ---
+         at System.Threading.ExecutionContext.RunInternal(ExecutionContext executionContext, ContextCallback callback, Object state)
+         at System.Threading.Tasks.Task.ExecuteWithThreadLocal(Task& currentTaskSlot, Thread threadPoolThread)
+      --- End of stack trace from previous location ---
+         at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReaderAsync(RelationalCommandParameterObject parameterObject, CancellationToken cancellationToken)
+         at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReaderAsync(RelationalCommandParameterObject parameterObject, CancellationToken cancellationToken)
+         at Microsoft.EntityFrameworkCore.Update.ReaderModificationCommandBatch.ExecuteAsync(IRelationalConnection connection, CancellationToken cancellationToken)
+      ClientConnectionId:3d31d3fa-36b8-479c-bd41-26498c8e88af
+      Error Number:2601,State:1,Class:14
+         --- End of inner exception stack trace ---
+         at Microsoft.EntityFrameworkCore.Update.ReaderModificationCommandBatch.ExecuteAsync(IRelationalConnection connection, CancellationToken cancellationToken)
+         at Microsoft.EntityFrameworkCore.SqlServer.Update.Internal.SqlServerModificationCommandBatch.ExecuteAsync(IRelationalConnection connection, CancellationToken cancellationToken)
+         at Microsoft.EntityFrameworkCore.Update.Internal.BatchExecutor.ExecuteAsync(IEnumerable`1 commandBatches, IRelationalConnection connection, CancellationToken cancellationToken)
+         at Microsoft.EntityFrameworkCore.Update.Internal.BatchExecutor.ExecuteAsync(IEnumerable`1 commandBatches, IRelationalConnection connection, CancellationToken cancellationToken)
+         at Microsoft.EntityFrameworkCore.Update.Internal.BatchExecutor.ExecuteAsync(IEnumerable`1 commandBatches, IRelationalConnection connection, CancellationToken cancellationToken)
+         at Microsoft.EntityFrameworkCore.Storage.RelationalDatabase.SaveChangesAsync(IList`1 entries, CancellationToken cancellationToken)
+         at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.StateManager.SaveChangesAsync(IList`1 entriesToSave, CancellationToken cancellationToken)
+         at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.StateManager.SaveChangesAsync(StateManager stateManager, Boolean acceptAllChangesOnSuccess, CancellationToken cancellationToken)
+         at Microsoft.EntityFrameworkCore.SqlServer.Storage.Internal.SqlServerExecutionStrategy.ExecuteAsync[TState,TResult](TState state, Func`4 operation, Func`4 verifySucceeded, CancellationToken cancellationToken)
+         at Microsoft.EntityFrameworkCore.DbContext.SaveChangesAsync(Boolean acceptAllChangesOnSuccess, CancellationToken cancellationToken)
+      Microsoft.EntityFrameworkCore.DbUpdateException: An error occurred while saving the entity changes. See the inner exception for details.
+       ---> Microsoft.Data.SqlClient.SqlException (0x80131904): Cannot insert duplicate key row in object 'shelter.shelter_allocations' with unique index 'UQ_shelter_allocations_decision'. The duplicate key value is (7776a142-b0ae-47b7-87bf-6185e8be98ab).
+      The statement has been terminated.
+         at System.Threading.Tasks.ContinuationResultTaskFromResultTask`2.InnerInvoke()
+         at System.Threading.ExecutionContext.RunInternal(ExecutionContext executionContext, ContextCallback callback, Object state)
+      --- End of stack trace from previous location ---
+         at System.Threading.ExecutionContext.RunInternal(ExecutionContext executionContext, ContextCallback callback, Object state)
+         at System.Threading.Tasks.Task.ExecuteWithThreadLocal(Task& currentTaskSlot, Thread threadPoolThread)
+      --- End of stack trace from previous location ---
+         at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReaderAsync(RelationalCommandParameterObject parameterObject, CancellationToken cancellationToken)
+         at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReaderAsync(RelationalCommandParameterObject parameterObject, CancellationToken cancellationToken)
+         at Microsoft.EntityFrameworkCore.Update.ReaderModificationCommandBatch.ExecuteAsync(IRelationalConnection connection, CancellationToken cancellationToken)
+      ClientConnectionId:3d31d3fa-36b8-479c-bd41-26498c8e88af
+      Error Number:2601,State:1,Class:14
+         --- End of inner exception stack trace ---
+         at Microsoft.EntityFrameworkCore.Update.ReaderModificationCommandBatch.ExecuteAsync(IRelationalConnection connection, CancellationToken cancellationToken)
+         at Microsoft.EntityFrameworkCore.SqlServer.Update.Internal.SqlServerModificationCommandBatch.ExecuteAsync(IRelationalConnection connection, CancellationToken cancellationToken)
+         at Microsoft.EntityFrameworkCore.Update.Internal.BatchExecutor.ExecuteAsync(IEnumerable`1 commandBatches, IRelationalConnection connection, CancellationToken cancellationToken)
+         at Microsoft.EntityFrameworkCore.Update.Internal.BatchExecutor.ExecuteAsync(IEnumerable`1 commandBatches, IRelationalConnection connection, CancellationToken cancellationToken)
+         at Microsoft.EntityFrameworkCore.Update.Internal.BatchExecutor.ExecuteAsync(IEnumerable`1 commandBatches, IRelationalConnection connection, CancellationToken cancellationToken)
+         at Microsoft.EntityFrameworkCore.Storage.RelationalDatabase.SaveChangesAsync(IList`1 entries, CancellationToken cancellationToken)
+         at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.StateManager.SaveChangesAsync(IList`1 entriesToSave, CancellationToken cancellationToken)
+         at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.StateManager.SaveChangesAsync(StateManager stateManager, Boolean acceptAllChangesOnSuccess, CancellationToken cancellationToken)
+         at Microsoft.EntityFrameworkCore.SqlServer.Storage.Internal.SqlServerExecutionStrategy.ExecuteAsync[TState,TResult](TState state, Func`4 operation, Func`4 verifySucceeded, CancellationToken cancellationToken)
+         at Microsoft.EntityFrameworkCore.DbContext.SaveChangesAsync(Boolean acceptAllChangesOnSuccess, CancellationToken cancellationToken)
+info: System.Net.Http.HttpClient.osrm.LogicalHandler[100]
+      Start processing HTTP request GET https://router.project-osrm.org/route/v1/driving/79.8358,7.2088;79.8612,6.9271?*
+info: System.Net.Http.HttpClient.osrm.ClientHandler[100]
+      Sending HTTP request GET https://router.project-osrm.org/route/v1/driving/79.8358,7.2088;79.8612,6.9271?*
+info: System.Net.Http.HttpClient.osrm.ClientHandler[101]
+      Received HTTP response headers after 343.9743ms - 200
+info: Polly[3]
+      Execution attempt. Source: 'osrm-standard//Standard-Retry', Operation Key: '', Result: '200', Handled: 'False', Attempt: '0', Execution Time: 344.1584ms
+info: System.Net.Http.HttpClient.osrm.LogicalHandler[101]
+      End processing HTTP request after 344.5367ms - 200
+warn: Cms.Api.Middleware.ExceptionHandlingMiddleware[0]
+      Request rejected with 422 (VALIDATION_FAILED). TraceId: 0HNQ8F40IJ8UT:00000022
+warn: Cms.Api.Middleware.ExceptionHandlingMiddleware[0]
+      Request rejected with 400 (IDEMPOTENCY_KEY_REQUIRED). TraceId: 0HNQ8F40IJ8UT:00000023
+warn: Cms.Infrastructure.Services.OutboxProcessor[0]
+      Outbox message 48dc68bc-c884-444f-98b5-0c21aae4d3c5 of type Notification.Send failed.
+      System.InvalidOperationException: Notification outbox message 48dc68bc-c884-444f-98b5-0c21aae4d3c5 has no recipient.
+         at Cms.Infrastructure.Notifications.EmailNotificationHandler.HandleAsync(OutboxMessage message, CancellationToken cancellationToken) in C:\Users\Shamila\AppData\Local\Temp\opencode\latest_develop\AI-Humanitarian-Crisis-Management-System\backend\src\Cms.Infrastructure\Notifications\EmailNotificationHandler.cs:line 62
+         at Cms.Infrastructure.Services.OutboxProcessor.TryHandleAsync(Guid id, CancellationToken cancellationToken) in C:\Users\Shamila\AppData\Local\Temp\opencode\latest_develop\AI-Humanitarian-Crisis-Management-System\backend\src\Cms.Infrastructure\Services\OutboxProcessor.cs:line 176
+warn: Cms.Infrastructure.Services.OutboxProcessor[0]
+      Outbox message f4cd29df-40c9-49e8-9e12-4db769879f24 of type Notification.Send failed.
+      System.InvalidOperationException: Notification outbox message f4cd29df-40c9-49e8-9e12-4db769879f24 has no recipient.
+         at Cms.Infrastructure.Notifications.EmailNotificationHandler.HandleAsync(OutboxMessage message, CancellationToken cancellationToken) in C:\Users\Shamila\AppData\Local\Temp\opencode\latest_develop\AI-Humanitarian-Crisis-Management-System\backend\src\Cms.Infrastructure\Notifications\EmailNotificationHandler.cs:line 62
+         at Cms.Infrastructure.Services.OutboxProcessor.TryHandleAsync(Guid id, CancellationToken cancellationToken) in C:\Users\Shamila\AppData\Local\Temp\opencode\latest_develop\AI-Humanitarian-Crisis-Management-System\backend\src\Cms.Infrastructure\Services\OutboxProcessor.cs:line 176
+warn: Cms.Infrastructure.Services.OutboxProcessor[0]
+      Outbox message 0f8c26aa-792b-4574-8e50-b284d0344b43 of type Notification.Send failed.
+      System.InvalidOperationException: Notification outbox message 0f8c26aa-792b-4574-8e50-b284d0344b43 has no recipient.
+         at Cms.Infrastructure.Notifications.EmailNotificationHandler.HandleAsync(OutboxMessage message, CancellationToken cancellationToken) in C:\Users\Shamila\AppData\Local\Temp\opencode\latest_develop\AI-Humanitarian-Crisis-Management-System\backend\src\Cms.Infrastructure\Notifications\EmailNotificationHandler.cs:line 62
+         at Cms.Infrastructure.Services.OutboxProcessor.TryHandleAsync(Guid id, CancellationToken cancellationToken) in C:\Users\Shamila\AppData\Local\Temp\opencode\latest_develop\AI-Humanitarian-Crisis-Management-System\backend\src\Cms.Infrastructure\Services\OutboxProcessor.cs:line 176
+warn: Cms.Infrastructure.Services.OutboxProcessor[0]
+      Outbox message aeace522-41d1-4613-af71-fec06c82f641 of type Notification.Send failed.
+      System.InvalidOperationException: Notification outbox message aeace522-41d1-4613-af71-fec06c82f641 has no recipient.
+         at Cms.Infrastructure.Notifications.EmailNotificationHandler.HandleAsync(OutboxMessage message, CancellationToken cancellationToken) in C:\Users\Shamila\AppData\Local\Temp\opencode\latest_develop\AI-Humanitarian-Crisis-Management-System\backend\src\Cms.Infrastructure\Notifications\EmailNotificationHandler.cs:line 62
+         at Cms.Infrastructure.Services.OutboxProcessor.TryHandleAsync(Guid id, CancellationToken cancellationToken) in C:\Users\Shamila\AppData\Local\Temp\opencode\latest_develop\AI-Humanitarian-Crisis-Management-System\backend\src\Cms.Infrastructure\Services\OutboxProcessor.cs:line 176
+warn: Cms.Infrastructure.Services.OutboxProcessor[0]
+      Outbox message 31fcac23-cd70-4130-b8c0-61fe0b0bbc43 of type Notification.Send failed.
+      System.InvalidOperationException: Notification outbox message 31fcac23-cd70-4130-b8c0-61fe0b0bbc43 has no recipient.
+         at Cms.Infrastructure.Notifications.EmailNotificationHandler.HandleAsync(OutboxMessage message, CancellationToken cancellationToken) in C:\Users\Shamila\AppData\Local\Temp\opencode\latest_develop\AI-Humanitarian-Crisis-Management-System\backend\src\Cms.Infrastructure\Notifications\EmailNotificationHandler.cs:line 62
+         at Cms.Infrastructure.Services.OutboxProcessor.TryHandleAsync(Guid id, CancellationToken cancellationToken) in C:\Users\Shamila\AppData\Local\Temp\opencode\latest_develop\AI-Humanitarian-Crisis-Management-System\backend\src\Cms.Infrastructure\Services\OutboxProcessor.cs:line 176
+warn: Cms.Infrastructure.Services.OutboxProcessor[0]
+      Outbox message 1611df0e-f26b-4bd5-aa44-f7f40fd3e202 of type Notification.Send failed.
+      System.InvalidOperationException: Notification outbox message 1611df0e-f26b-4bd5-aa44-f7f40fd3e202 has no recipient.
+         at Cms.Infrastructure.Notifications.EmailNotificationHandler.HandleAsync(OutboxMessage message, CancellationToken cancellationToken) in C:\Users\Shamila\AppData\Local\Temp\opencode\latest_develop\AI-Humanitarian-Crisis-Management-System\backend\src\Cms.Infrastructure\Notifications\EmailNotificationHandler.cs:line 62
+         at Cms.Infrastructure.Services.OutboxProcessor.TryHandleAsync(Guid id, CancellationToken cancellationToken) in C:\Users\Shamila\AppData\Local\Temp\opencode\latest_develop\AI-Humanitarian-Crisis-Management-System\backend\src\Cms.Infrastructure\Services\OutboxProcessor.cs:line 176
+warn: Cms.Infrastructure.Services.OutboxProcessor[0]
+      Outbox message 48dc68bc-c884-444f-98b5-0c21aae4d3c5 of type Notification.Send failed.
+      System.InvalidOperationException: Notification outbox message 48dc68bc-c884-444f-98b5-0c21aae4d3c5 has no recipient.
+         at Cms.Infrastructure.Notifications.EmailNotificationHandler.HandleAsync(OutboxMessage message, CancellationToken cancellationToken) in C:\Users\Shamila\AppData\Local\Temp\opencode\latest_develop\AI-Humanitarian-Crisis-Management-System\backend\src\Cms.Infrastructure\Notifications\EmailNotificationHandler.cs:line 62
+         at Cms.Infrastructure.Services.OutboxProcessor.TryHandleAsync(Guid id, CancellationToken cancellationToken) in C:\Users\Shamila\AppData\Local\Temp\opencode\latest_develop\AI-Humanitarian-Crisis-Management-System\backend\src\Cms.Infrastructure\Services\OutboxProcessor.cs:line 176
+warn: Cms.Api.Middleware.ExceptionHandlingMiddleware[0]
+      Request rejected with 401 (UNAUTHORIZED). TraceId: 0HNQ8F40IJ8V3:00000001
+warn: Cms.Infrastructure.Services.OutboxProcessor[0]
+      Outbox message f4cd29df-40c9-49e8-9e12-4db769879f24 of type Notification.Send failed.
+      System.InvalidOperationException: Notification outbox message f4cd29df-40c9-49e8-9e12-4db769879f24 has no recipient.
+         at Cms.Infrastructure.Notifications.EmailNotificationHandler.HandleAsync(OutboxMessage message, CancellationToken cancellationToken) in C:\Users\Shamila\AppData\Local\Temp\opencode\latest_develop\AI-Humanitarian-Crisis-Management-System\backend\src\Cms.Infrastructure\Notifications\EmailNotificationHandler.cs:line 62
+         at Cms.Infrastructure.Services.OutboxProcessor.TryHandleAsync(Guid id, CancellationToken cancellationToken) in C:\Users\Shamila\AppData\Local\Temp\opencode\latest_develop\AI-Humanitarian-Crisis-Management-System\backend\src\Cms.Infrastructure\Services\OutboxProcessor.cs:line 176
+warn: Cms.Infrastructure.Services.OutboxProcessor[0]
+      Outbox message 0f8c26aa-792b-4574-8e50-b284d0344b43 of type Notification.Send failed.
+      System.InvalidOperationException: Notification outbox message 0f8c26aa-792b-4574-8e50-b284d0344b43 has no recipient.
+         at Cms.Infrastructure.Notifications.EmailNotificationHandler.HandleAsync(OutboxMessage message, CancellationToken cancellationToken) in C:\Users\Shamila\AppData\Local\Temp\opencode\latest_develop\AI-Humanitarian-Crisis-Management-System\backend\src\Cms.Infrastructure\Notifications\EmailNotificationHandler.cs:line 62
+         at Cms.Infrastructure.Services.OutboxProcessor.TryHandleAsync(Guid id, CancellationToken cancellationToken) in C:\Users\Shamila\AppData\Local\Temp\opencode\latest_develop\AI-Humanitarian-Crisis-Management-System\backend\src\Cms.Infrastructure\Services\OutboxProcessor.cs:line 176
+warn: Cms.Infrastructure.Services.OutboxProcessor[0]
+      Outbox message aeace522-41d1-4613-af71-fec06c82f641 of type Notification.Send failed.
+      System.InvalidOperationException: Notification outbox message aeace522-41d1-4613-af71-fec06c82f641 has no recipient.
+         at Cms.Infrastructure.Notifications.EmailNotificationHandler.HandleAsync(OutboxMessage message, CancellationToken cancellationToken) in C:\Users\Shamila\AppData\Local\Temp\opencode\latest_develop\AI-Humanitarian-Crisis-Management-System\backend\src\Cms.Infrastructure\Notifications\EmailNotificationHandler.cs:line 62
+         at Cms.Infrastructure.Services.OutboxProcessor.TryHandleAsync(Guid id, CancellationToken cancellationToken) in C:\Users\Shamila\AppData\Local\Temp\opencode\latest_develop\AI-Humanitarian-Crisis-Management-System\backend\src\Cms.Infrastructure\Services\OutboxProcessor.cs:line 176
+warn: Cms.Infrastructure.Services.OutboxProcessor[0]
+      Outbox message 31fcac23-cd70-4130-b8c0-61fe0b0bbc43 of type Notification.Send failed.
+      System.InvalidOperationException: Notification outbox message 31fcac23-cd70-4130-b8c0-61fe0b0bbc43 has no recipient.
+         at Cms.Infrastructure.Notifications.EmailNotificationHandler.HandleAsync(OutboxMessage message, CancellationToken cancellationToken) in C:\Users\Shamila\AppData\Local\Temp\opencode\latest_develop\AI-Humanitarian-Crisis-Management-System\backend\src\Cms.Infrastructure\Notifications\EmailNotificationHandler.cs:line 62
+         at Cms.Infrastructure.Services.OutboxProcessor.TryHandleAsync(Guid id, CancellationToken cancellationToken) in C:\Users\Shamila\AppData\Local\Temp\opencode\latest_develop\AI-Humanitarian-Crisis-Management-System\backend\src\Cms.Infrastructure\Services\OutboxProcessor.cs:line 176
+warn: Cms.Infrastructure.Services.OutboxProcessor[0]
+      Outbox message 1611df0e-f26b-4bd5-aa44-f7f40fd3e202 of type Notification.Send failed.
+      System.InvalidOperationException: Notification outbox message 1611df0e-f26b-4bd5-aa44-f7f40fd3e202 has no recipient.
+         at Cms.Infrastructure.Notifications.EmailNotificationHandler.HandleAsync(OutboxMessage message, CancellationToken cancellationToken) in C:\Users\Shamila\AppData\Local\Temp\opencode\latest_develop\AI-Humanitarian-Crisis-Management-System\backend\src\Cms.Infrastructure\Notifications\EmailNotificationHandler.cs:line 62
+         at Cms.Infrastructure.Services.OutboxProcessor.TryHandleAsync(Guid id, CancellationToken cancellationToken) in C:\Users\Shamila\AppData\Local\Temp\opencode\latest_develop\AI-Humanitarian-Crisis-Management-System\backend\src\Cms.Infrastructure\Services\OutboxProcessor.cs:line 176
+warn: Cms.Infrastructure.Services.OutboxProcessor[0]
+      Outbox message 48dc68bc-c884-444f-98b5-0c21aae4d3c5 of type Notification.Send failed.
+      System.InvalidOperationException: Notification outbox message 48dc68bc-c884-444f-98b5-0c21aae4d3c5 has no recipient.
+         at Cms.Infrastructure.Notifications.EmailNotificationHandler.HandleAsync(OutboxMessage message, CancellationToken cancellationToken) in C:\Users\Shamila\AppData\Local\Temp\opencode\latest_develop\AI-Humanitarian-Crisis-Management-System\backend\src\Cms.Infrastructure\Notifications\EmailNotificationHandler.cs:line 62
+         at Cms.Infrastructure.Services.OutboxProcessor.TryHandleAsync(Guid id, CancellationToken cancellationToken) in C:\Users\Shamila\AppData\Local\Temp\opencode\latest_develop\AI-Humanitarian-Crisis-Management-System\backend\src\Cms.Infrastructure\Services\OutboxProcessor.cs:line 176
+warn: Cms.Infrastructure.Services.OutboxProcessor[0]
+      Outbox message f4cd29df-40c9-49e8-9e12-4db769879f24 of type Notification.Send failed.
+      System.InvalidOperationException: Notification outbox message f4cd29df-40c9-49e8-9e12-4db769879f24 has no recipient.
+         at Cms.Infrastructure.Notifications.EmailNotificationHandler.HandleAsync(OutboxMessage message, CancellationToken cancellationToken) in C:\Users\Shamila\AppData\Local\Temp\opencode\latest_develop\AI-Humanitarian-Crisis-Management-System\backend\src\Cms.Infrastructure\Notifications\EmailNotificationHandler.cs:line 62
+         at Cms.Infrastructure.Services.OutboxProcessor.TryHandleAsync(Guid id, CancellationToken cancellationToken) in C:\Users\Shamila\AppData\Local\Temp\opencode\latest_develop\AI-Humanitarian-Crisis-Management-System\backend\src\Cms.Infrastructure\Services\OutboxProcessor.cs:line 176
+warn: Cms.Infrastructure.Services.OutboxProcessor[0]
+      Outbox message 0f8c26aa-792b-4574-8e50-b284d0344b43 of type Notification.Send failed.
+      System.InvalidOperationException: Notification outbox message 0f8c26aa-792b-4574-8e50-b284d0344b43 has no recipient.
+         at Cms.Infrastructure.Notifications.EmailNotificationHandler.HandleAsync(OutboxMessage message, CancellationToken cancellationToken) in C:\Users\Shamila\AppData\Local\Temp\opencode\latest_develop\AI-Humanitarian-Crisis-Management-System\backend\src\Cms.Infrastructure\Notifications\EmailNotificationHandler.cs:line 62
+         at Cms.Infrastructure.Services.OutboxProcessor.TryHandleAsync(Guid id, CancellationToken cancellationToken) in C:\Users\Shamila\AppData\Local\Temp\opencode\latest_develop\AI-Humanitarian-Crisis-Management-System\backend\src\Cms.Infrastructure\Services\OutboxProcessor.cs:line 176
+warn: Microsoft.EntityFrameworkCore.Database.Transaction[30004]
+      Savepoints are disabled because Multiple Active Result Sets (MARS) is enabled. If 'SaveChanges' fails, then the transaction cannot be automatically rolled back to a known clean state. Instead, the transaction should be rolled back by the application before retrying 'SaveChanges'. See https://go.microsoft.com/fwlink/?linkid=2149338 for more information and examples. To identify the code which triggers this warning, call 'ConfigureWarnings(w => w.Throw(SqlServerEventId.SavepointsDisabledBecauseOfMARS))'.
+warn: Microsoft.EntityFrameworkCore.Database.Transaction[30004]
+      Savepoints are disabled because Multiple Active Result Sets (MARS) is enabled. If 'SaveChanges' fails, then the transaction cannot be automatically rolled back to a known clean state. Instead, the transaction should be rolled back by the application before retrying 'SaveChanges'. See https://go.microsoft.com/fwlink/?linkid=2149338 for more information and examples. To identify the code which triggers this warning, call 'ConfigureWarnings(w => w.Throw(SqlServerEventId.SavepointsDisabledBecauseOfMARS))'.
+warn: Microsoft.EntityFrameworkCore.Database.Transaction[30004]
+      Savepoints are disabled because Multiple Active Result Sets (MARS) is enabled. If 'SaveChanges' fails, then the transaction cannot be automatically rolled back to a known clean state. Instead, the transaction should be rolled back by the application before retrying 'SaveChanges'. See https://go.microsoft.com/fwlink/?linkid=2149338 for more information and examples. To identify the code which triggers this warning, call 'ConfigureWarnings(w => w.Throw(SqlServerEventId.SavepointsDisabledBecauseOfMARS))'.
+warn: Microsoft.EntityFrameworkCore.Database.Transaction[30004]
+      Savepoints are disabled because Multiple Active Result Sets (MARS) is enabled. If 'SaveChanges' fails, then the transaction cannot be automatically rolled back to a known clean state. Instead, the transaction should be rolled back by the application before retrying 'SaveChanges'. See https://go.microsoft.com/fwlink/?linkid=2149338 for more information and examples. To identify the code which triggers this warning, call 'ConfigureWarnings(w => w.Throw(SqlServerEventId.SavepointsDisabledBecauseOfMARS))'.
+warn: Cms.Infrastructure.Services.OutboxProcessor[0]
+      Outbox message 44880d1c-34bf-40ec-89ce-91823819702a of type Notification.Send failed.
+      System.InvalidOperationException: Notification outbox message 44880d1c-34bf-40ec-89ce-91823819702a has no recipient.
+         at Cms.Infrastructure.Notifications.EmailNotificationHandler.HandleAsync(OutboxMessage message, CancellationToken cancellationToken) in C:\Users\Shamila\AppData\Local\Temp\opencode\latest_develop\AI-Humanitarian-Crisis-Management-System\backend\src\Cms.Infrastructure\Notifications\EmailNotificationHandler.cs:line 62
+         at Cms.Infrastructure.Services.OutboxProcessor.TryHandleAsync(Guid id, CancellationToken cancellationToken) in C:\Users\Shamila\AppData\Local\Temp\opencode\latest_develop\AI-Humanitarian-Crisis-Management-System\backend\src\Cms.Infrastructure\Services\OutboxProcessor.cs:line 176
+warn: Cms.Infrastructure.Services.OutboxProcessor[0]
+      Outbox message eb924d28-b86a-4fda-a034-fa92cecd5b29 of type Notification.Send failed.
+      System.InvalidOperationException: Notification outbox message eb924d28-b86a-4fda-a034-fa92cecd5b29 has no recipient.
+         at Cms.Infrastructure.Notifications.EmailNotificationHandler.HandleAsync(OutboxMessage message, CancellationToken cancellationToken) in C:\Users\Shamila\AppData\Local\Temp\opencode\latest_develop\AI-Humanitarian-Crisis-Management-System\backend\src\Cms.Infrastructure\Notifications\EmailNotificationHandler.cs:line 62
+         at Cms.Infrastructure.Services.OutboxProcessor.TryHandleAsync(Guid id, CancellationToken cancellationToken) in C:\Users\Shamila\AppData\Local\Temp\opencode\latest_develop\AI-Humanitarian-Crisis-Management-System\backend\src\Cms.Infrastructure\Services\OutboxProcessor.cs:line 176
+warn: Microsoft.EntityFrameworkCore.Database.Transaction[30004]
+      Savepoints are disabled because Multiple Active Result Sets (MARS) is enabled. If 'SaveChanges' fails, then the transaction cannot be automatically rolled back to a known clean state. Instead, the transaction should be rolled back by the application before retrying 'SaveChanges'. See https://go.microsoft.com/fwlink/?linkid=2149338 for more information and examples. To identify the code which triggers this warning, call 'ConfigureWarnings(w => w.Throw(SqlServerEventId.SavepointsDisabledBecauseOfMARS))'.
+warn: Cms.Api.Middleware.ExceptionHandlingMiddleware[0]
+      Request rejected with 409 (SHELTER_FULL). TraceId: 0HNQ8F40IJ94S:0000001E
+warn: Microsoft.EntityFrameworkCore.Database.Transaction[30004]
+      Savepoints are disabled because Multiple Active Result Sets (MARS) is enabled. If 'SaveChanges' fails, then the transaction cannot be automatically rolled back to a known clean state. Instead, the transaction should be rolled back by the application before retrying 'SaveChanges'. See https://go.microsoft.com/fwlink/?linkid=2149338 for more information and examples. To identify the code which triggers this warning, call 'ConfigureWarnings(w => w.Throw(SqlServerEventId.SavepointsDisabledBecauseOfMARS))'.
+warn: Microsoft.EntityFrameworkCore.Database.Transaction[30004]
+      Savepoints are disabled because Multiple Active Result Sets (MARS) is enabled. If 'SaveChanges' fails, then the transaction cannot be automatically rolled back to a known clean state. Instead, the transaction should be rolled back by the application before retrying 'SaveChanges'. See https://go.microsoft.com/fwlink/?linkid=2149338 for more information and examples. To identify the code which triggers this warning, call 'ConfigureWarnings(w => w.Throw(SqlServerEventId.SavepointsDisabledBecauseOfMARS))'.
+fail: Microsoft.EntityFrameworkCore.Database.Command[20102]
+      Failed executing DbCommand (2ms) [Parameters=[@p0='?' (DbType = Guid), @p1='?' (DbType = DateTime2), @p2='?' (DbType = Guid), @p3='?' (DbType = Int32), @p4='?' (DbType = Guid), @p5='?' (DbType = Guid), @p6='?' (DbType = DateTime2)], CommandType='Text', CommandTimeout='30']
+      SET IMPLICIT_TRANSACTIONS OFF;
+      SET NOCOUNT ON;
+      INSERT INTO [shelter].[shelter_allocations] ([id], [created_at], [decision_id], [household_size], [request_id], [shelter_id], [updated_at])
+      VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6);
+fail: Microsoft.EntityFrameworkCore.Update[10000]
+      An exception occurred in the database while saving changes for context type 'Cms.Infrastructure.Data.CmsDbContext'.
+      Microsoft.EntityFrameworkCore.DbUpdateException: An error occurred while saving the entity changes. See the inner exception for details.
+       ---> Microsoft.Data.SqlClient.SqlException (0x80131904): Cannot insert duplicate key row in object 'shelter.shelter_allocations' with unique index 'UQ_shelter_allocations_decision'. The duplicate key value is (012153d7-bd4c-4fa4-91ee-c7822b2bd286).
+      The statement has been terminated.
+         at System.Threading.Tasks.ContinuationResultTaskFromResultTask`2.InnerInvoke()
+         at System.Threading.ExecutionContext.RunInternal(ExecutionContext executionContext, ContextCallback callback, Object state)
+      --- End of stack trace from previous location ---
+         at System.Threading.ExecutionContext.RunInternal(ExecutionContext executionContext, ContextCallback callback, Object state)
+         at System.Threading.Tasks.Task.ExecuteWithThreadLocal(Task& currentTaskSlot, Thread threadPoolThread)
+      --- End of stack trace from previous location ---
+         at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReaderAsync(RelationalCommandParameterObject parameterObject, CancellationToken cancellationToken)
+         at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReaderAsync(RelationalCommandParameterObject parameterObject, CancellationToken cancellationToken)
+         at Microsoft.EntityFrameworkCore.Update.ReaderModificationCommandBatch.ExecuteAsync(IRelationalConnection connection, CancellationToken cancellationToken)
+      ClientConnectionId:3d31d3fa-36b8-479c-bd41-26498c8e88af
+      Error Number:2601,State:1,Class:14
+         --- End of inner exception stack trace ---
+         at Microsoft.EntityFrameworkCore.Update.ReaderModificationCommandBatch.ExecuteAsync(IRelationalConnection connection, CancellationToken cancellationToken)
+         at Microsoft.EntityFrameworkCore.SqlServer.Update.Internal.SqlServerModificationCommandBatch.ExecuteAsync(IRelationalConnection connection, CancellationToken cancellationToken)
+         at Microsoft.EntityFrameworkCore.Update.Internal.BatchExecutor.ExecuteAsync(IEnumerable`1 commandBatches, IRelationalConnection connection, CancellationToken cancellationToken)
+         at Microsoft.EntityFrameworkCore.Update.Internal.BatchExecutor.ExecuteAsync(IEnumerable`1 commandBatches, IRelationalConnection connection, CancellationToken cancellationToken)
+         at Microsoft.EntityFrameworkCore.Update.Internal.BatchExecutor.ExecuteAsync(IEnumerable`1 commandBatches, IRelationalConnection connection, CancellationToken cancellationToken)
+         at Microsoft.EntityFrameworkCore.Storage.RelationalDatabase.SaveChangesAsync(IList`1 entries, CancellationToken cancellationToken)
+         at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.StateManager.SaveChangesAsync(IList`1 entriesToSave, CancellationToken cancellationToken)
+         at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.StateManager.SaveChangesAsync(StateManager stateManager, Boolean acceptAllChangesOnSuccess, CancellationToken cancellationToken)
+         at Microsoft.EntityFrameworkCore.SqlServer.Storage.Internal.SqlServerExecutionStrategy.ExecuteAsync[TState,TResult](TState state, Func`4 operation, Func`4 verifySucceeded, CancellationToken cancellationToken)
+         at Microsoft.EntityFrameworkCore.DbContext.SaveChangesAsync(Boolean acceptAllChangesOnSuccess, CancellationToken cancellationToken)
+      Microsoft.EntityFrameworkCore.DbUpdateException: An error occurred while saving the entity changes. See the inner exception for details.
+       ---> Microsoft.Data.SqlClient.SqlException (0x80131904): Cannot insert duplicate key row in object 'shelter.shelter_allocations' with unique index 'UQ_shelter_allocations_decision'. The duplicate key value is (012153d7-bd4c-4fa4-91ee-c7822b2bd286).
+      The statement has been terminated.
+         at System.Threading.Tasks.ContinuationResultTaskFromResultTask`2.InnerInvoke()
+         at System.Threading.ExecutionContext.RunInternal(ExecutionContext executionContext, ContextCallback callback, Object state)
+      --- End of stack trace from previous location ---
+         at System.Threading.ExecutionContext.RunInternal(ExecutionContext executionContext, ContextCallback callback, Object state)
+         at System.Threading.Tasks.Task.ExecuteWithThreadLocal(Task& currentTaskSlot, Thread threadPoolThread)
+      --- End of stack trace from previous location ---
+         at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReaderAsync(RelationalCommandParameterObject parameterObject, CancellationToken cancellationToken)
+         at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReaderAsync(RelationalCommandParameterObject parameterObject, CancellationToken cancellationToken)
+         at Microsoft.EntityFrameworkCore.Update.ReaderModificationCommandBatch.ExecuteAsync(IRelationalConnection connection, CancellationToken cancellationToken)
+      ClientConnectionId:3d31d3fa-36b8-479c-bd41-26498c8e88af
+      Error Number:2601,State:1,Class:14
+         --- End of inner exception stack trace ---
+         at Microsoft.EntityFrameworkCore.Update.ReaderModificationCommandBatch.ExecuteAsync(IRelationalConnection connection, CancellationToken cancellationToken)
+         at Microsoft.EntityFrameworkCore.SqlServer.Update.Internal.SqlServerModificationCommandBatch.ExecuteAsync(IRelationalConnection connection, CancellationToken cancellationToken)
+         at Microsoft.EntityFrameworkCore.Update.Internal.BatchExecutor.ExecuteAsync(IEnumerable`1 commandBatches, IRelationalConnection connection, CancellationToken cancellationToken)
+         at Microsoft.EntityFrameworkCore.Update.Internal.BatchExecutor.ExecuteAsync(IEnumerable`1 commandBatches, IRelationalConnection connection, CancellationToken cancellationToken)
+         at Microsoft.EntityFrameworkCore.Update.Internal.BatchExecutor.ExecuteAsync(IEnumerable`1 commandBatches, IRelationalConnection connection, CancellationToken cancellationToken)
+         at Microsoft.EntityFrameworkCore.Storage.RelationalDatabase.SaveChangesAsync(IList`1 entries, CancellationToken cancellationToken)
+         at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.StateManager.SaveChangesAsync(IList`1 entriesToSave, CancellationToken cancellationToken)
+         at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.StateManager.SaveChangesAsync(StateManager stateManager, Boolean acceptAllChangesOnSuccess, CancellationToken cancellationToken)
+         at Microsoft.EntityFrameworkCore.SqlServer.Storage.Internal.SqlServerExecutionStrategy.ExecuteAsync[TState,TResult](TState state, Func`4 operation, Func`4 verifySucceeded, CancellationToken cancellationToken)
+         at Microsoft.EntityFrameworkCore.DbContext.SaveChangesAsync(Boolean acceptAllChangesOnSuccess, CancellationToken cancellationToken)
+warn: Cms.Api.Middleware.ExceptionHandlingMiddleware[0]
+      Request rejected with 422 (VALIDATION_FAILED). TraceId: 0HNQ8F40IJ94S:00000022
+warn: Cms.Api.Middleware.ExceptionHandlingMiddleware[0]
+      Request rejected with 400 (IDEMPOTENCY_KEY_REQUIRED). TraceId: 0HNQ8F40IJ94S:00000023
+warn: Cms.Infrastructure.Services.OutboxProcessor[0]
+      Outbox message 5c869124-7cb0-44b8-8630-173bd0b1cff9 of type Notification.Send failed.
+      System.InvalidOperationException: Notification outbox message 5c869124-7cb0-44b8-8630-173bd0b1cff9 has no recipient.
+         at Cms.Infrastructure.Notifications.EmailNotificationHandler.HandleAsync(OutboxMessage message, CancellationToken cancellationToken) in C:\Users\Shamila\AppData\Local\Temp\opencode\latest_develop\AI-Humanitarian-Crisis-Management-System\backend\src\Cms.Infrastructure\Notifications\EmailNotificationHandler.cs:line 62
+         at Cms.Infrastructure.Services.OutboxProcessor.TryHandleAsync(Guid id, CancellationToken cancellationToken) in C:\Users\Shamila\AppData\Local\Temp\opencode\latest_develop\AI-Humanitarian-Crisis-Management-System\backend\src\Cms.Infrastructure\Services\OutboxProcessor.cs:line 176
+warn: Cms.Infrastructure.Services.OutboxProcessor[0]
+      Outbox message 56d584a5-95e0-4d4f-8cbe-0af24bfc2564 of type Notification.Send failed.
+      System.InvalidOperationException: Notification outbox message 56d584a5-95e0-4d4f-8cbe-0af24bfc2564 has no recipient.
+         at Cms.Infrastructure.Notifications.EmailNotificationHandler.HandleAsync(OutboxMessage message, CancellationToken cancellationToken) in C:\Users\Shamila\AppData\Local\Temp\opencode\latest_develop\AI-Humanitarian-Crisis-Management-System\backend\src\Cms.Infrastructure\Notifications\EmailNotificationHandler.cs:line 62
+         at Cms.Infrastructure.Services.OutboxProcessor.TryHandleAsync(Guid id, CancellationToken cancellationToken) in C:\Users\Shamila\AppData\Local\Temp\opencode\latest_develop\AI-Humanitarian-Crisis-Management-System\backend\src\Cms.Infrastructure\Services\OutboxProcessor.cs:line 176
+warn: Cms.Infrastructure.Services.OutboxProcessor[0]
+      Outbox message 8fac6b14-3e41-474e-abbf-f78635504a61 of type Notification.Send failed.
+      System.InvalidOperationException: Notification outbox message 8fac6b14-3e41-474e-abbf-f78635504a61 has no recipient.
+         at Cms.Infrastructure.Notifications.EmailNotificationHandler.HandleAsync(OutboxMessage message, CancellationToken cancellationToken) in C:\Users\Shamila\AppData\Local\Temp\opencode\latest_develop\AI-Humanitarian-Crisis-Management-System\backend\src\Cms.Infrastructure\Notifications\EmailNotificationHandler.cs:line 62
+         at Cms.Infrastructure.Services.OutboxProcessor.TryHandleAsync(Guid id, CancellationToken cancellationToken) in C:\Users\Shamila\AppData\Local\Temp\opencode\latest_develop\AI-Humanitarian-Crisis-Management-System\backend\src\Cms.Infrastructure\Services\OutboxProcessor.cs:line 176
+warn: Cms.Infrastructure.Services.OutboxProcessor[0]
+      Outbox message 44880d1c-34bf-40ec-89ce-91823819702a of type Notification.Send failed.
+      System.InvalidOperationException: Notification outbox message 44880d1c-34bf-40ec-89ce-91823819702a has no recipient.
+         at Cms.Infrastructure.Notifications.EmailNotificationHandler.HandleAsync(OutboxMessage message, CancellationToken cancellationToken) in C:\Users\Shamila\AppData\Local\Temp\opencode\latest_develop\AI-Humanitarian-Crisis-Management-System\backend\src\Cms.Infrastructure\Notifications\EmailNotificationHandler.cs:line 62
+         at Cms.Infrastructure.Services.OutboxProcessor.TryHandleAsync(Guid id, CancellationToken cancellationToken) in C:\Users\Shamila\AppData\Local\Temp\opencode\latest_develop\AI-Humanitarian-Crisis-Management-System\backend\src\Cms.Infrastructure\Services\OutboxProcessor.cs:line 176
+warn: Cms.Infrastructure.Services.OutboxProcessor[0]
+      Outbox message eb924d28-b86a-4fda-a034-fa92cecd5b29 of type Notification.Send failed.
+      System.InvalidOperationException: Notification outbox message eb924d28-b86a-4fda-a034-fa92cecd5b29 has no recipient.
+         at Cms.Infrastructure.Notifications.EmailNotificationHandler.HandleAsync(OutboxMessage message, CancellationToken cancellationToken) in C:\Users\Shamila\AppData\Local\Temp\opencode\latest_develop\AI-Humanitarian-Crisis-Management-System\backend\src\Cms.Infrastructure\Notifications\EmailNotificationHandler.cs:line 62
+         at Cms.Infrastructure.Services.OutboxProcessor.TryHandleAsync(Guid id, CancellationToken cancellationToken) in C:\Users\Shamila\AppData\Local\Temp\opencode\latest_develop\AI-Humanitarian-Crisis-Management-System\backend\src\Cms.Infrastructure\Services\OutboxProcessor.cs:line 176
+warn: Cms.Infrastructure.Services.OutboxProcessor[0]
+      Outbox message 5c869124-7cb0-44b8-8630-173bd0b1cff9 of type Notification.Send failed.
+      System.InvalidOperationException: Notification outbox message 5c869124-7cb0-44b8-8630-173bd0b1cff9 has no recipient.
+         at Cms.Infrastructure.Notifications.EmailNotificationHandler.HandleAsync(OutboxMessage message, CancellationToken cancellationToken) in C:\Users\Shamila\AppData\Local\Temp\opencode\latest_develop\AI-Humanitarian-Crisis-Management-System\backend\src\Cms.Infrastructure\Notifications\EmailNotificationHandler.cs:line 62
+         at Cms.Infrastructure.Services.OutboxProcessor.TryHandleAsync(Guid id, CancellationToken cancellationToken) in C:\Users\Shamila\AppData\Local\Temp\opencode\latest_develop\AI-Humanitarian-Crisis-Management-System\backend\src\Cms.Infrastructure\Services\OutboxProcessor.cs:line 176
+warn: Cms.Infrastructure.Services.OutboxProcessor[0]
+      Outbox message 56d584a5-95e0-4d4f-8cbe-0af24bfc2564 of type Notification.Send failed.
+      System.InvalidOperationException: Notification outbox message 56d584a5-95e0-4d4f-8cbe-0af24bfc2564 has no recipient.
+         at Cms.Infrastructure.Notifications.EmailNotificationHandler.HandleAsync(OutboxMessage message, CancellationToken cancellationToken) in C:\Users\Shamila\AppData\Local\Temp\opencode\latest_develop\AI-Humanitarian-Crisis-Management-System\backend\src\Cms.Infrastructure\Notifications\EmailNotificationHandler.cs:line 62
+         at Cms.Infrastructure.Services.OutboxProcessor.TryHandleAsync(Guid id, CancellationToken cancellationToken) in C:\Users\Shamila\AppData\Local\Temp\opencode\latest_develop\AI-Humanitarian-Crisis-Management-System\backend\src\Cms.Infrastructure\Services\OutboxProcessor.cs:line 176
+warn: Cms.Infrastructure.Services.OutboxProcessor[0]
+      Outbox message 8fac6b14-3e41-474e-abbf-f78635504a61 of type Notification.Send failed.
+      System.InvalidOperationException: Notification outbox message 8fac6b14-3e41-474e-abbf-f78635504a61 has no recipient.
+         at Cms.Infrastructure.Notifications.EmailNotificationHandler.HandleAsync(OutboxMessage message, CancellationToken cancellationToken) in C:\Users\Shamila\AppData\Local\Temp\opencode\latest_develop\AI-Humanitarian-Crisis-Management-System\backend\src\Cms.Infrastructure\Notifications\EmailNotificationHandler.cs:line 62
+         at Cms.Infrastructure.Services.OutboxProcessor.TryHandleAsync(Guid id, CancellationToken cancellationToken) in C:\Users\Shamila\AppData\Local\Temp\opencode\latest_develop\AI-Humanitarian-Crisis-Management-System\backend\src\Cms.Infrastructure\Services\OutboxProcessor.cs:line 176
+warn: Cms.Api.Middleware.ExceptionHandlingMiddleware[0]
+      Request rejected with 401 (UNAUTHORIZED). TraceId: 0HNQ8F40IJ952:00000001
+warn: Cms.Infrastructure.Services.OutboxProcessor[0]
+      Outbox message 44880d1c-34bf-40ec-89ce-91823819702a of type Notification.Send failed.
+      System.InvalidOperationException: Notification outbox message 44880d1c-34bf-40ec-89ce-91823819702a has no recipient.
+         at Cms.Infrastructure.Notifications.EmailNotificationHandler.HandleAsync(OutboxMessage message, CancellationToken cancellationToken) in C:\Users\Shamila\AppData\Local\Temp\opencode\latest_develop\AI-Humanitarian-Crisis-Management-System\backend\src\Cms.Infrastructure\Notifications\EmailNotificationHandler.cs:line 62
+         at Cms.Infrastructure.Services.OutboxProcessor.TryHandleAsync(Guid id, CancellationToken cancellationToken) in C:\Users\Shamila\AppData\Local\Temp\opencode\latest_develop\AI-Humanitarian-Crisis-Management-System\backend\src\Cms.Infrastructure\Services\OutboxProcessor.cs:line 176
+warn: Cms.Infrastructure.Services.OutboxProcessor[0]
+      Outbox message eb924d28-b86a-4fda-a034-fa92cecd5b29 of type Notification.Send failed.
+      System.InvalidOperationException: Notification outbox message eb924d28-b86a-4fda-a034-fa92cecd5b29 has no recipient.
+         at Cms.Infrastructure.Notifications.EmailNotificationHandler.HandleAsync(OutboxMessage message, CancellationToken cancellationToken) in C:\Users\Shamila\AppData\Local\Temp\opencode\latest_develop\AI-Humanitarian-Crisis-Management-System\backend\src\Cms.Infrastructure\Notifications\EmailNotificationHandler.cs:line 62
+         at Cms.Infrastructure.Services.OutboxProcessor.TryHandleAsync(Guid id, CancellationToken cancellationToken) in C:\Users\Shamila\AppData\Local\Temp\opencode\latest_develop\AI-Humanitarian-Crisis-Management-System\backend\src\Cms.Infrastructure\Services\OutboxProcessor.cs:line 176
+warn: Cms.Infrastructure.Services.OutboxProcessor[0]
+      Outbox message 5c869124-7cb0-44b8-8630-173bd0b1cff9 of type Notification.Send failed.
+      System.InvalidOperationException: Notification outbox message 5c869124-7cb0-44b8-8630-173bd0b1cff9 has no recipient.
+         at Cms.Infrastructure.Notifications.EmailNotificationHandler.HandleAsync(OutboxMessage message, CancellationToken cancellationToken) in C:\Users\Shamila\AppData\Local\Temp\opencode\latest_develop\AI-Humanitarian-Crisis-Management-System\backend\src\Cms.Infrastructure\Notifications\EmailNotificationHandler.cs:line 62
+         at Cms.Infrastructure.Services.OutboxProcessor.TryHandleAsync(Guid id, CancellationToken cancellationToken) in C:\Users\Shamila\AppData\Local\Temp\opencode\latest_develop\AI-Humanitarian-Crisis-Management-System\backend\src\Cms.Infrastructure\Services\OutboxProcessor.cs:line 176
+warn: Cms.Infrastructure.Services.OutboxProcessor[0]
+      Outbox message 56d584a5-95e0-4d4f-8cbe-0af24bfc2564 of type Notification.Send failed.
+      System.InvalidOperationException: Notification outbox message 56d584a5-95e0-4d4f-8cbe-0af24bfc2564 has no recipient.
+         at Cms.Infrastructure.Notifications.EmailNotificationHandler.HandleAsync(OutboxMessage message, CancellationToken cancellationToken) in C:\Users\Shamila\AppData\Local\Temp\opencode\latest_develop\AI-Humanitarian-Crisis-Management-System\backend\src\Cms.Infrastructure\Notifications\EmailNotificationHandler.cs:line 62
+         at Cms.Infrastructure.Services.OutboxProcessor.TryHandleAsync(Guid id, CancellationToken cancellationToken) in C:\Users\Shamila\AppData\Local\Temp\opencode\latest_develop\AI-Humanitarian-Crisis-Management-System\backend\src\Cms.Infrastructure\Services\OutboxProcessor.cs:line 176
+warn: Cms.Infrastructure.Services.OutboxProcessor[0]
+      Outbox message 8fac6b14-3e41-474e-abbf-f78635504a61 of type Notification.Send failed.
+      System.InvalidOperationException: Notification outbox message 8fac6b14-3e41-474e-abbf-f78635504a61 has no recipient.
+         at Cms.Infrastructure.Notifications.EmailNotificationHandler.HandleAsync(OutboxMessage message, CancellationToken cancellationToken) in C:\Users\Shamila\AppData\Local\Temp\opencode\latest_develop\AI-Humanitarian-Crisis-Management-System\backend\src\Cms.Infrastructure\Notifications\EmailNotificationHandler.cs:line 62
+         at Cms.Infrastructure.Services.OutboxProcessor.TryHandleAsync(Guid id, CancellationToken cancellationToken) in C:\Users\Shamila\AppData\Local\Temp\opencode\latest_develop\AI-Humanitarian-Crisis-Management-System\backend\src\Cms.Infrastructure\Services\OutboxProcessor.cs:line 176

@@ -1,0 +1,45 @@
+Collection: Member 4 - Operations APIs
+Requests: 41
+  GET    {{baseUrl}}/api/v1/resources
+  GET    {{baseUrl}}/api/v1/resources/types
+  POST   {{baseUrl}}/api/v1/resources/types
+  GET    
+{{baseUrl}}/api/v1/inventories?orgId={{orgId}}&resourceTypeId={{resourceTypeId}}&lowStock=false&page=1&pageSize=50
+  POST   {{baseUrl}}/api/v1/inventories
+  PATCH  {{baseUrl}}/api/v1/inventories/{{inventoryId}}
+  GET    {{baseUrl}}/api/v1/allocations?requestId={{requestId}}&status=Allocated&page=1&pageSize=50
+  POST   {{baseUrl}}/api/v1/allocations
+  POST   {{baseUrl}}/api/v1/allocations
+  GET    {{baseUrl}}/api/v1/dispatches?allocationId={{allocationId}}&page=1&pageSize=50
+  POST   {{baseUrl}}/api/v1/dispatches
+  POST   {{baseUrl}}/api/v1/dispatches/{{allocationId}}
+  POST   {{baseUrl}}/api/v1/dispatches/confirm
+  POST   {{baseUrl}}/api/v1/dispatches/{{dispatchId}}/confirm
+  GET    {{baseUrl}}/api/v1/shelters?approved=true&orgId={{orgId}}&page=1&pageSize=50
+  GET    {{baseUrl}}/api/v1/shelters/public
+  POST   {{baseUrl}}/api/v1/shelters
+  PATCH  {{baseUrl}}/api/v1/shelters/{{shelterId}}
+  POST   {{baseUrl}}/api/v1/shelters/{{shelterId}}/approve
+  POST   {{baseUrl}}/api/v1/shelters/allocations
+  GET    {{baseUrl}}/api/v1/volunteers
+  POST   {{baseUrl}}/api/v1/volunteers/profile
+  POST   {{baseUrl}}/api/v1/volunteers/{{volunteerId}}/verify
+  POST   {{baseUrl}}/api/v1/volunteers/availability
+  GET    {{baseUrl}}/api/v1/volunteer-tasks/mine?page=1&pageSize=50
+  GET    {{baseUrl}}/api/v1/volunteer-tasks?status=Open&page=1&pageSize=50
+  POST   {{baseUrl}}/api/v1/volunteer-tasks
+  POST   {{baseUrl}}/api/v1/volunteer-tasks/{{taskId}}/assign?volunteerId={{volunteerId}}
+  POST   {{baseUrl}}/api/v1/volunteer-tasks/{{taskId}}/respond
+  POST   {{baseUrl}}/api/v1/volunteer-tasks/{{taskId}}/complete
+  POST   {{baseUrl}}/api/v1/assistance-requests
+  GET    {{baseUrl}}/api/v1/assistance-requests?direction=out&status=Pending&page=1&pageSize=50
+  POST   {{baseUrl}}/api/v1/assistance-requests/{{assistanceRequestId}}/respond
+  GET    {{baseUrl}}/api/v1/shortages/proposal?resourceTypeId={{resourceTypeId}}
+  GET    {{baseUrl}}/api/v1/recommendations/match/resources/{{requestId}}
+  GET    {{baseUrl}}/api/v1/recommendations/match/shelters/{{requestId}}
+  GET    {{baseUrl}}/api/v1/recommendations/match/volunteers/{{requestId}}
+  GET    {{baseUrl}}/api/v1/operations/status-transitions
+  POST   {{baseUrl}}/api/v1/operations/status-transitions/{{transitionId}}/retry
+  GET    {{baseUrl}}/api/v1/geo/geocode?address=Negombo%2C%20Sri%20Lanka
+  GET    {{baseUrl}}/api/v1/geo/distance?fromLat=7.2088&fromLng=79.8358&toLat=6.9271&toLng=79.8612
+PASS: static Postman collection validation.

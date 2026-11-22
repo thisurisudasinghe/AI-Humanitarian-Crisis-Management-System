@@ -1,0 +1,128 @@
+
+=== Health check ===
+PASS: health endpoint reports Healthy
+
+=== Demo logins ===
+PASS: login coordinator@example.org returned 200
+PASS: login casemanager@example.org returned 200
+PASS: login logistics@example.org returned 200
+PASS: login shelter@example.org returned 200
+PASS: login volunteercoordinator@example.org returned 200
+PASS: login volunteer@example.org returned 200
+PASS: login citizen@example.org returned 200
+All seven role-specific logins succeeded.
+
+=== Dev 2 request data + Dev 3 recommendation/decision chain (R6) ===
+PASS: GET /requests/1d000000-0000-0000-0000-000000000006 returned 200
+R6 status before recommendation: Fulfilled
+PASS: ResourceMatch recommendation for 1d000000-0000-0000-0000-000000000006 returned 200: {"recommendationId":"c26b44d8
+-064a-4458-a6be-8cd482f38e67","type":"ResourceMatch","status":"Pending","requestStatus":"Fulfilled","candidates":[{"tar
+getId":"42000000-0000-0000-0000-000000000003","targetType":"Resource","score":0.85,"rationale":"Type fit 1; 100 
+available; 121.69 km; urgency Critical; expiry 1; accessibility 1; org fit 1.","isApproximate":false},{"targetId":"4200
+0000-0000-0000-0000-000000000001","targetType":"Resource","score":0.77,"rationale":"Type fit 1; 3 available partial: 3 
+of 5; 121.69 km; urgency Critical; expiry 1; accessibility 1; org fit 1.","isApproximate":false},{"targetId":"42000000-
+0000-0000-0000-000000000002","targetType":"Resource","score":0.6625,"rationale":"Type fit 0.25; 30 available; 121.69 
+km; urgency Critical; expiry 1; accessibility 1; org fit 1.","isApproximate":false}]}
+PASS: ResourceMatch returned at least one candidate
+Top resource candidate: 42000000-0000-0000-0000-000000000003
+PASS: decision for c26b44d8-064a-4458-a6be-8cd482f38e67 returned 201: {"id":"857e11b3-07ca-45b1-8660-14ebf7fd462b","rec
+ommendationId":"c26b44d8-064a-4458-a6be-8cd482f38e67","outcome":"Approved","finalPayloadJson":"{\"inventoryId\":\"42000
+000-0000-0000-0000-000000000003\",\"quantity\":1,\"requestId\":\"1d000000-0000-0000-0000-000000000006\"}","reason":"Dev
+4 live verification: approved resource 
+allocation","decidedBy":"0b000000-0000-0000-0000-000000000004","decidedAt":"2026-11-22T09:22:10.2269788Z"}
+Approved ResourceMatch decision: 857e11b3-07ca-45b1-8660-14ebf7fd462b
+PASS: ShelterMatch recommendation for 1d000000-0000-0000-0000-000000000006 returned 200: {"recommendationId":"5afc25b0-
+f02b-427b-accb-bf04dd0de275","type":"ShelterMatch","status":"Pending","requestStatus":"Fulfilled","candidates":[{"targe
+tId":"44000000-0000-0000-0000-000000000001","targetType":"Shelter","score":0.75,"rationale":"Approved shelter; 74 
+places free for a household of 5; route 121.69 km; suitability 1; services 1.","isApproximate":false},{"targetId":"4400
+0000-0000-0000-0000-000000000002","targetType":"Shelter","score":0.75,"rationale":"Approved shelter; 58 places free 
+for a household of 5; route 110.85 km; suitability 1; services 1.","isApproximate":false}]}
+PASS: ShelterMatch returned at least one candidate
+Top shelter candidate: 44000000-0000-0000-0000-000000000001
+PASS: decision for 5afc25b0-f02b-427b-accb-bf04dd0de275 returned 201: {"id":"1e9bde21-abb5-4bf8-8482-efdf89c82f8c","rec
+ommendationId":"5afc25b0-f02b-427b-accb-bf04dd0de275","outcome":"Approved","finalPayloadJson":"{\"householdSize\":5,\"s
+helterId\":\"44000000-0000-0000-0000-000000000001\",\"requestId\":\"1d000000-0000-0000-0000-000000000006\"}","reason":"
+Dev4 live verification: approved shelter 
+allocation","decidedBy":"0b000000-0000-0000-0000-000000000005","decidedAt":"2026-11-22T09:22:10.3320737Z"}
+Approved ShelterMatch decision: 1e9bde21-abb5-4bf8-8482-efdf89c82f8c
+PASS: GET /requests/1d000000-0000-0000-0000-000000000006 after recommendation returned 200
+R6 status after recommendation: Fulfilled
+
+=== End-to-end resource dispatch + shelter + volunteer workflow ===
+1/3 Resource workflow: approved decision -> allocation -> dispatch -> delivery confirmation
+Allocation: 836adbd5-c691-4ab0-82b9-9cdad1ecf711 [Allocated]
+Dispatch: f2afe907-9577-4a07-b4a0-0741daff53d8 [Dispatched]
+Delivery confirmation: PASS [Fulfilled]
+2/3 Shelter workflow: approved shelter decision -> guarded occupancy allocation
+Shelter allocation: 1bad7de9-1602-4794-a4c8-8d53f39f2c4b for 5 people
+3/3 Volunteer workflow: profile -> availability -> verification -> assignment -> accept -> complete
+Volunteer task: PASS [Completed]
+END-TO-END WORKFLOW PASS. Check audit events, outbox delivery, request status transitions and the UI manually; this 
+script does not claim those asynchronous side effects have been consumed.
+
+=== Live API idempotency: two concurrent allocations with the same key ===
+PASS: ResourceMatch recommendation for 1d000000-0000-0000-0000-000000000007 returned 200: {"recommendationId":"5d108c79
+-a5ea-414a-b0d8-01295fa3e607","type":"ResourceMatch","status":"Pending","requestStatus":"Verified","candidates":[{"targ
+etId":"42000000-0000-0000-0000-000000000001","targetType":"Resource","score":0.8,"rationale":"Type fit 1; 3 available; 
+121.69 km; urgency High; expiry 1; accessibility 1; org fit 1.","isApproximate":false},{"targetId":"42000000-0000-0000-
+0000-000000000003","targetType":"Resource","score":0.8,"rationale":"Type fit 1; 99 available; 121.69 km; urgency High; 
+expiry 1; accessibility 1; org fit 1.","isApproximate":false},{"targetId":"42000000-0000-0000-0000-000000000002","targe
+tType":"Resource","score":0.6125,"rationale":"Type fit 0.25; 30 available; 121.69 km; urgency High; expiry 1; 
+accessibility 1; org fit 1.","isApproximate":false}]}
+PASS: ResourceMatch for R7 returned at least one candidate
+PASS: decision for 5d108c79-a5ea-414a-b0d8-01295fa3e607 returned 201: {"id":"641cba76-7ac9-4ee1-b1e5-9e1c9858976d","rec
+ommendationId":"5d108c79-a5ea-414a-b0d8-01295fa3e607","outcome":"Approved","finalPayloadJson":"{\"inventoryId\":\"42000
+000-0000-0000-0000-000000000001\",\"quantity\":1,\"requestId\":\"1d000000-0000-0000-0000-000000000007\"}","reason":"Dev
+4 live verification: concurrent 
+idempotency","decidedBy":"0b000000-0000-0000-0000-000000000004","decidedAt":"2026-11-22T09:22:16.8694434Z"}
+PASS: parallel same-key allocations returned 201/201
+PASS: parallel same-key allocations returned the same allocation id b42d23a3-68e6-4a5c-a517-81aa56c1d0af
+PASS: exactly one allocation row exists for key DEV4-LIVE-IDEM-b4773de0de304e98b9ba7e02d02b2dab
+PASS: stock decremented exactly once (3 -> 2)
+
+=== Live API: shelter overbooking is rejected ===
+PASS: ShelterMatch recommendation for 1d000000-0000-0000-0000-000000000007 returned 200: {"recommendationId":"c328b89f-
+4ad2-4d95-802e-3e770fdf5f15","type":"ShelterMatch","status":"Pending","requestStatus":"Verified","candidates":[{"target
+Id":"44000000-0000-0000-0000-000000000001","targetType":"Shelter","score":0.75,"rationale":"Approved shelter; 69 
+places free for a household of 3; route 121.69 km; suitability 1; services 1.","isApproximate":false},{"targetId":"4400
+0000-0000-0000-0000-000000000002","targetType":"Shelter","score":0.75,"rationale":"Approved shelter; 58 places free 
+for a household of 3; route 110.85 km; suitability 1; services 1.","isApproximate":false}]}
+PASS: decision for c328b89f-4ad2-4d95-802e-3e770fdf5f15 returned 201: {"id":"3808028d-861f-40c3-b2a3-ca009a138420","rec
+ommendationId":"c328b89f-4ad2-4d95-802e-3e770fdf5f15","outcome":"Approved","finalPayloadJson":"{\"householdSize\":1,\"s
+helterId\":\"44000000-0000-0000-0000-000000000003\",\"requestId\":\"1d000000-0000-0000-0000-000000000007\"}","reason":"
+Dev4 live verification: full shelter must be 
+rejected","decidedBy":"0b000000-0000-0000-0000-000000000005","decidedAt":"2026-11-22T09:22:18.3840161Z"}
+PASS: full shelter allocation returned 409: 
+{"type":"https://httpstatuses.io/409","title":"Conflict","status":409,"detail":"The shelter cannot accommodate this 
+household.","instance":"/api/v1/shelters/allocations","code":"SHELTER_FULL","traceId":"0HNQ8F40IJ94S:0000001E"}
+PASS: full shelter error code is SHELTER_FULL
+
+=== Live API: concurrent duplicate shelter allocation on one decision ===
+PASS: ShelterMatch recommendation for 1d000000-0000-0000-0000-000000000007 returned 200: {"recommendationId":"dd51ea33-
+1624-4f99-9bb4-4060f93822e3","type":"ShelterMatch","status":"Pending","requestStatus":"Verified","candidates":[{"target
+Id":"44000000-0000-0000-0000-000000000001","targetType":"Shelter","score":0.75,"rationale":"Approved shelter; 69 
+places free for a household of 3; route 121.69 km; suitability 1; services 1.","isApproximate":false},{"targetId":"4400
+0000-0000-0000-0000-000000000002","targetType":"Shelter","score":0.75,"rationale":"Approved shelter; 58 places free 
+for a household of 3; route 110.85 km; suitability 1; services 1.","isApproximate":false}]}
+PASS: ShelterMatch for duplicate probe returned a candidate
+PASS: decision for dd51ea33-1624-4f99-9bb4-4060f93822e3 returned 201: {"id":"012153d7-bd4c-4fa4-91ee-c7822b2bd286","rec
+ommendationId":"dd51ea33-1624-4f99-9bb4-4060f93822e3","outcome":"Approved","finalPayloadJson":"{\"householdSize\":1,\"s
+helterId\":\"44000000-0000-0000-0000-000000000001\",\"requestId\":\"1d000000-0000-0000-0000-000000000007\"}","reason":"
+Dev4 live verification: duplicate shelter allocation 
+probe","decidedBy":"0b000000-0000-0000-0000-000000000005","decidedAt":"2026-11-22T09:22:18.5209353Z"}
+Duplicate shelter probe statuses: 201/201; decision rows: 1; occupancy: 51 -> 52
+PASS: duplicate shelter decision created exactly one allocation and one occupancy increment
+
+=== Mapping, geo fallback and API error handling ===
+PASS: anonymous geo distance returned 200
+PASS: geo distance response contains km
+PASS: invalid geo coordinates rejected with 422
+PASS: missing Idempotency-Key rejected with 400
+PASS: citizen allocation read forbidden (403)
+PASS: anonymous public shelters returned 200
+PASS: LogisticsManager GET /operations/areas returned 200
+PASS: ShelterAdmin GET /operations/areas returned 200
+PASS: VolunteerCoordinator GET /operations/areas returned 200
+PASS: ShelterAdmin GET /resources/types returned 200
+
+=== LIVE VERIFICATION COMPLETE ===

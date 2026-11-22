@@ -1,0 +1,21 @@
+CurrentDatabase                                                                                                                 
+--------------------------------------------------------------------------------------------------------------------------------
+CmsDev4Verification                                                                                                             
+
+(1 rows affected)
+Run only after starting the API once in Development so DevelopmentDemoSeeder creates the demo users.
+SQL [CmsDev4Verification] <- 90_seed_scenario.sql
+SQL [CmsDev4Verification] <- 91_seed_ops.sql
+SQL [CmsDev4Verification] <- 00_common.sql
+SQL [CmsDev4Verification] <- 01_cases.sql
+SQL [CmsDev4Verification] <- 02_notif.sql
+SQL [CmsDev4Verification] <- 03_ai.sql
+SQL [CmsDev4Verification] <- 04_res.sql
+SQL [CmsDev4Verification] <- 05_shelter.sql
+SQL [CmsDev4Verification] <- 06_vol.sql
+SQL [CmsDev4Verification] <- 08_don.sql
+SQL [CmsDev4Verification] <- 98_foreign_keys.sql
+SQL [CmsDev4Verification] <- 99_seed_users.sql
+SQL [CmsDev4Verification] <- 90_seed_scenario.sql
+SQL [CmsDev4Verification] <- 91_seed_ops.sql
+Scenario seeds and idempotent re-run pass completed. Run Test-Dev4SqlGuards.ps1 next.
