@@ -90,6 +90,32 @@ public class OperationsGeoAdapterTests
     }
 
     [Fact]
+    public async Task Geocode_RealClock_SeparatesProviderRequestsByAtLeastOneSecond()
+    {
+        // This deliberately uses TimeProvider.System rather than a fake clock.
+        // Two unique addresses bypass the cache and exercise the real throttle.
+        var json = "[{\"lat\":\"6.9\",\"lon\":\"79.8\",\"display_name\":\"Colombo\"}]";
+        var handler = new RecordingHandler(
+            _ => new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(json) });
+        var services = new ServiceCollection();
+        services.AddLogisticsModule();
+        services.AddHttpClient("nominatim").ConfigurePrimaryHttpMessageHandler(() => handler);
+        using var provider = services.BuildServiceProvider();
+        using var scope = provider.CreateScope();
+        var geo = scope.ServiceProvider
+            .GetRequiredService<Cms.Application.Contracts.Operations.IGeoService>();
+
+        await Task.WhenAll(
+            geo.GeocodeAsync("Throttle verification A", CancellationToken.None),
+            geo.GeocodeAsync("Throttle verification B", CancellationToken.None));
+
+        var sent = handler.Requests.Select(x => x.SentAtUtc).OrderBy(x => x).ToArray();
+        Assert.Equal(2, sent.Length);
+        Assert.True((sent[1] - sent[0]).TotalMilliseconds >= 900,
+            $"Nominatim requests were only {(sent[1] - sent[0]).TotalMilliseconds:F0} ms apart.");
+    }
+
+    [Fact]
     public void Haversine_LondonToParis_IsAbout343Km()
     {
         var km = GeoService.HaversineKm(51.5074, -0.1278, 48.8566, 2.3522);
@@ -144,7 +170,7 @@ public class OperationsGeoAdapterTests
     }
 }
 
-internal sealed record CapturedGeoRequest(string Uri, string UserAgent, string AcceptLanguage);
+internal sealed record CapturedGeoRequest(string Uri, string UserAgent, string AcceptLanguage, DateTimeOffset SentAtUtc);
 
 internal sealed class RecordingHandler(Func<HttpRequestMessage, HttpResponseMessage> respond) : HttpMessageHandler
 {
@@ -156,7 +182,7 @@ internal sealed class RecordingHandler(Func<HttpRequestMessage, HttpResponseMess
     {
         CallCount++;
         Requests.Add(new CapturedGeoRequest(request.RequestUri?.AbsoluteUri ?? string.Empty,
-            request.Headers.UserAgent.ToString(), request.Headers.AcceptLanguage.ToString()));
+            request.Headers.UserAgent.ToString(), request.Headers.AcceptLanguage.ToString(), DateTimeOffset.UtcNow));
         return Task.FromResult(respond(request));
     }
 }

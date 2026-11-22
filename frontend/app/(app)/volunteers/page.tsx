@@ -1,97 +1,354 @@
 "use client";
 
 import { AuthGuard } from "@/components/AuthGuard";
-import { Icon } from "@/components/safeway/Icon";
-import { EmptyPanel, IntegrationNotice } from "@/components/safeway/IntegrationNotice";
-import { StaffRoles } from "@/lib/roles";
+import { useAuth } from "@/lib/auth";
+
+// Member 4 / D4-11 volunteer workspace and coordinator queue. Verification,
+// assignment and status transitions are server-side rules; this page renders
+// their ProblemDetails and never acts as the only guard.
+
+import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
+import { api, errorMessage, Paged } from "@/lib/operations-api";
+
+const MapPicker = dynamic(() => import("@/components/map/MapPicker"), { ssr: false });
+
+interface Volunteer {
+  id: string;
+  userId: string;
+  skillsJson: string;
+  languagesJson: string;
+  verificationStatus: string;
+  active: boolean;
+  lat?: number | null;
+  lng?: number | null;
+}
+interface VolunteerTask {
+  id: string;
+  requestId?: string | null;
+  title: string;
+  requiredSkillsJson: string;
+  lat?: number | null;
+  lng?: number | null;
+  scheduledAt?: string | null;
+  status: string;
+  volunteerId?: string | null;
+  completedAt?: string | null;
+}
+
+const EMPTY_TASKS: Paged<VolunteerTask> = { items: [], total: 0, page: 1, pageSize: 50 };
+
+function VolunteerWorkspaceContent() {
+  const { user } = useAuth();
+  const roles = user?.roles ?? [];
+  const canVolunteer = roles.includes("Volunteer");
+  const canCoordinate = roles.some((role) => ["VolunteerCoordinator", "EmergencyCoordinator", "SystemAdmin"].includes(role));
+  const canManageVolunteers = roles.includes("VolunteerCoordinator") || roles.includes("SystemAdmin");
+  const canMatchVolunteers = roles.includes("VolunteerCoordinator") || roles.includes("EmergencyCoordinator");
+  const [tab, setTab] = useState<"volunteer" | "coordinator">(() => canCoordinate && !canVolunteer ? "coordinator" : "volunteer");
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const [skills, setSkills] = useState('["Food distribution"]');
+  const [languages, setLanguages] = useState('["en"]');
+  const [lat, setLat] = useState("7.8731");
+  const [lng, setLng] = useState("80.7718");
+  const [active, setActive] = useState(true);
+  const [availabilityStart, setAvailabilityStart] = useState("");
+  const [availabilityEnd, setAvailabilityEnd] = useState("");
+
+  const [myTasks, setMyTasks] = useState<Paged<VolunteerTask>>(EMPTY_TASKS);
+  const [volunteers, setVolunteers] = useState<Volunteer[]>([]);
+  const [allTasks, setAllTasks] = useState<Paged<VolunteerTask>>(EMPTY_TASKS);
+  const [matchRequestId, setMatchRequestId] = useState("");
+  const [volunteerMatches, setVolunteerMatches] = useState<Array<{ targetId: string; score: number; rationale: string; isApproximate: boolean }> | null>(null);
+
+  const [taskTitle, setTaskTitle] = useState("");
+  const [taskSkills, setTaskSkills] = useState("[]");
+  const [taskRequest, setTaskRequest] = useState("");
+  const [assignTask, setAssignTask] = useState("");
+  const [assignVolunteer, setAssignVolunteer] = useState("");
+  const [verifyReason, setVerifyReason] = useState("Documents checked");
+
+  async function loadMyTasks() {
+    try {
+      setMyTasks(await api<Paged<VolunteerTask>>("/volunteer-tasks/mine"));
+    } catch (loadError) {
+      setError(errorMessage(loadError));
+    }
+  }
+
+  async function loadCoordinator() {
+    try {
+      const [people, tasks] = await Promise.all([
+        api<Volunteer[]>("/volunteers"),
+        api<Paged<VolunteerTask>>("/volunteer-tasks"),
+      ]);
+      setVolunteers(people);
+      setAllTasks(tasks);
+    } catch (loadError) {
+      setError(errorMessage(loadError));
+    }
+  }
+
+  useEffect(() => {
+    setError("");
+    if (tab === "volunteer") void loadMyTasks();
+    else void loadCoordinator();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab]);
+
+  async function run(action: () => Promise<void>, successMessage = "") {
+    if (busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      await action();
+      if (successMessage) setError("");
+      if (tab === "volunteer") await loadMyTasks();
+      else await loadCoordinator();
+    } catch (actionError) {
+      setError(errorMessage(actionError));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function saveProfile() {
+    await run(async () => {
+      await api("/volunteers/profile", {
+        method: "POST",
+        body: JSON.stringify({
+          skillsJson: skills,
+          languagesJson: languages,
+          lat: lat ? Number(lat) : null,
+          lng: lng ? Number(lng) : null,
+          active,
+        }),
+      });
+    });
+  }
+
+  async function addAvailability() {
+    await run(async () => {
+      await api("/volunteers/availability", {
+        method: "POST",
+        body: JSON.stringify({ startsAt: availabilityStart, endsAt: availabilityEnd }),
+      });
+      setAvailabilityStart("");
+      setAvailabilityEnd("");
+    });
+  }
+
+  async function respond(taskId: string, accept: boolean) {
+    await run(async () => {
+      await api(`/volunteer-tasks/${taskId}/respond`, {
+        method: "POST",
+        body: JSON.stringify({ accept }),
+      });
+    });
+  }
+
+  async function complete(taskId: string) {
+    await run(async () => {
+      await api(`/volunteer-tasks/${taskId}/complete`, { method: "POST" });
+    });
+  }
+
+  async function createTask() {
+    await run(async () => {
+      await api("/volunteer-tasks", {
+        method: "POST",
+        body: JSON.stringify({
+          requestId: taskRequest || null,
+          title: taskTitle,
+          requiredSkillsJson: taskSkills,
+          lat: lat ? Number(lat) : null,
+          lng: lng ? Number(lng) : null,
+          scheduledAt: null,
+        }),
+      });
+      setTaskTitle("");
+      setTaskRequest("");
+    });
+  }
+
+  async function assign() {
+    if (!assignTask || !assignVolunteer) return;
+    await run(async () => {
+      await api(`/volunteer-tasks/${assignTask}/assign?volunteerId=${encodeURIComponent(assignVolunteer)}`, { method: "POST" });
+    });
+  }
+
+  async function findVolunteerMatches() {
+    if (!matchRequestId.trim()) return;
+    await run(async () => {
+      const result = await api<Array<{ targetId: string; score: number; rationale: string; isApproximate: boolean }>>(`/recommendations/match/volunteers/${matchRequestId.trim()}`);
+      setVolunteerMatches(result);
+    });
+  }
+
+  async function verify(volunteerId: string, approved: boolean) {
+    await run(async () => {
+      await api(`/volunteers/${volunteerId}/verify`, {
+        method: "POST",
+        body: JSON.stringify({ approved, reason: verifyReason }),
+      });
+    });
+  }
+
+  return (
+    <>
+      <h1>Volunteer operations</h1>
+      <div className="tabs" role="tablist" aria-label="Volunteer workspace">
+        {canVolunteer && <button type="button" role="tab" aria-selected={tab === "volunteer"} onClick={() => setTab("volunteer")}>My workspace</button>}
+        {canCoordinate && <button type="button" role="tab" aria-selected={tab === "coordinator"} onClick={() => setTab("coordinator")}>Coordinator</button>}
+      </div>
+      {error && <p className="error" role="alert">{error}</p>}
+
+      {tab === "volunteer" ? (
+        <>
+          <section className="panel">
+            <h2>My profile</h2>
+            <div className="form-grid">
+              <label htmlFor="vol-skills">Skills (JSON array)</label>
+              <input id="vol-skills" value={skills} onChange={(event) => setSkills(event.target.value)} />
+              <label htmlFor="vol-languages">Languages (JSON array)</label>
+              <input id="vol-languages" value={languages} onChange={(event) => setLanguages(event.target.value)} />
+              <label htmlFor="vol-lat">Latitude</label>
+              <input id="vol-lat" type="number" step="any" value={lat} onChange={(event) => setLat(event.target.value)} />
+              <label htmlFor="vol-lng">Longitude</label>
+              <input id="vol-lng" type="number" step="any" value={lng} onChange={(event) => setLng(event.target.value)} />
+              <label htmlFor="vol-active">Available for tasks</label>
+              <input id="vol-active" type="checkbox" checked={active} onChange={(event) => setActive(event.target.checked)} />
+            </div>
+            <MapPicker height={230} value={{ lat: Number(lat), lng: Number(lng) }} onChange={(point) => { setLat(String(point.lat)); setLng(String(point.lng)); }} />
+            <button type="button" onClick={() => void saveProfile()} disabled={busy}>Save profile</button>
+          </section>
+
+          <section className="panel">
+            <h2>Add availability</h2>
+            <div className="inline">
+              <label htmlFor="avail-start">Starts at</label>
+              <input id="avail-start" type="datetime-local" value={availabilityStart} onChange={(event) => setAvailabilityStart(event.target.value)} />
+              <label htmlFor="avail-end">Ends at</label>
+              <input id="avail-end" type="datetime-local" value={availabilityEnd} onChange={(event) => setAvailabilityEnd(event.target.value)} />
+              <button type="button" onClick={() => void addAvailability()} disabled={busy || !availabilityStart || !availabilityEnd}>Add window</button>
+            </div>
+          </section>
+
+          <section className="panel">
+            <h2>My tasks</h2>
+            {myTasks.items.length === 0 ? <p className="muted">No tasks are assigned to you.</p> : (
+              <ul className="task-list">
+                {myTasks.items.map((task) => (
+                  <li key={task.id}>
+                    <strong>{task.title}</strong> <span className="badge">{task.status}</span>
+                    <p className="small muted">Skills: {task.requiredSkillsJson}</p>
+                    <div className="inline">
+                      {task.status === "Assigned" && (
+                        <>
+                          <button type="button" onClick={() => void respond(task.id, true)} disabled={busy}>Accept</button>
+                          <button type="button" className="secondary" onClick={() => void respond(task.id, false)} disabled={busy}>Decline</button>
+                        </>
+                      )}
+                      {task.status === "Accepted" && (
+                        <button type="button" onClick={() => void complete(task.id)} disabled={busy}>Complete</button>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        </>
+      ) : (
+        <>
+          <section className="panel">
+            <h2>Verification queue</h2>
+            {canManageVolunteers && <div className="inline">
+              <label htmlFor="verify-reason">Reason</label>
+              <input id="verify-reason" value={verifyReason} onChange={(event) => setVerifyReason(event.target.value)} />
+            </div>}
+            {volunteers.length === 0 ? <p className="muted">No volunteer profiles.</p> : (
+              <table>
+                <thead><tr><th>Volunteer</th><th>Skills</th><th>Status</th><th>Action</th></tr></thead>
+                <tbody>
+                  {volunteers.map((volunteer) => (
+                    <tr key={volunteer.id}>
+                      <td>{volunteer.userId.slice(0, 8)}</td>
+                      <td className="small">{volunteer.skillsJson}</td>
+                      <td>{volunteer.verificationStatus}</td>
+                      <td className="inline">
+                        {canManageVolunteers ? <><button type="button" onClick={() => void verify(volunteer.id, true)} disabled={busy || !verifyReason.trim()}>Verify</button>
+                        <button type="button" className="secondary" onClick={() => void verify(volunteer.id, false)} disabled={busy || !verifyReason.trim()}>Reject</button></> : "View only"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </section>
+
+          {canMatchVolunteers && <section className="panel">
+            <h2>Volunteer matching</h2>
+            <p className="muted small">Read-only ranking. Only verified, active and available volunteers are eligible.</p>
+            <div className="inline"><label htmlFor="vol-match-request">Request ID</label><input id="vol-match-request" value={matchRequestId} onChange={(event) => setMatchRequestId(event.target.value)} /><button type="button" onClick={() => void findVolunteerMatches()} disabled={busy || !matchRequestId.trim()}>Find volunteers</button></div>
+            {volunteerMatches && (volunteerMatches.length === 0 ? <p className="muted">No eligible volunteers.</p> : <ol className="match-list">{volunteerMatches.map((match) => <li key={match.targetId}><strong>{match.targetId.slice(0, 8)}</strong> <span className="badge">{Math.round(match.score * 100)}%</span> {match.isApproximate && <span className="badge badge-warn">approximate</span>}<p className="small">{match.rationale}</p></li>)}</ol>)}
+          </section>}
+
+          {canManageVolunteers && <section className="panel">
+            <h2>Create a task</h2>
+            <div className="form-grid">
+              <label htmlFor="task-title">Title</label>
+              <input id="task-title" value={taskTitle} onChange={(event) => setTaskTitle(event.target.value)} />
+              <label htmlFor="task-skills">Required skills (JSON array)</label>
+              <input id="task-skills" value={taskSkills} onChange={(event) => setTaskSkills(event.target.value)} />
+              <label htmlFor="task-request">Request ID (optional)</label>
+              <input id="task-request" value={taskRequest} onChange={(event) => setTaskRequest(event.target.value)} />
+            </div>
+            <button type="button" onClick={() => void createTask()} disabled={busy || !taskTitle.trim()}>Create task</button>
+          </section>}
+
+          {canManageVolunteers && <section className="panel">
+            <h2>Task assignment</h2>
+            <div className="inline">
+              <label htmlFor="assign-task">Task</label>
+              <select id="assign-task" value={assignTask} onChange={(event) => setAssignTask(event.target.value)}>
+                <option value="">Select a task</option>
+                {allTasks.items.filter((task) => task.status === "Open").map((task) => (
+                  <option key={task.id} value={task.id}>{task.title}</option>
+                ))}
+              </select>
+              <label htmlFor="assign-volunteer">Verified volunteer</label>
+              <select id="assign-volunteer" value={assignVolunteer} onChange={(event) => setAssignVolunteer(event.target.value)}>
+                <option value="">Select a volunteer</option>
+                {volunteers.filter((volunteer) => volunteer.verificationStatus === "Verified" && volunteer.active).map((volunteer) => (
+                  <option key={volunteer.id} value={volunteer.id}>{volunteer.userId.slice(0, 8)}</option>
+                ))}
+              </select>
+              <button type="button" onClick={() => void assign()} disabled={busy || !assignTask || !assignVolunteer}>Assign</button>
+            </div>
+            <p className="small muted">Unverified volunteers are rejected by the server (403) and are excluded from matching.</p>
+            <ul className="task-list">
+              {allTasks.items.map((task) => (
+                <li key={task.id}><strong>{task.title}</strong> <span className="badge">{task.status}</span></li>
+              ))}
+            </ul>
+          </section>}
+        </>
+      )}
+    </>
+  );
+}
+
 
 export default function VolunteersPage() {
   return (
-    <AuthGuard allowedRoles={StaffRoles}>
-      <div className="ops-title">
-        <div>
-          <p>VOLUNTEER COORDINATION</p>
-          <h1>Volunteers</h1>
-          <span>Skills, availability and deployment across the response network.</span>
-        </div>
-        <button
-          className="btn btn-primary"
-          type="button"
-          disabled
-          title="Volunteer registration requires the volunteer API"
-        >
-          <Icon name="users" /> Add volunteer
-        </button>
+    <AuthGuard allowedRoles={["Volunteer", "VolunteerCoordinator", "EmergencyCoordinator", "SystemAdmin"]}>
+      <div className="dev4-operations">
+        <VolunteerWorkspaceContent />
       </div>
-
-      <IntegrationNotice title="Volunteer coordination is not connected yet" owner="Dev 4 — volunteer management">
-        Registration, skill matching and deployment tracking are part of the volunteer module in the
-        Shared Contract. Until its endpoints are published, this workspace shows no volunteer
-        records and no availability figures.
-      </IntegrationNotice>
-
-      <div className="metric-grid compact">
-        {[
-          ["Registered volunteers", "users", "blue"],
-          ["Available now", "check", "green"],
-          ["On deployment", "pin", "amber"],
-          ["Skills registered", "chart", "blue"]
-        ].map(([title, icon, tone]) => (
-          <article className={`metric ${tone} is-pending`} key={title}>
-            <div>
-              <span>{title}</span>
-              <b>—</b>
-              <small>Awaiting volunteer API</small>
-            </div>
-            <i>
-              <Icon name={icon} />
-            </i>
-          </article>
-        ))}
-      </div>
-
-      <section className="ops-card crisis-table-card">
-        <div className="card-heading">
-          <div>
-            <h3>Volunteer roster</h3>
-            <p>Registered people and their current assignment</p>
-          </div>
-          <div className="table-actions">
-            <span className="badge amber">
-              <i /> Awaiting data
-            </span>
-          </div>
-        </div>
-        <div className="crisis-table">
-          <div className="table-head">
-            <span>VOLUNTEER</span>
-            <span>SKILLS</span>
-            <span>AREA</span>
-            <span>AVAILABILITY</span>
-            <span>STATUS</span>
-            <span />
-          </div>
-          <div className="table-empty">
-            <EmptyPanel title="No volunteers to display" owner="Dev 4 — volunteer management">
-              Rows will populate from the volunteer API, including skills, availability windows and
-              deployment history. No sample volunteers are shown.
-            </EmptyPanel>
-          </div>
-        </div>
-      </section>
-
-      <section className="ops-card" style={{ marginTop: 16 }}>
-        <div className="card-heading">
-          <div>
-            <h3>Deployments</h3>
-            <p>Assignments, check-ins and hours</p>
-          </div>
-        </div>
-        <EmptyPanel title="Deployment tracking is pending" owner="Dev 4 — volunteer management">
-          Assignment, check-in and hours reporting will appear once the volunteer endpoints are
-          connected.
-        </EmptyPanel>
-      </section>
     </AuthGuard>
   );
 }

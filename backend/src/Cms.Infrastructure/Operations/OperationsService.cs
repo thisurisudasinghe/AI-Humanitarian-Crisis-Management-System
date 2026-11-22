@@ -436,11 +436,17 @@ public sealed class OperationsService(
 
         var row = new Shelter
         {
-            Id = Guid.NewGuid(), Name = name, Capacity = input.Capacity, Occupancy = 0,
+            Id = Guid.NewGuid(),
+            Name = name,
+            Capacity = input.Capacity,
+            Occupancy = 0,
             Facilities = NormalizeJsonArray(input.Facilities),
             AccessibilityFeatures = NormalizeJsonArray(input.AccessibilityFeatures),
             Services = NormalizeJsonArray(input.Services),
-            Lat = input.Lat, Lng = input.Lng, OrgId = orgId, Approved = false
+            Lat = input.Lat,
+            Lng = input.Lng,
+            OrgId = orgId,
+            Approved = false
         };
         db.Shelters.Add(row);
         await db.SaveChangesAsync(ct);
@@ -621,9 +627,14 @@ public sealed class OperationsService(
         ValidateCoordinates(input.Lat, input.Lng, allowNull: true);
         var row = new VolunteerTask
         {
-            Id = Guid.NewGuid(), RequestId = input.RequestId, Title = title,
-            RequiredSkillsJson = input.RequiredSkillsJson.Trim(), Lat = input.Lat,
-            Lng = input.Lng, ScheduledAt = input.ScheduledAt, Status = "Open"
+            Id = Guid.NewGuid(),
+            RequestId = input.RequestId,
+            Title = title,
+            RequiredSkillsJson = input.RequiredSkillsJson.Trim(),
+            Lat = input.Lat,
+            Lng = input.Lng,
+            ScheduledAt = input.ScheduledAt,
+            Status = "Open"
         };
         db.VolunteerTasks.Add(row);
         await db.SaveChangesAsync(ct);
@@ -685,9 +696,12 @@ public sealed class OperationsService(
     // -----------------------------------------------------------------------
     public async Task<AssistanceRequestDto> CreateAssistanceRequestAsync(CreateAssistanceRequestInput input, CancellationToken ct)
     {
-        var fromOrg = input.FromOrgId == Guid.Empty ? ScopedOrgId() ?? Guid.Empty : input.FromOrgId;
+        var scopedOrg = ScopedOrgId();
+        var fromOrg = input.FromOrgId == Guid.Empty ? scopedOrg ?? Guid.Empty : input.FromOrgId;
         if (fromOrg == Guid.Empty || input.ResourceTypeId == Guid.Empty || input.Quantity <= 0 || string.IsNullOrWhiteSpace(input.Reason))
             throw Validation("From organisation, resource type, positive quantity and a reason are required.");
+        if (!IsPrivileged() && (!scopedOrg.HasValue || fromOrg != scopedOrg.Value))
+            throw new ForbiddenException("An organisation can only create assistance requests on its own behalf.", "ASSISTANCE_SOURCE_ORG_REQUIRED");
         if (!await db.ResourceTypes.AsNoTracking().AnyAsync(x => x.Id == input.ResourceTypeId, ct)) throw NotFound("RESOURCE_TYPE_NOT_FOUND", "The resource type was not found.");
         if (input.ShelterId.HasValue)
         {
@@ -697,9 +711,14 @@ public sealed class OperationsService(
         }
         var row = new AssistanceRequest
         {
-            Id = Guid.NewGuid(), FromOrgId = fromOrg, ToOrgId = input.ToOrgId,
-            ResourceTypeId = input.ResourceTypeId, Quantity = input.Quantity,
-            Reason = input.Reason.Trim(), ShelterId = input.ShelterId, Status = "Pending"
+            Id = Guid.NewGuid(),
+            FromOrgId = fromOrg,
+            ToOrgId = input.ToOrgId,
+            ResourceTypeId = input.ResourceTypeId,
+            Quantity = input.Quantity,
+            Reason = input.Reason.Trim(),
+            ShelterId = input.ShelterId,
+            Status = "Pending"
         };
         db.AssistanceRequests.Add(row);
         await EnqueueNotificationAsync(row.Id, new { assistanceRequestId = row.Id, toOrgId = row.ToOrgId, quantity = row.Quantity, shelterId = row.ShelterId, action = "assistance-requested" }, ct);
@@ -714,8 +733,8 @@ public sealed class OperationsService(
         if (row.Status != "Pending") throw Conflict("INVALID_TRANSITION", "Only a pending assistance request can be accepted or rejected.");
         var org = ScopedOrgId();
         var target = row.ToOrgId ?? Guid.Empty;
-        if (!IsPrivileged() && (!org.HasValue || target != Guid.Empty && org.Value != target))
-            throw new ForbiddenException("Only the target organisation can respond to this request.", "ASSISTANCE_TARGET_ORG_REQUIRED");
+        if (!IsPrivileged() && (!org.HasValue || target == Guid.Empty || org.Value != target))
+            throw new ForbiddenException("Only the target organisation can respond to this request. Requests without a target organisation cannot be accepted or rejected.", "ASSISTANCE_TARGET_ORG_REQUIRED");
         if (string.IsNullOrWhiteSpace(reason)) throw Validation("A response reason is required.");
         row.Status = accept ? "Accepted" : "Rejected";
         row.ResponseReason = reason.Trim();
