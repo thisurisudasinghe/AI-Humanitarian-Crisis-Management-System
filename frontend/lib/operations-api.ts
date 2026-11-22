@@ -25,7 +25,10 @@ export function errorMessage(error: unknown): string {
       ? Object.values(details.errors).flat().filter(Boolean).join(" ")
       : "";
     const message = fieldErrors || details.detail || details.title || error.message;
-    return details.code ? `${message} (${details.code})` : message;
+    // ProblemDetails may already put the code in `title`; avoid showing it twice.
+    return details.code && !message.includes(details.code)
+      ? `${message} (${details.code})`
+      : message;
   }
   if (error instanceof Error) return error.message;
   return "Something went wrong. Please try again.";

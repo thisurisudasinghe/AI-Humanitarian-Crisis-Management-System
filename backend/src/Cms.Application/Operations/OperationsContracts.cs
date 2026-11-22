@@ -5,6 +5,10 @@ namespace Cms.Application.Operations;
 /// <summary>Shared paged envelope for all Member 4 list endpoints.</summary>
 public sealed record PagedResult<T>(IReadOnlyList<T> Items, int Total, int Page, int PageSize);
 
+/// <summary>Area markers exposed to every role that can open the operations map.</summary>
+public sealed record MapAreaDto(
+    Guid Id, Guid CrisisId, string Name, decimal Lat, decimal Lng, decimal? RadiusKm);
+
 public sealed record ResourceTypeDto(Guid Id, string Name, string Unit, string? Description);
 
 public sealed record InventoryDto(
@@ -248,6 +252,7 @@ public interface IOperationsService
     Task<IReadOnlyList<MatchCandidate>> RankSheltersAsync(Guid requestId, CancellationToken ct);
     Task<IReadOnlyList<MatchCandidate>> RankVolunteersAsync(Guid requestId, CancellationToken ct);
 
+    Task<IReadOnlyList<MapAreaDto>> GetMapAreasAsync(CancellationToken ct);
     Task<GeoPoint?> GeocodeAsync(string address, CancellationToken ct);
     Task<DistanceResult> GetDistanceAsync(double fromLat, double fromLng, double toLat, double toLng, CancellationToken ct);
 }

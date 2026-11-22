@@ -6,6 +6,7 @@ using Cms.Application.Contracts;
 using Cms.Application.DTOs;
 using Cms.Application.Interfaces;
 using Cms.Application.Operations;
+using Cms.Domain.Cases;
 using Cms.Domain.Constants;
 using Cms.Domain.Entities;
 using Cms.Domain.Entities.Cases;
@@ -222,8 +223,11 @@ public sealed class OperationsService(
         }
         catch (DbUpdateException)
         {
-            var duplicate = await db.Allocations.AsNoTracking().FirstOrDefaultAsync(x => x.IdempotencyKey == key, ct);
+            // Roll back the failed insert before reading the winning row. SQL Server
+            // leaves the transaction unusable after a constraint violation, so the
+            // duplicate lookup must happen after the rollback.
             if (tx is not null) await tx.RollbackAsync(ct);
+            var duplicate = await db.Allocations.AsNoTracking().FirstOrDefaultAsync(x => x.IdempotencyKey == key, ct);
             if (duplicate is not null) return MapAllocation(duplicate);
             throw;
         }
@@ -522,6 +526,19 @@ public sealed class OperationsService(
             await EnqueueNotificationAsync(decision.Id, new { shelterAllocationId = item.Id, requestId, shelterId, householdSize = count, action = "shelter-allocated" }, ct);
             await db.SaveChangesAsync(ct);
             if (tx is not null) await tx.CommitAsync(ct);
+        }
+        catch (DbUpdateException)
+        {
+            // The unique decision index lets a duplicate submission replay the
+            // original allocation. Roll back first so the failed transaction is
+            // usable for the lookup and the losing occupancy increment is undone.
+            if (tx is not null) await tx.RollbackAsync(ct);
+            var duplicate = await db.ShelterAllocations.AsNoTracking()
+                .FirstOrDefaultAsync(x => x.DecisionId == decision.Id, ct);
+            if (duplicate is not null) return new ShelterAllocationDto(
+                duplicate.Id, duplicate.RequestId, duplicate.ShelterId,
+                duplicate.HouseholdSize, duplicate.DecisionId, duplicate.CreatedAt);
+            throw;
         }
         catch
         {
@@ -829,7 +846,12 @@ public sealed class OperationsService(
         var allocation = await db.Allocations.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct);
         if (allocation is not null)
         {
-            await requestStatus.TransitionAsync(allocation.RequestId, RequestStatus.Allocated, "Retry after allocation status-transition failure.", ct);
+            var current = await CurrentRequestStatusAsync(allocation.RequestId, ct);
+            if (current != RequestStatus.Allocated)
+            {
+                EnsureRetryable(current, RequestStatus.Allocated);
+                await requestStatus.TransitionAsync(allocation.RequestId, RequestStatus.Allocated, "Retry after allocation status-transition failure.", ct);
+            }
             await AuditAsync("Allocation.StatusTransitionRetried", "Allocation", id, new { allocation.RequestId }, ct);
             return new PendingStatusTransitionDto(id, "Allocation", id, allocation.RequestId, RequestStatus.Allocated.ToString(), 1, null, DateTime.UtcNow);
         }
@@ -837,7 +859,12 @@ public sealed class OperationsService(
         if (dispatch is null) return null;
         var linked = await db.Allocations.AsNoTracking().FirstOrDefaultAsync(x => x.Id == dispatch.AllocationId, ct) ?? throw NotFound("ALLOCATION_NOT_FOUND", "The linked allocation was not found.");
         var target = dispatch.Status == "Fulfilled" ? RequestStatus.Fulfilled : RequestStatus.Dispatched;
-        await requestStatus.TransitionAsync(linked.RequestId, target, "Retry after dispatch status-transition failure.", ct);
+        var dispatchCurrent = await CurrentRequestStatusAsync(linked.RequestId, ct);
+        if (dispatchCurrent != target)
+        {
+            EnsureRetryable(dispatchCurrent, target);
+            await requestStatus.TransitionAsync(linked.RequestId, target, "Retry after dispatch status-transition failure.", ct);
+        }
         await AuditAsync("Dispatch.StatusTransitionRetried", "Dispatch", id, new { linked.RequestId, target }, ct);
         return new PendingStatusTransitionDto(id, "Dispatch", id, linked.RequestId, target.ToString(), 1, null, DateTime.UtcNow);
     }
@@ -848,6 +875,16 @@ public sealed class OperationsService(
     public Task<IReadOnlyList<MatchCandidate>> RankResourcesAsync(Guid requestId, CancellationToken ct) => resourceMatcher.RankAsync(requestId, ct);
     public Task<IReadOnlyList<MatchCandidate>> RankSheltersAsync(Guid requestId, CancellationToken ct) => shelterRecommender.RankAsync(requestId, ct);
     public Task<IReadOnlyList<MatchCandidate>> RankVolunteersAsync(Guid requestId, CancellationToken ct) => volunteerMatcher.RankAsync(requestId, ct);
+
+    public async Task<IReadOnlyList<MapAreaDto>> GetMapAreasAsync(CancellationToken ct)
+    {
+        // Dedicated Member 4 read so every role allowed to open the operations
+        // map can see area markers without widening theDev2 case-reader policy.
+        return await db.Set<Area>().AsNoTracking()
+            .OrderBy(a => a.Name)
+            .Select(a => new MapAreaDto(a.Id, a.CrisisId, a.Name, a.Lat, a.Lng, a.RadiusKm))
+            .ToListAsync(ct);
+    }
 
     public Task<GeoPoint?> GeocodeAsync(string address, CancellationToken ct) => geo.GeocodeAsync(address, ct);
 
@@ -988,13 +1025,26 @@ public sealed class OperationsService(
     private static VolunteerTaskDto MapTask(VolunteerTask x) => new(x.Id, x.RequestId, x.Title, x.RequiredSkillsJson, x.Lat, x.Lng, x.ScheduledAt, x.Status, x.VolunteerId, x.CompletedAt);
     private static AssistanceRequestDto MapAssistance(AssistanceRequest x) => new(x.Id, x.FromOrgId, x.ToOrgId, x.ResourceTypeId, x.Quantity, x.Reason, x.Status, x.ShelterId, x.ResponseReason, x.CreatedAt);
 
-    private static bool NeedsTransition(RequestStatus current, RequestStatus target) => target switch
+    // A pending row is actionable only when the request state machine permits
+    // the exact Phase 3 transition. Seeded operational rows whose request never
+    // reached Approved/Dispatched must not be offered as retryable work.
+    private static bool NeedsTransition(RequestStatus current, RequestStatus target) =>
+        current != target && RequestStateMachine.CanTransition(current, target);
+
+    private async Task<RequestStatus> CurrentRequestStatusAsync(Guid requestId, CancellationToken ct) =>
+        await db.Requests.AsNoTracking()
+            .Where(x => x.Id == requestId)
+            .Select(x => (RequestStatus?)x.Status)
+            .FirstOrDefaultAsync(ct)
+        ?? throw NotFound("REQUEST_NOT_FOUND", $"Request {requestId} was not found.");
+
+    private static void EnsureRetryable(RequestStatus current, RequestStatus target)
     {
-        RequestStatus.Allocated => current is RequestStatus.Submitted or RequestStatus.Verified or RequestStatus.Triaged or RequestStatus.Recommended or RequestStatus.Approved,
-        RequestStatus.Dispatched => current is RequestStatus.Submitted or RequestStatus.Verified or RequestStatus.Triaged or RequestStatus.Recommended or RequestStatus.Approved or RequestStatus.Allocated,
-        RequestStatus.Fulfilled => current is not RequestStatus.Fulfilled and not RequestStatus.Closed,
-        _ => current != target
-    };
+        if (RequestStateMachine.CanTransition(current, target)) return;
+        throw new ConflictException(
+            $"Cannot retry request status transition from {current} to {target}.",
+            "STATUS_TRANSITION_NOT_RETRYABLE");
+    }
 
     private static bool HasAccessibilityNeed(RequestSummaryDto request) =>
         !string.IsNullOrWhiteSpace(request.AccessibilityNeeds) &&

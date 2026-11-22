@@ -37,13 +37,12 @@ public sealed class GeoService : IGeoService
 
         try
         {
-            await ThrottleNominatimAsync(ct);
             var client = _clients.CreateClient("nominatim");
             using var request = new HttpRequestMessage(HttpMethod.Get,
                 "search?format=jsonv2&limit=1&q=" + Uri.EscapeDataString(normalized));
             var culture = CultureInfo.CurrentCulture.Name;
             if (!string.IsNullOrWhiteSpace(culture)) request.Headers.AcceptLanguage.Add(new StringWithQualityHeaderValue(culture));
-            using var response = await client.SendAsync(request, ct);
+            using var response = await SendNominatimAsync(client, request, ct);
             response.EnsureSuccessStatusCode();
             await using var stream = await response.Content.ReadAsStreamAsync(ct);
             using var doc = await JsonDocument.ParseAsync(stream, cancellationToken: ct);
@@ -112,14 +111,27 @@ public sealed class GeoService : IGeoService
         return radius * 2 * Math.Asin(Math.Min(1, Math.Sqrt(h)));
     }
 
-    private async Task ThrottleNominatimAsync(CancellationToken ct)
+    private async Task<HttpResponseMessage> SendNominatimAsync(
+        HttpClient client, HttpRequestMessage request, CancellationToken ct)
     {
         await NominatimGate.WaitAsync(ct);
         try
         {
             var wait = TimeSpan.FromSeconds(1) - (_clock.GetUtcNow() - _lastNominatimCallUtc);
             if (wait > TimeSpan.Zero) await Task.Delay(wait, _clock, ct);
-            _lastNominatimCallUtc = _clock.GetUtcNow();
+
+            // Keep the gate held for the whole provider call and stamp the clock only
+            // after the response starts. HttpClient can invoke its handler well after
+            // SendAsync is called, so stamping earlier can leave real requests less
+            // than one second apart. This is conservative but safe for Nominatim.
+            try
+            {
+                return await client.SendAsync(request, ct);
+            }
+            finally
+            {
+                _lastNominatimCallUtc = _clock.GetUtcNow();
+            }
         }
         finally
         {

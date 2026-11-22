@@ -10,10 +10,12 @@ import {
   type ReactNode
 } from "react";
 import {
+  AUTH_INVALIDATED_EVENT,
   api,
   apiJson,
   clearTokens,
   getRefreshToken,
+  invalidateAuth,
   refreshAccessToken,
   setTokens,
   type AuthResponse,
@@ -50,6 +52,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    const onInvalidated = () => setUser(null);
+    window.addEventListener(AUTH_INVALIDATED_EVENT, onInvalidated);
+    return () => window.removeEventListener(AUTH_INVALIDATED_EVENT, onInvalidated);
+  }, []);
+
+  useEffect(() => {
     let cancelled = false;
 
     async function restore() {
@@ -61,7 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         }
       } catch {
-        clearTokens();
+        invalidateAuth();
       } finally {
         if (!cancelled) {
           setReady(true);
@@ -119,6 +127,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const token = await refreshAccessToken();
     if (token) {
       await loadCurrentUser();
+    } else {
+      invalidateAuth();
     }
   }, [loadCurrentUser]);
 

@@ -40,10 +40,11 @@ public static class DependencyInjection
 
         services.AddHttpContextAccessor();
 
+        // Member 4's OperationsService uses explicit SQL transactions around the
+        // guarded stock/occupancy UPDATEs. EF's retrying execution strategy cannot
+        // be combined with user-initiated transactions, so it must stay disabled.
         services.AddDbContext<CmsDbContext>(options =>
-            options.UseSqlServer(
-                connectionString,
-                sql => sql.EnableRetryOnFailure(maxRetryCount: 3)));
+            options.UseSqlServer(connectionString));
 
         services.TryAddScoped<IDateTimeService, DateTimeService>();
         services.TryAddScoped<IUnitOfWork, UnitOfWork>();
