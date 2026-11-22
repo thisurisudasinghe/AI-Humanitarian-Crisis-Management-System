@@ -34,6 +34,12 @@ BEGIN
 END;
 GO
 
+IF COL_LENGTH(N'[vol].[volunteers]', N'verification_reason') IS NULL
+BEGIN
+    ALTER TABLE [vol].[volunteers] ADD [verification_reason] nvarchar(500) NULL;
+END;
+GO
+
 IF OBJECT_ID(N'[vol].[availability]', N'U') IS NULL
 BEGIN
     CREATE TABLE [vol].[availability] (
@@ -98,4 +104,12 @@ IF NOT EXISTS (
       AND [object_id] = OBJECT_ID(N'[vol].[tasks]'))
     CREATE INDEX [IX_vol_tasks_volunteer]
         ON [vol].[tasks] ([volunteer_id], [status]);
+GO
+
+IF NOT EXISTS (
+    SELECT 1 FROM sys.indexes
+    WHERE [name] = N'IX_vol_tasks_status'
+      AND [object_id] = OBJECT_ID(N'[vol].[tasks]'))
+    CREATE INDEX [IX_vol_tasks_status]
+        ON [vol].[tasks] ([status]);
 GO
