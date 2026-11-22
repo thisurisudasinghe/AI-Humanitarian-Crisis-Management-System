@@ -245,16 +245,22 @@ Apply to `/login`, `/register`, `/dashboard`, `/admin/*`, `/donations` and
 
 These items remain outside the Dev3 pass result:
 
-- `91_seed_ops.sql` fails on the M4 PascalCase/snake_case resource mismatch. The
-  live run used test-only compatibility views in a disposable database; no
-  production schema change was committed.
+- `91_seed_ops.sql` applies successfully on the canonical schema order above
+  (verified on 2026-11-22); the earlier resource naming mismatch no longer
+  reproduces. Earlier live runs used test-only compatibility views in disposable
+  databases; no production schema change was committed.
 - Cross-module foreign keys in `98_foreign_keys.sql` beyond the notification →
   user relationship remain with their owning modules.
 - Integration tests for requests, resources, shelter, volunteers and mapping
   remain with their owners; Dev3 AI/governance coverage is listed above.
-- The M4 allocation endpoint's EF retry/transaction defect prevents a successful
-  allocation write. The Dev3 core-loop evidence therefore uses the Dev3-owned
-  Critical close decision gate for the positive case action, and records the
-  no-decision allocation denial as the governance negative check.
-- Swagger JSON generation fails on `FilesController.Upload`; direct API calls
-  were used for the live run.
+- The M4 allocation endpoint now writes successfully: approved decision →
+  `POST /api/v1/allocations` → 201, with idempotent replay returning the same id
+  and insufficient stock returning `409 INSUFFICIENT_STOCK`.
+- Swagger JSON generation succeeds at `/swagger/v1/swagger.json` in Development.
+- Outbox → in-app delivery is verified on a disposable database with
+  `Outbox__ProcessorEnabled=true` and `Smtp__Host=''` (log sender only). Replaying
+  a processed outbox event must not add a second notification or audit row
+  (`UX_notifications_outbox_channel` plus the handler's status check).
+- Nominatim geocoding currently returns HTTP 403 to the application's compliant
+  User-Agent. The API maps it to `404 GEOCODE_NOT_FOUND`; routing and stored
+  coordinates remain usable. This is an external limitation, not an app defect.

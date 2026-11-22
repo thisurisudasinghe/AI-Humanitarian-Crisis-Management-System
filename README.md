@@ -330,3 +330,54 @@ Server instance. Frontend checks are `npm.cmd run typecheck` and
   comments are included for these controllers in Development.
 - See `docs/DEV3_REPORT.md` for the factual audit and the recorded frontend
   verification results; backend verification remains with the owning worker.
+
+## 17. Final integration status (2026-11-22)
+
+PR #28 is merged into `develop`; the public SAFEWAY redesign (homepage, shared
+navigation/branding, public pages, scoped `public.css` and artwork) is present on
+`develop`. The full backend suite (587 tests), frontend typecheck and production
+build pass. End-to-end evidence is in
+`docs/evidence/final-integration-20261122.md`.
+
+### Start a clean demo (do not use the original `CmsDb`)
+
+```powershell
+# 1. Create a disposable database.
+$db = "CmsDb_IntegrationTest"
+sqlcmd -S "(localdb)\mssqllocaldb" -E -b -Q "CREATE DATABASE [$db];"
+
+# 2. Canonical schema order (07_geo.sql is stale and intentionally skipped).
+$scripts = @(
+  "00_common.sql", "01_cases.sql", "02_notif.sql", "03_ai.sql",
+  "04_res.sql", "05_shelter.sql", "06_vol.sql", "08_don.sql",
+  "98_foreign_keys.sql", "99_seed_users.sql"
+)
+foreach ($s in $scripts) {
+  sqlcmd -S "(localdb)\mssqllocaldb" -d $db -I -b -i "backend/db/$s"
+}
+
+# 3. Start the API (it seeds demo users on first run; no SMTP/SMS is sent).
+$env:ASPNETCORE_ENVIRONMENT = "Development"
+$env:ASPNETCORE_URLS = "http://localhost:5210"
+$env:ConnectionStrings__DefaultConnection = "Server=(localdb)\mssqllocaldb;Database=$db;Trusted_Connection=True;TrustServerCertificate=True;"
+$env:Outbox__ProcessorEnabled = "true"
+$env:Smtp__Host = ""
+dotnet run --project backend/src/Cms.Api/Cms.Api.csproj
+
+# 4. In a second terminal, apply only synthetic demo data, then build/start the frontend.
+sqlcmd -S "(localdb)\mssqllocaldb" -d $db -I -b -i backend/db/90_seed_scenario.sql
+sqlcmd -S "(localdb)\mssqllocaldb" -d $db -I -b -i backend/db/91_seed_ops.sql
+$env:NEXT_PUBLIC_API_URL = "http://localhost:5210"   # baked in at build time
+& "C:\Program Files\nodejs\npm.cmd" --prefix frontend run build
+& "C:\Program Files\nodejs\npm.cmd" --prefix frontend run start
+```
+
+Open `http://localhost:3000`. Demo accounts include `citizen@example.org`,
+`coordinator@example.org`, `logistics@example.org`, `shelter@example.org`,
+`admin@example.org`, `volunteercoordinator@example.org` and `donor@example.org`
+(password `Demo1234!`). Health check: `GET http://localhost:5210/api/health`.
+
+**Known limitation:** Nominatim currently answers the application's compliant
+User-Agent with HTTP `403`; geocoding returns `404 GEOCODE_NOT_FOUND` while
+routing, stored coordinates and Haversine fallback keep mapping workflows usable.
+No provider restriction was bypassed.
