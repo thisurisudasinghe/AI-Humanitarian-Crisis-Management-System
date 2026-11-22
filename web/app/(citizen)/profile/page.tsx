@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { casesApi, type Household } from "../../../components/cases/casesApi";
-import { ErrorState, LoadingState } from "../../../components/cases/PageState";
+import { EmptyState, ErrorState, LoadingState } from "../../../components/cases/PageState";
 
 export default function CitizenProfilePage() {
   const [household, setHousehold] = useState<Household | null>(null);
@@ -54,6 +54,9 @@ export default function CitizenProfilePage() {
       {loading ? <LoadingState /> : null}
       {error ? <ErrorState message={error} /> : null}
       {message ? <p role="status">{message}</p> : null}
+      {!loading && !error && !household ? (
+        <EmptyState message="No household profile is saved yet. Complete the form to create one." />
+      ) : null}
       {!loading ? (
         <form className="panel" onSubmit={(event) => void save(event)}>
           <label htmlFor="household-size">Household size</label>

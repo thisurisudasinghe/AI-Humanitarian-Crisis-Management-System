@@ -31,7 +31,7 @@ Recruit **3–5 participants** with a mix of technical and non-technical backgro
 | P-02 | Non-technical community member | Checks clarity of public alerts and request form language |
 | P-03 | Emergency coordinator | Verifies and triages requests |
 | P-04 | Case manager | Reviews case detail, assignment and status updates |
-| P-05 | Partner officer (P2, optional) | Checks partner-workspace expectations where available |
+| P-05 | Partner officer (P2) | N/A — D2-11 is cut until CP2/P1 gate; no partner nav is exposed |
 
 Use anonymised participant codes only. Do not collect names, contact details or real personal data on screen. Use the seeded demo data from `backend/db/90_seed_scenario.sql`. Record each participant’s user type against the session code in the results table.
 
@@ -59,6 +59,17 @@ Use anonymised participant codes only. Do not collect names, contact details or 
 | Screen sizes tested | 360 px and desktop |
 | Seed file version | `backend/db/90_seed_scenario.sql` |
 | Facilitator / note-taker |  |
+
+**Consent and booking record (complete before each session)**
+
+| Participant code | User type | Booked slot | Consent confirmed |
+|---|---|---|---|
+| P-01 |  |  |  |
+| P-02 |  |  |  |
+| P-03 |  |  |  |
+| P-04 |  |  |  |
+
+P-05 is not booked while D2-11 is cut. Use participant codes only; do not record names, contact details or real personal data here.
 
 ---
 

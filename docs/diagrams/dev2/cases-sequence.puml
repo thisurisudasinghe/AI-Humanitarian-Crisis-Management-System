@@ -26,8 +26,8 @@ note over ReqCtrl, Db
   CasesModule delegates to CasesModuleExtensions.AddCasesModule,
   and ModuleRegistration.AddCmsModules calls it. Source wiring is
   verified by CasesModuleTests; controller activation still needs
-  a clean API run. Full build is currently blocked by M3-owned
-  notification/announcement source errors.
+  a clean API run. The merged tree builds and tests pass; clean
+  API runtime confirmation is still required.
 end note
 
 == Citizen request submission ==
@@ -80,6 +80,26 @@ Workflow -> StatusSvc : TransitionAsync(id, Triaged, reason, null)
 StatusSvc -> StateMachine : Ensure(Verified, Triaged)
 StatusSvc -> Writer : AddHistoryAsync(Verified -> Triaged)
 StatusSvc -> Writer : AddAuditAsync("Request.StatusChanged")
+StatusSvc -> Db : SaveChangesAsync()
+ReqCtrl --> Staff : 204 No Content
+
+Staff -> ReqCtrl : POST /api/v1/requests/{id}/transition\n{"to":"Recommended","reason":"Recommendation reviewed."}
+ReqCtrl -> Workflow : TransitionAsync(id, Recommended, reason, null)
+Workflow -> StatusSvc : TransitionAsync(id, Recommended, reason, null)
+StatusSvc -> StateMachine : Ensure(Triaged, Recommended)
+StatusSvc -> Writer : AddHistoryAsync(Triaged -> Recommended)
+StatusSvc -> Writer : AddAuditAsync("Request.StatusChanged")
+StatusSvc -> Writer : AddNotificationAsync(id, requesterUserId,\n"request.status.Recommended", data, version, ct)
+StatusSvc -> Db : SaveChangesAsync()
+ReqCtrl --> Staff : 204 No Content
+
+Staff -> ReqCtrl : POST /api/v1/requests/{id}/transition\n{"to":"Approved","reason":"Recommendation approved."}
+ReqCtrl -> Workflow : TransitionAsync(id, Approved, reason, null)
+Workflow -> StatusSvc : TransitionAsync(id, Approved, reason, null)
+StatusSvc -> StateMachine : Ensure(Recommended, Approved)
+StatusSvc -> Writer : AddHistoryAsync(Recommended -> Approved)
+StatusSvc -> Writer : AddAuditAsync("Request.StatusChanged")
+StatusSvc -> Writer : AddNotificationAsync(id, requesterUserId,\n"request.status.Approved", data, version, ct)
 StatusSvc -> Db : SaveChangesAsync()
 ReqCtrl --> Staff : 204 No Content
 
@@ -136,8 +156,9 @@ ReqCtrl --> Staff : 204 No Content
 note over DecisionCtrl, OpsCtrl
   M3 and M4 owned endpoints. OperationsController now checks
   DecisionOutcome.Approved/Modified, matching the shipped enum.
-  The resource-match route expected by UAT-10 still needs
-  confirmation from the owning member.
+  The resource-match route is present in source; runtime behaviour
+  still needs confirmation. Allocation requires a ResourceMatch
+  decision with requestId, inventoryId and quantity.
 end note
 
 == Critical close with CloseCase decision ==
@@ -153,7 +174,7 @@ alt approved CloseCase decision
     StatusSvc -> Writer : AddAuditAsync("Request.StatusChanged")
     StatusSvc -> Writer : AddNotificationAsync(criticalId,\nrequesterUserId, "request.status.Closed", data, version, ct)
     StatusSvc -> Db : SaveChangesAsync()
-    ReqCtrl --> Staff : 204 No Content
+    ReqCtrl --> Staff : 200 OK (decision-gated Critical close)
 else denied or missing decisionId
     Gate --> StatusSvc : false
     StatusSvc --> ReqCtrl : ForbiddenException CLOSE_DECISION_REQUIRED

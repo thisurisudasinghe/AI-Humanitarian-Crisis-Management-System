@@ -26,21 +26,11 @@ public static class RequestStateMachine
             [RequestStatus.Merged] = Only()
         };
 
-    // "Any open state" means every state that is not terminal. Reopened is a
-    // new active lifecycle but the contract does not grant it further edges
-    // beyond Closed -> Reopened, so it is deliberately not in this set.
-    private static readonly IReadOnlySet<RequestStatus> OpenStates = new HashSet<RequestStatus>
-    {
-        RequestStatus.Submitted,
-        RequestStatus.Verified,
-        RequestStatus.Triaged,
-        RequestStatus.Recommended,
-        RequestStatus.Approved,
-        RequestStatus.Allocated,
-        RequestStatus.Dispatched,
-        RequestStatus.InProgress,
-        RequestStatus.Fulfilled
-    };
+    // "Any open state" means every state that is not terminal. Escalated,
+    // OnHold and Reopened remain live cases, so they can also take the frozen
+    // side-path transitions to Escalated or OnHold.
+    private static readonly IReadOnlySet<RequestStatus> OpenStates =
+        Enum.GetValues<RequestStatus>().Where(status => !IsTerminal(status)).ToHashSet();
 
     public static bool CanTransition(RequestStatus from, RequestStatus to)
     {

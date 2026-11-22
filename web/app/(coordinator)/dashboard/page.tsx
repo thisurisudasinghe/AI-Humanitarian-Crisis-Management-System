@@ -18,6 +18,7 @@ export default function CoordinatorDashboardPage() {
   const [escalated, setEscalated] = useState<RequestListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [shortageError, setShortageError] = useState("");
 
   useEffect(() => {
     const to = new Date();
@@ -35,8 +36,13 @@ export default function CoordinatorDashboardPage() {
         if (resourceResult.status === "fulfilled" && resourceResult.value.length) {
           try {
             setShortage(await casesApi.shortageProposal(resourceResult.value[0].id));
-          } catch {
+          } catch (cause) {
             setShortage(null);
+            setShortageError(
+              cause instanceof Error
+                ? cause.message
+                : "Shortage proposal could not be loaded."
+            );
           }
         }
 
@@ -54,11 +60,20 @@ export default function CoordinatorDashboardPage() {
   return (
     <div>
       <h1>Coordinator dashboard</h1>
-      <p><Link href="/requests">Open request queue</Link> · <Link href="/crises">Manage crises</Link></p>
+      <p><Link href="/coordinator/requests">Open request queue</Link> · <Link href="/crises">Manage crises</Link></p>
       {loading ? <LoadingState /> : null}
       {error ? <ErrorState message={error} /> : null}
+      {shortageError ? <ErrorState message={shortageError} /> : null}
 
       <div className="grid">
+        <section className="panel">
+          <h2>Open</h2>
+          <p className="muted">Awaiting M1 KPI field; DEV2 does not aggregate KPI data client-side.</p>
+        </section>
+        <section className="panel">
+          <h2>Overdue</h2>
+          <p className="muted">Awaiting M1 KPI field; DEV2 does not aggregate KPI data client-side.</p>
+        </section>
         <section className="panel">
           <h2>Unresolved</h2>
           <strong>{kpis?.unresolvedRequestCount ?? "—"}</strong>
@@ -88,7 +103,7 @@ export default function CoordinatorDashboardPage() {
           <tbody>
             {escalated.map((item) => (
               <tr key={item.id}>
-                <td><Link href={`/requests/${item.id}`}>{item.id.slice(0, 8)}</Link></td>
+                <td><Link href={`/coordinator/requests/${item.id}`}>{item.id.slice(0, 8)}</Link></td>
                 <td>{item.category}</td>
                 <td><StatusBadge status={item.status} overdue={item.isOverdue} /></td>
                 <td>{new Date(item.submittedAt).toLocaleString()}</td>

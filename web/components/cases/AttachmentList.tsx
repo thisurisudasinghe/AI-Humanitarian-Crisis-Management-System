@@ -1,9 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ChangeEvent } from "react";
 import type { AttachmentMetadata } from "./casesApi";
 import { casesApi } from "./casesApi";
 import { ErrorState } from "./PageState";
+
+const ALLOWED_TYPES = ["image/jpeg", "image/png", "application/pdf"];
+const MAX_BYTES = 5 * 1024 * 1024;
 
 export default function AttachmentList({
   requestId,
@@ -17,6 +20,29 @@ export default function AttachmentList({
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+
+  function chooseFile(event: ChangeEvent<HTMLInputElement>) {
+    const selected = event.target.files?.[0] ?? null;
+    if (!selected) {
+      setFile(null);
+      setError("");
+      return;
+    }
+    if (!ALLOWED_TYPES.includes(selected.type)) {
+      setFile(null);
+      setError("Use a JPG, PNG or PDF file. The server performs the authoritative check.");
+      event.target.value = "";
+      return;
+    }
+    if (selected.size > MAX_BYTES) {
+      setFile(null);
+      setError("Evidence files must be 5 MB or smaller.");
+      event.target.value = "";
+      return;
+    }
+    setError("");
+    setFile(selected);
+  }
 
   async function upload() {
     if (!file) return;
@@ -58,11 +84,12 @@ export default function AttachmentList({
       </ul>
       {canUpload ? (
         <div>
-          <label htmlFor="attachment-file">Add evidence (max 5 MB)</label>
+          <label htmlFor="attachment-file">Add evidence (JPG, PNG or PDF, max 5 MB)</label>
           <input
             id="attachment-file"
             type="file"
-            onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+            accept=".jpg,.jpeg,.png,.pdf,image/jpeg,image/png,application/pdf"
+            onChange={chooseFile}
           />
           <button type="button" onClick={() => void upload()} disabled={!file || busy}>
             {busy ? "Uploading…" : "Upload"}
