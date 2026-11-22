@@ -40,18 +40,25 @@ Database (canonical order, every script is idempotent — run each one twice to
 prove it):
 
 ```powershell
-# 00_common.sql -> 02_notif.sql -> 03_ai.sql -> 01_cases.sql ... 08_don.sql
-# -> 98_foreign_keys.sql -> 99_seed_users.sql
-# -> 90_seed_scenario.sql (seeded data), 91_seed_ops.sql
-# Note: 91_seed_ops.sql currently fails in this checkout because M4 EF mappings
-# expect snake_case res.* objects while 04_res.sql creates PascalCase tables.
-sqlcmd -S "(localdb)\mssqllocaldb" -d CmsDb -I -b -i backend/db/00_common.sql
-sqlcmd -S "(localdb)\mssqllocaldb" -d CmsDb -I -b -i backend/db/02_notif.sql
-sqlcmd -S "(localdb)\mssqllocaldb" -d CmsDb -I -b -i backend/db/03_ai.sql
-sqlcmd -S "(localdb)\mssqllocaldb" -d CmsDb -I -b -i backend/db/08_don.sql
-sqlcmd -S "(localdb)\mssqllocaldb" -d CmsDb -I -b -i backend/db/98_foreign_keys.sql
-sqlcmd -S "(localdb)\mssqllocaldb" -d CmsDb -I -b -i backend/db/99_seed_users.sql
-sqlcmd -S "(localdb)\mssqllocaldb" -d CmsDb -I -b -i backend/db/91_seed_ops.sql
+# Use a disposable database for integration runs, for example CmsDb_IntegrationTest.
+# Canonical order (07_geo.sql is intentionally skipped):
+# 00_common.sql -> 01_cases.sql -> 02_notif.sql -> 03_ai.sql -> 04_res.sql
+# -> 05_shelter.sql -> 06_vol.sql -> 08_don.sql -> 98_foreign_keys.sql
+# -> 99_seed_users.sql -> start API once -> 90_seed_scenario.sql -> 91_seed_ops.sql
+$db = "CmsDb_IntegrationTest"
+sqlcmd -S "(localdb)\mssqllocaldb" -d $db -I -b -i backend/db/00_common.sql
+sqlcmd -S "(localdb)\mssqllocaldb" -d $db -I -b -i backend/db/01_cases.sql
+sqlcmd -S "(localdb)\mssqllocaldb" -d $db -I -b -i backend/db/02_notif.sql
+sqlcmd -S "(localdb)\mssqllocaldb" -d $db -I -b -i backend/db/03_ai.sql
+sqlcmd -S "(localdb)\mssqllocaldb" -d $db -I -b -i backend/db/04_res.sql
+sqlcmd -S "(localdb)\mssqllocaldb" -d $db -I -b -i backend/db/05_shelter.sql
+sqlcmd -S "(localdb)\mssqllocaldb" -d $db -I -b -i backend/db/06_vol.sql
+sqlcmd -S "(localdb)\mssqllocaldb" -d $db -I -b -i backend/db/08_don.sql
+sqlcmd -S "(localdb)\mssqllocaldb" -d $db -I -b -i backend/db/98_foreign_keys.sql
+sqlcmd -S "(localdb)\mssqllocaldb" -d $db -I -b -i backend/db/99_seed_users.sql
+# After the API demo-user seeder has run once:
+sqlcmd -S "(localdb)\mssqllocaldb" -d $db -I -b -i backend/db/90_seed_scenario.sql
+sqlcmd -S "(localdb)\mssqllocaldb" -d $db -I -b -i backend/db/91_seed_ops.sql
 ```
 
 Run the API for manual checks:
