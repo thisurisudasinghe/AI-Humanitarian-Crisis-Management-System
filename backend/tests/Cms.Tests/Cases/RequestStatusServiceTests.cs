@@ -38,6 +38,36 @@ public class RequestStatusServiceTests
         Assert.DoesNotContain("Notification.Send:", outbox.Payload);
     }
 
+    [Theory]
+    [InlineData(RequestStatus.Escalated)]
+    [InlineData(RequestStatus.OnHold)]
+    [InlineData(RequestStatus.Reopened)]
+    public async Task Recovery_transition_writes_history_audit_notification_and_triages_at(
+        RequestStatus from)
+    {
+        using var context = TestContext.Create();
+        var user = new FakeCurrentUser();
+        var now = new DateTime(2026, 11, 22, 13, 0, 0, DateTimeKind.Utc);
+        var request = TestContext.NewRequest(Guid.NewGuid(), status: from);
+        await context.Set<Request>().AddAsync(request);
+        await context.SaveChangesAsync();
+        var service = CreateService(context, user, now);
+
+        await service.TransitionAsync(request.Id, RequestStatus.Triaged, "resumed after partial workflow");
+
+        var stored = await context.Set<Request>().SingleAsync(r => r.Id == request.Id);
+        Assert.Equal(RequestStatus.Triaged, stored.Status);
+        Assert.Equal(now, stored.TriagedAt);
+        var history = await context.Set<RequestStatusHistory>().SingleAsync();
+        Assert.Equal(from, history.FromStatus);
+        Assert.Equal(RequestStatus.Triaged, history.ToStatus);
+        Assert.Equal("resumed after partial workflow", history.Reason);
+        Assert.Equal(1, await context.AuditEvents.CountAsync());
+        var outbox = await context.OutboxMessages.SingleAsync();
+        Assert.Equal("Notification.Send", outbox.Type);
+        Assert.Contains("request.status.Triaged", outbox.Payload);
+    }
+
     [Fact]
     public async Task Repeating_same_transition_writes_nothing_new()
     {

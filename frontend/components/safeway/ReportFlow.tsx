@@ -7,6 +7,7 @@ import { Icon } from "./Icon";
 import {
   caseRequestErrorMessage,
   submitCrisisReport,
+  uploadCrisisReportEvidence,
   type CrisisReportReceipt
 } from "@/lib/crisis";
 
@@ -21,6 +22,23 @@ const categories = [
 
 const severities = ["Needs attention", "Urgent", "Immediate danger"] as const;
 
+function coordinatesAreValid(latText: string, lngText: string): boolean {
+  if (!latText.trim() || !lngText.trim()) {
+    return false;
+  }
+
+  const latValue = Number(latText);
+  const lngValue = Number(lngText);
+  return (
+    Number.isFinite(latValue) &&
+    Number.isFinite(lngValue) &&
+    latValue >= -90 &&
+    latValue <= 90 &&
+    lngValue >= -180 &&
+    lngValue <= 180
+  );
+}
+
 export function ReportFlow() {
   const [step, setStep] = useState(1);
   const [category, setCategory] = useState<string>("Flooding");
@@ -29,7 +47,7 @@ export function ReportFlow() {
   const [location, setLocation] = useState("");
   const [lat, setLat] = useState("");
   const [lng, setLng] = useState("");
-  const [attachment, setAttachment] = useState<string | null>(null);
+  const [evidenceFile, setEvidenceFile] = useState<File | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [receipt, setReceipt] = useState<CrisisReportReceipt | null>(null);
@@ -47,23 +65,24 @@ export function ReportFlow() {
       return;
     }
 
+    if (next > 2 && !coordinatesAreValid(lat, lng)) {
+      setFormError("Enter valid latitude (-90 to 90) and longitude (-180 to 180) before continuing.");
+      return;
+    }
+
     setStep(next);
   }
 
   async function onSubmit() {
     setFormError(null);
 
-    const parsedLat = lat.trim() ? Number(lat) : undefined;
-    const parsedLng = lng.trim() ? Number(lng) : undefined;
-    if (
-      (parsedLat !== undefined && !Number.isFinite(parsedLat)) ||
-      (parsedLng !== undefined && !Number.isFinite(parsedLng)) ||
-      (parsedLat === undefined) !== (parsedLng === undefined)
-    ) {
-      setFormError("Enter both latitude and longitude as numbers, or leave both blank.");
+    if (!coordinatesAreValid(lat, lng)) {
+      setFormError("Enter valid latitude (-90 to 90) and longitude (-180 to 180) before submitting.");
       return;
     }
 
+    const parsedLat = Number(lat);
+    const parsedLng = Number(lng);
     setBusy(true);
 
     try {
@@ -75,7 +94,29 @@ export function ReportFlow() {
         lat: parsedLat,
         lng: parsedLng
       });
-      setReceipt(submitted);
+
+      if (!evidenceFile) {
+        setReceipt(submitted);
+        return;
+      }
+
+      try {
+        await uploadCrisisReportEvidence(submitted.reference, evidenceFile);
+        setReceipt({
+          ...submitted,
+          evidenceAttached: true,
+          evidenceFileName: evidenceFile.name
+        });
+      } catch (caught) {
+        // The request exists, so keep its reference but never claim the
+        // evidence was attached. The error is shown on the receipt screen.
+        setReceipt({
+          ...submitted,
+          evidenceAttached: false,
+          evidenceFileName: evidenceFile.name,
+          evidenceError: caseRequestErrorMessage(caught, "Evidence could not be uploaded.")
+        });
+      }
     } catch (caught) {
       setFormError(caseRequestErrorMessage(caught, "Your report could not be submitted."));
     } finally {
@@ -103,6 +144,17 @@ export function ReportFlow() {
             <span>Reference</span>
             <strong>{receipt.reference}</strong>
           </div>
+          {receipt.evidenceAttached ? (
+            <p className="muted">
+              Evidence file attached: {receipt.evidenceFileName ?? "uploaded file"}.
+            </p>
+          ) : null}
+          {receipt.evidenceError ? (
+            <div className="form-error" role="alert">
+              <strong>The report was submitted, but its evidence was not attached.</strong>{" "}
+              {receipt.evidenceError} Keep the file and your reference above for a later upload.
+            </div>
+          ) : null}
           <p className="muted">
             Submitted reports are not edited here. Create a separate update through your reports page
             instead of submitting a duplicate.
@@ -250,12 +302,12 @@ export function ReportFlow() {
                 />
               </div>
               <p className="muted">
-                This free-text location is saved with the request. Add coordinates below if you have them.
+                This free-text location is saved with the request. Both coordinates are required so response teams can locate it.
               </p>
 
               <div className="two-fields">
                 <label>
-                  <span className="field-label">Latitude (optional)</span>
+                  <span className="field-label">Latitude (required)</span>
                   <input
                     inputMode="decimal"
                     value={lat}
@@ -264,7 +316,7 @@ export function ReportFlow() {
                   />
                 </label>
                 <label>
-                  <span className="field-label">Longitude (optional)</span>
+                  <span className="field-label">Longitude (required)</span>
                   <input
                     inputMode="decimal"
                     value={lng}
@@ -303,14 +355,14 @@ export function ReportFlow() {
               <label className="upload-box">
                 <Icon name="upload" />
                 <span>
-                  <b>{attachment ?? "Add photos or documents"}</b>
+                  <b>{evidenceFile?.name ?? "Add photos or documents"}</b>
                   <small>Optional · JPG, PNG or PDF up to 5 MB</small>
-                  <small>File selection is a preview only; this form does not upload evidence.</small>
+                  <small>The selected file is uploaded after the report is created.</small>
                 </span>
                 <input
                   type="file"
                   accept=".jpg,.jpeg,.png,.pdf"
-                  onChange={(event) => setAttachment(event.target.files?.[0]?.name ?? null)}
+                  onChange={(event) => setEvidenceFile(event.target.files?.[0] ?? null)}
                 />
               </label>
 
@@ -350,6 +402,10 @@ export function ReportFlow() {
                 <div>
                   <span>Urgency</span>
                   <strong>{severity}</strong>
+                </div>
+                <div>
+                  <span>Evidence</span>
+                  <strong>{evidenceFile?.name ?? "None selected"}</strong>
                 </div>
               </div>
 

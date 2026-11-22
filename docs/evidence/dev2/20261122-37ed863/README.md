@@ -77,7 +77,7 @@ Observed final statuses:
 
 The first run (`newman-cli.log`, `newman-results.json`) had 39 requests but 2 failed assertions and 5 failed test scripts: invalid Chai `.or` usage and JSON parsing on empty 401/403 bodies, plus an empty attachment `src`. The second run (`newman-cli-run2.log`) fixed the scripts but still failed the attachment upload/download because the fixture path was resolved relative to the repository root. The DEV2-owned collection and bundled fixture were corrected; the final run above is the clean result. The earlier logs are retained for transparency and must not be presented as a pass.
 
-Bearer JWTs in the three Newman JSON files were redacted after capture (`Bearer eyJ...` → `Bearer <redacted-jwt>`); counts and validation are in `redaction.log`. Request/response metadata and assertions were not altered.
+Bearer JWTs in the three Newman JSON files were redacted after capture. The first pass replaced only textual `Bearer eyJ...` values (32 per file); a later repair decoded every `run.executions[].response.stream.data` byte array, found three raw JSON `accessToken` JWTs per file that the textual scan could not see, and replaced each complete JWT with `<redacted-jwt>` before re-encoding the byte arrays. The final scan found **0 textual and 0 decoded JWT-like values** in each file, with three decoded redaction markers per file. All three files remain valid JSON with 39 executions/requests and 34 assertions (`redaction.log`). Request/response metadata, headers and assertions were not altered. No token values are printed or stored in the log.
 
 ### 2.4 Positive Critical close
 
@@ -145,3 +145,5 @@ After the runtime work:
 - **M3 in-app close decision discovery:** positive close used a locally inserted decision; the UI/M3 discovery gap remains.
 - **Swagger:** shared `FilesController.Upload` generation failure blocked Swagger-based readiness; login was used instead.
 - **Outbox replay:** NEG-04 not executed.
+- **Sensitive-data runtime SQL inspection:** not executed; no `sensitive-data-runtime.log` was created. Ciphertext/masking is covered by unit assertions only (prefix/length and masked audit details in `HouseholdServiceTests.cs`).
+- **Post-capture DEV2 source additions:** partner share API/UI, the public safety-guidance link, real evidence upload/coordinate validation, workflow recovery and the ciphertext-format assertion were added after this 39/39 Newman run. They are covered by new source tests and UAT steps in this working tree but were **not** part of the recorded runtime capture.

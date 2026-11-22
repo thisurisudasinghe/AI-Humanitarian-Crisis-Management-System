@@ -26,6 +26,11 @@ export default function PublicAlertsPage() {
       <section className="panel" aria-labelledby="safety-guidance-heading">
         <h2 id="safety-guidance-heading">Safety guidance</h2>
         <p>Follow official instructions, keep a charged phone nearby, and avoid flooded or damaged roads.</p>
+        <ul>
+          <li>Move to higher ground if water is rising; never walk or drive through floodwater.</li>
+          <li>Keep drinking water, essential medicines and important documents with you.</li>
+          <li>Call local emergency services first if anyone is in immediate danger.</li>
+        </ul>
         <p>
           <Link href="/service-centres">Find service centres and shelters</Link> ·{" "}
           <Link href="/requests/new">Request assistance</Link>

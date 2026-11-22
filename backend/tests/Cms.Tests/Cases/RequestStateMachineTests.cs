@@ -40,10 +40,13 @@ public class RequestStateMachineTests
         (RequestStatus.Dispatched, RequestStatus.OnHold),
         (RequestStatus.InProgress, RequestStatus.OnHold),
         (RequestStatus.Fulfilled, RequestStatus.OnHold),
+        (RequestStatus.Escalated, RequestStatus.Triaged),
         (RequestStatus.Escalated, RequestStatus.Escalated),
         (RequestStatus.Escalated, RequestStatus.OnHold),
+        (RequestStatus.OnHold, RequestStatus.Triaged),
         (RequestStatus.OnHold, RequestStatus.Escalated),
         (RequestStatus.OnHold, RequestStatus.OnHold),
+        (RequestStatus.Reopened, RequestStatus.Triaged),
         (RequestStatus.Reopened, RequestStatus.Escalated),
         (RequestStatus.Reopened, RequestStatus.OnHold)
     };
@@ -80,6 +83,19 @@ public class RequestStateMachineTests
         {
             Assert.Equal(!RequestStateMachine.IsTerminal(status), RequestStateMachine.IsOpen(status));
         }
+    }
+
+    [Theory]
+    [InlineData(RequestStatus.Escalated)]
+    [InlineData(RequestStatus.OnHold)]
+    [InlineData(RequestStatus.Reopened)]
+    public void Partial_workflow_recovery_goes_to_Triaged_only(RequestStatus from)
+    {
+        RequestStateMachine.Ensure(from, RequestStatus.Triaged);
+
+        var ex = Assert.Throws<ConflictException>(
+            () => RequestStateMachine.Ensure(from, RequestStatus.Recommended));
+        Assert.Equal("INVALID_TRANSITION", ex.Code);
     }
 
     [Fact]

@@ -12,13 +12,16 @@ export interface CrisisReportInput {
   description: string;
   location: string;
   urgency: string;
-  lat?: number;
-  lng?: number;
+  lat: number;
+  lng: number;
 }
 
 export interface CrisisReportReceipt {
   reference: string;
   submittedAt: string;
+  evidenceAttached?: boolean;
+  evidenceFileName?: string;
+  evidenceError?: string;
 }
 
 export const CASE_CATEGORIES = [
@@ -180,18 +183,23 @@ function clean(value: string): string {
  *
  * The backend creates requests against the signed-in Citizen. Contact and
  * consent fields are not part of CreateRequestDto and are not collected by the
- * form. Free-text location is persisted as `address`; optional numeric
- * coordinates are sent when supplied and default to 0 when omitted.
+ * form. Free-text location is persisted as `address`. Coordinates are
+ * required: an absent or non-finite value is rejected instead of silently
+ * becoming (0, 0).
  */
 export async function submitCrisisReport(
   input: CrisisReportInput
 ): Promise<CrisisReportReceipt> {
+  if (!Number.isFinite(input.lat) || !Number.isFinite(input.lng)) {
+    throw new Error("Valid latitude and longitude are required.");
+  }
+
   const payload: CreateCaseRequestPayload = {
     category: reportCategoryToCaseCategory[input.category] ?? "Other",
     urgency: reportSeverityToCaseUrgency[input.urgency] ?? "Low",
     description: clean(input.description),
-    lat: input.lat ?? 0,
-    lng: input.lng ?? 0,
+    lat: input.lat,
+    lng: input.lng,
     address: clean(input.location),
     householdSize: 1
   };
@@ -202,6 +210,28 @@ export async function submitCrisisReport(
     reference: created.id,
     submittedAt: new Date().toISOString()
   };
+}
+
+/**
+ * Uploads evidence to the case that was just created (`reference` is the
+ * request id). Uses the shared authenticated api() wrapper; FormData lets the
+ * browser set the multipart boundary, so no Content-Type header is added.
+ */
+export async function uploadCrisisReportEvidence(
+  reference: string,
+  file: File
+): Promise<void> {
+  if (!reference.trim()) {
+    throw new Error("A report reference is required before evidence can be uploaded.");
+  }
+
+  const body = new FormData();
+  body.append("file", file);
+
+  await api<void>(
+    `/api/v1/requests/${encodeURIComponent(reference)}/attachments`,
+    { method: "POST", body }
+  );
 }
 
 export function listMyCaseRequests(
