@@ -34,6 +34,12 @@ public class HouseholdServiceTests
         Assert.NotEqual(Needs, stored.AccessibilityNeeds);
         Assert.DoesNotContain("771234567", stored.ContactPhone!);
         Assert.DoesNotContain(Needs, stored.AccessibilityNeeds!);
+        // ASP.NET Core Data Protection payloads have this base64 magic prefix;
+        // asserting it here catches a plaintext or foreign-format regression.
+        Assert.StartsWith("CfDJ8", stored.ContactPhone!);
+        Assert.StartsWith("CfDJ8", stored.AccessibilityNeeds!);
+        Assert.True(stored.ContactPhone!.Length > Phone.Length);
+        Assert.True(stored.AccessibilityNeeds!.Length > Needs.Length);
 
         var audit = await context.AuditEvents.SingleAsync();
         Assert.DoesNotContain("771234567", audit.Details!);

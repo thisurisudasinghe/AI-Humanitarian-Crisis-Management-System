@@ -98,33 +98,29 @@ used and `dotnet ef database update` is not part of the workflow.
 
 ### SQL Script Execution Order
 
-Run the scripts in this canonical order:
+Run the scripts in this canonical order on a fresh database:
 
 1. `backend/db/00_common.sql` — identity and common tables (Dev 1)
-2. `backend/db/02_notif.sql` — notification templates (Dev 3; run before `03_ai.sql`)
-3. `backend/db/03_ai.sql` — AI recommendations and decision records (Dev 3)
-4. `backend/db/01_cases.sql` … `backend/db/08_don.sql` — remaining module scripts (owners)
-5. `backend/db/98_foreign_keys.sql` — guarded cross-module foreign keys
-6. `backend/db/99_seed_users.sql` — roles, demo organisation, settings (demo users are created by the API at startup)
-7. `backend/db/91_seed_ops.sql` — optional operations demo data. `backend/db/90_seed_scenario.sql` is the Member 2 case-scenario seed; it is referenced here for the canonical run order but is not present in this checkout, so skip it until that owner publishes it.
+2. `backend/db/01_cases.sql` — case/request tables (Dev 2)
+3. `backend/db/02_notif.sql` — notification templates (Dev 3; before AI)
+4. `backend/db/03_ai.sql` — recommendations and decision records (Dev 3)
+5. `backend/db/04_res.sql` — Member 4 resource tables
+6. `backend/db/05_shelter.sql` — Member 4 shelter tables
+7. `backend/db/06_vol.sql` — Member 4 volunteer tables
+8. `backend/db/08_don.sql` — donation tables (Dev 1)
+9. `backend/db/98_foreign_keys.sql` — guarded cross-module foreign keys
+10. `backend/db/99_seed_users.sql` — roles and Lead Agency organisation
+11. Start the API once in `Development`; `DevelopmentDemoSeeder` creates the demo users.
+12. `backend/db/90_seed_scenario.sql` — Member 2 case workflow fixtures
+13. `backend/db/91_seed_ops.sql` — Member 4 resource/shelter/volunteer fixtures
 
-Example with `sqlcmd` (the `-I` flag is required for filtered indexes):
+`backend/db/07_geo.sql` is intentionally skipped because Member 4 uses `IMemoryCache`, not a persistent `geo.geo_cache` table. The two scenario seed scripts must run after the API has created the demo users. All schema and seed scripts are intended to be safe to re-run.
 
-```powershell
-sqlcmd -S "(localdb)\mssqllocaldb" -d CmsDb -I -b -i backend/db/00_common.sql
-sqlcmd -S "(localdb)\mssqllocaldb" -d CmsDb -I -b -i backend/db/02_notif.sql
-sqlcmd -S "(localdb)\mssqllocaldb" -d CmsDb -I -b -i backend/db/03_ai.sql
-sqlcmd -S "(localdb)\mssqllocaldb" -d CmsDb -I -b -i backend/db/98_foreign_keys.sql
-sqlcmd -S "(localdb)\mssqllocaldb" -d CmsDb -I -b -i backend/db/99_seed_users.sql
-sqlcmd -S "(localdb)\mssqllocaldb" -d CmsDb -I -b -i backend/db/91_seed_ops.sql
-```
+For a disposable LocalDB setup and the SQL concurrency/constraint probes, see `docs/evidence/dev4/README.md` and `scripts/dev4/`.
 
-Every Dev 1 script is idempotent: re-running it skips existing tables, indexes,
-roles and settings instead of failing.
+### Member 4 frontend integration
 
-Demo users are created/updated at API startup by `DevelopmentDemoSeeder` and all
-use the password `Demo1234!`. See `docs/TESTING.md` for the full list of demo
-accounts and roles.
+Member 4's logistics, shelter, volunteer and map pages are integrated into the active SAFEWAY Next.js application under `frontend/app/(app)/`. They reuse the SAFEWAY authentication/token-refresh API client. The standalone `web/` folder remains as the original handoff/reference implementation; it is no longer the only location of the operations UI.
 
 ## 7. Secret Management
 
@@ -223,21 +219,21 @@ No SQL Server instance is required for `dotnet test`.
 
 ## 12. API overview
 
-| Area | Endpoints |
-|---|---|
-| Identity | `/api/v1/auth/register`, `/login`, `/refresh`, `/logout`, `/me`, `/role-check` |
-| Users | `/api/v1/users` (SystemAdmin) |
-| Organisations | `/api/v1/organisations` (SystemAdmin) |
-| Configuration | `/api/v1/admin/config` (SystemAdmin) |
-| Audit | `/api/v1/audit-events` (SystemAdmin) |
-| Outbox | `/api/v1/admin/outbox/dead` (SystemAdmin dead-letter view) |
-| AI (Dev 3) | `/api/v1/recommendations`, `/api/v1/recommendations/match`, `/api/v1/recommendations/{id}/decision` (plural `/decisions` kept as an alias), `/api/v1/ai/chat` (informational FAQ only) |
-| Governance (Dev 3) | `/api/v1/post-incident-review`, `/api/v1/reviews/decisions` (compatibility alias), `/api/v1/announcements` |
-| Notifications (Dev 3) | `/api/v1/notifications`, `/api/v1/admin/dead-letters` (AdminOnly) |
-| KPIs | `/api/v1/kpis` (`KpiViewer`) |
-| Donations | `/api/v1/donations`, `/donors`, `/campaigns`, `/report` (`DonationViewer`; writes require `DonationManager`) |
-| Files | `/api/v1/files` (authenticated evidence upload; PNG/JPEG/WebP/PDF, 1 MB) |
-| Health | `/api/Health` (public) |
+| Area                  | Endpoints                                                                                                                                                                              |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Identity              | `/api/v1/auth/register`, `/login`, `/refresh`, `/logout`, `/me`, `/role-check`                                                                                                         |
+| Users                 | `/api/v1/users` (SystemAdmin)                                                                                                                                                          |
+| Organisations         | `/api/v1/organisations` (SystemAdmin)                                                                                                                                                  |
+| Configuration         | `/api/v1/admin/config` (SystemAdmin)                                                                                                                                                   |
+| Audit                 | `/api/v1/audit-events` (SystemAdmin)                                                                                                                                                   |
+| Outbox                | `/api/v1/admin/outbox/dead` (SystemAdmin dead-letter view)                                                                                                                             |
+| AI (Dev 3)            | `/api/v1/recommendations`, `/api/v1/recommendations/match`, `/api/v1/recommendations/{id}/decision` (plural `/decisions` kept as an alias), `/api/v1/ai/chat` (informational FAQ only) |
+| Governance (Dev 3)    | `/api/v1/post-incident-review`, `/api/v1/reviews/decisions` (compatibility alias), `/api/v1/announcements`                                                                             |
+| Notifications (Dev 3) | `/api/v1/notifications`, `/api/v1/admin/dead-letters` (AdminOnly)                                                                                                                      |
+| KPIs                  | `/api/v1/kpis` (`KpiViewer`)                                                                                                                                                           |
+| Donations             | `/api/v1/donations`, `/donors`, `/campaigns`, `/report` (`DonationViewer`; writes require `DonationManager`)                                                                           |
+| Files                 | `/api/v1/files` (authenticated evidence upload; PNG/JPEG/WebP/PDF, 1 MB)                                                                                                               |
+| Health                | `/api/Health` (public)                                                                                                                                                                 |
 
 Swagger is available at `/swagger` in Development. Every endpoint is authenticated
 by default; public endpoints use `[AllowAnonymous]`.
@@ -299,7 +295,7 @@ Server instance. Frontend checks are `npm.cmd run typecheck` and
   pre-check make enqueue idempotent. The background processor polls every five
   seconds, dispatches to the registered handler, retries with exponential
   backoff and dead-letters after three attempts. `GET
-  /api/v1/admin/outbox/dead` lists dead-lettered rows for SystemAdmin without
+/api/v1/admin/outbox/dead` lists dead-lettered rows for SystemAdmin without
   exposing the payload or idempotency key. The processor is disabled in the
   in-memory test harness via `Outbox:ProcessorEnabled=false`. The
   `Notification.Send` handler is registered by the notification module; failed

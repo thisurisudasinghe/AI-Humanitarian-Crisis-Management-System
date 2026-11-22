@@ -112,6 +112,8 @@ The detailed nine-test script below is the evidence format approved for this del
 | 6 | Decision | UAT-04, extended | `POST /api/decision` records an `Approved` human decision; capture `decisionId`. |
 | 7 | Allocate → dispatch/fulfil → close → notification → audit | UAT-06, UAT-07, UAT-08, UAT-09 | Status reaches `Closed`; exactly one notification is observed; matching audit events are visible. |
 
+Optional recovery check after any interrupted run: UAT-06a verifies that a request in `Escalated`, `OnHold` or `Reopened` returns to `Triaged` without gaining a skipped forward transition.
+
 ### 4.2 Detailed test cases
 
 ### UAT-01 — Submit a citizen assistance request
@@ -213,6 +215,20 @@ Example body:
 | **Preconditions** | UAT-05 passed. UAT-04 reviewed, with human approval recorded. Use the High-urgency request from UAT-01; see DEP-03. |
 | **Test steps** | 1. For each value in order, `POST {{baseUrl}}/api/v1/requests/{{requestId}}/transition`: `Triaged`, `Recommended`, `Approved`, `Allocated`, `Dispatched`, `Fulfilled`. 2. `GET {{baseUrl}}/api/v1/requests/{{requestId}}`. 3. Attempt an invalid transition such as `Submitted` from `Fulfilled`. |
 | **Expected result** | Valid transitions return `204 No Content`. Detail returns `200 OK` with `status: "Fulfilled"` and non-null `triagedAt`. Invalid transition returns `409 Conflict` with code `INVALID_TRANSITION`. |
+| **Actual result** |  |
+| **Evidence / screenshot ref** |  |
+| **Pass/Fail** |  |
+
+---
+
+### UAT-06a — Recover a partially completed workflow
+
+| Field | Value |
+|---|---|
+| **Objective** | NFR-REL-05: a live case parked in a side state can return to `Triaged` without unlocking a skipped forward step. |
+| **Preconditions** | A non-Critical request exists in each of `Escalated`, `OnHold` and `Reopened`. These are reachable through the frozen side paths (`Submitted`/`Verified`/`Triaged` → `Escalated` or `OnHold`; `Closed` → `Reopened`). Staff token available. |
+| **Test steps** | 1. For each source state, `POST {{baseUrl}}/api/v1/requests/{{requestId}}/transition` with `{"to":"Recommended","reason":"should stay blocked"}` and record the response. 2. For the same request, `POST` with `{"to":"Triaged","reason":"resumed after partial workflow"}`. 3. `GET {{baseUrl}}/api/v1/requests/{{requestId}}`. 4. `GET {{baseUrl}}/api/v1/requests/{{requestId}}/timeline`. |
+| **Expected result** | Step 1 returns `409 Conflict` with code `INVALID_TRANSITION` for all three source states. Step 2 returns `204 No Content`. Detail returns `200 OK` with `status: "Triaged"` and a non-null `triagedAt`. Timeline includes one history row from the source state to `Triaged` with the recovery reason. No forward transition other than the explicit recovery to `Triaged` was added. |
 | **Actual result** |  |
 | **Evidence / screenshot ref** |  |
 | **Pass/Fail** |  |
@@ -342,6 +358,7 @@ Example body:
 | UAT-04 | Review recommendation |  | Requires M3 data |
 | UAT-05 | Assign request |  | DEP-01 runtime confirmation |
 | UAT-06 | Update status |  | DEP-01 runtime, DEP-03 runtime |
+| UAT-06a | Recover a partial workflow |  |  |
 | UAT-07 | Notify user |  | DEP-04 |
 | UAT-08 | Complete request |  | DEP-03 runtime |
 | UAT-09 | Timeline and audit |  | DEP-06 |

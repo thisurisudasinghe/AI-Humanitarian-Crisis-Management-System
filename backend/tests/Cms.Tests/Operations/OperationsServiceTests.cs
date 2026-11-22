@@ -1,5 +1,6 @@
 using Cms.Application.Common;
 using Cms.Application.Contracts;
+using Cms.Application.Operations;
 using Cms.Domain.Entities.Cases;
 using Cms.Domain.Entities.Operations;
 using Cms.Domain.Enums;
@@ -282,6 +283,48 @@ public class OperationsServiceTests
         Assert.Empty(await h.Db.Dispatches.ToListAsync());
         Assert.Equal(4, (await h.Db.Inventories.SingleAsync()).Allocated);
         Assert.Equal(0, (await h.Db.Inventories.SingleAsync()).Dispatched);
+    }
+
+    [Fact]
+    public async Task CreateAssistanceRequest_NonPrivilegedUserCannotChooseAnotherSourceOrganisation()
+    {
+        var h = OpsHarness.Create();
+        h.User.SetupGet(x => x.Roles).Returns(new[] { Cms.Domain.Constants.RoleNames.ShelterAdmin });
+        h.User.Setup(x => x.IsInRole(It.IsAny<string>())).Returns((string role) => role == Cms.Domain.Constants.RoleNames.ShelterAdmin);
+        h.Db.ResourceTypes.Add(OpsSeed.FoodType());
+        await h.Db.SaveChangesAsync();
+
+        var ex = await Assert.ThrowsAsync<ForbiddenException>(() => h.Service.CreateAssistanceRequestAsync(
+            new CreateAssistanceRequestInput(OpsIds.OtherOrg, null, OpsIds.FoodType, 3, "Shelter needs supplies", null),
+            CancellationToken.None));
+
+        Assert.Equal("ASSISTANCE_SOURCE_ORG_REQUIRED", ex.Code);
+        Assert.Empty(await h.Db.AssistanceRequests.ToListAsync());
+    }
+
+    [Fact]
+    public async Task RespondAssistanceRequest_NonPrivilegedUserCannotRespondWhenNoTargetOrganisationExists()
+    {
+        var h = OpsHarness.Create();
+        h.User.SetupGet(x => x.Roles).Returns(new[] { Cms.Domain.Constants.RoleNames.PartnerOfficer });
+        h.User.Setup(x => x.IsInRole(It.IsAny<string>())).Returns((string role) => role == Cms.Domain.Constants.RoleNames.PartnerOfficer);
+        h.Db.AssistanceRequests.Add(new AssistanceRequest
+        {
+            Id = OpsIds.Task,
+            FromOrgId = OpsIds.OtherOrg,
+            ToOrgId = null,
+            ResourceTypeId = OpsIds.FoodType,
+            Quantity = 3,
+            Reason = "Shelter request",
+            Status = "Pending"
+        });
+        await h.Db.SaveChangesAsync();
+
+        var ex = await Assert.ThrowsAsync<ForbiddenException>(() => h.Service.RespondAssistanceRequestAsync(
+            OpsIds.Task, true, "Accepted", CancellationToken.None));
+
+        Assert.Equal("ASSISTANCE_TARGET_ORG_REQUIRED", ex.Code);
+        Assert.Equal("Pending", (await h.Db.AssistanceRequests.SingleAsync()).Status);
     }
 
     private static OpsHarness SeedAllocationScenario(decimal available, decimal quantity)

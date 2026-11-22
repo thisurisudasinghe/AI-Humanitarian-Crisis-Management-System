@@ -77,3 +77,14 @@ Paths below are relative to the repository root and reflect the **actual** files
 ## Not touched by this pass
 
 Member 1 foundation, Member 2 cases/requests, Member 3 AI/governance, `web/` UI source, `frontend/`, `README.md`, `docs/postman/Cms.postman_collection.json`, all other members' docs/evidence, and all files under `backend/tests/`, `backend/db/` (other than the four Member 4 scripts listed above), and `backend/src/` (other than the Member 4 files listed above). No file under `backend/tests/` was edited by this documentation pass; the test files listed above were already present in the working tree when the docs were finalised. Build artefacts (`bin/`, `obj/`) are generated output, not authored deliverables.
+
+## Additional completion pass (22 Nov 2026)
+
+- `frontend/lib/operations-api.ts` — authenticated SAFEWAY API adapter for Member 4 routes.
+- `frontend/components/map/MapPicker.tsx`, `MapPickerInner.tsx`, `MapView.tsx`, `MapViewInner.tsx` — integrated map controls.
+- `frontend/app/(app)/resources/page.tsx` — integrated inventory, matching, shortage, allocation, dispatch and delivery workflow.
+- `frontend/app/(app)/shelters/page.tsx` — integrated shelter management, decision-based allocation and shelter-linked assistance requests.
+- `frontend/app/(app)/volunteers/page.tsx` — integrated volunteer profile, availability, matching, verification and task workflow.
+- `frontend/app/(app)/operations/map/page.tsx` — integrated live map and location picker.
+- `scripts/dev4/Initialize-Dev4LocalDb.ps1`, `Test-Dev4SqlGuards.ps1`, `Invoke-Dev4EndToEnd.ps1` — repeatable LocalDB and API workflow verification scripts (not yet executed).
+- `docs/evidence/dev4/README.md` — required execution order and evidence checklist.

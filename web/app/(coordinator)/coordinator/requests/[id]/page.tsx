@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import type { RequestDetail } from "../../../../../components/cases/casesApi";
+import type { PartnerShare, RequestDetail } from "../../../../../components/cases/casesApi";
 import { casesApi } from "../../../../../components/cases/casesApi";
 import { ErrorState, LoadingState } from "../../../../../components/cases/PageState";
 import StatusBadge from "../../../../../components/cases/StatusBadge";
@@ -25,6 +25,11 @@ export default function CoordinatorRequestDetailPage() {
   const [request, setRequest] = useState<RequestDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [shares, setShares] = useState<PartnerShare[]>([]);
+  const [organisationId, setOrganisationId] = useState("");
+  const [sharing, setSharing] = useState(false);
+  const [shareError, setShareError] = useState("");
+  const [shareMessage, setShareMessage] = useState("");
 
   const load = useCallback(() => {
     setLoading(true);
@@ -40,6 +45,46 @@ export default function CoordinatorRequestDetailPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    casesApi
+      .partnerShares(id)
+      .then(setShares)
+      .catch((cause: unknown) =>
+        setShareError(cause instanceof Error ? cause.message : "Partner shares could not be loaded.")
+      );
+  }, [id]);
+
+  async function shareWithPartner() {
+    setSharing(true);
+    setShareError("");
+    setShareMessage("");
+    try {
+      await casesApi.shareWithPartner({ requestId: id, organisationId: organisationId.trim() });
+      setOrganisationId("");
+      setShares(await casesApi.partnerShares(id));
+      setShareMessage("Request shared with the partner organisation.");
+    } catch (cause) {
+      setShareError(cause instanceof Error ? cause.message : "The share could not be created.");
+    } finally {
+      setSharing(false);
+    }
+  }
+
+  async function revokeShare(shareId: string) {
+    setSharing(true);
+    setShareError("");
+    setShareMessage("");
+    try {
+      await casesApi.revokePartnerShare(shareId);
+      setShares(await casesApi.partnerShares(id));
+      setShareMessage("Partner visibility revoked.");
+    } catch (cause) {
+      setShareError(cause instanceof Error ? cause.message : "The share could not be revoked.");
+    } finally {
+      setSharing(false);
+    }
+  }
 
   const markers: MapMarker[] = request
     ? [{
@@ -87,6 +132,47 @@ export default function CoordinatorRequestDetailPage() {
 
           <MapView markers={markers} />
           <AttachmentList requestId={id} attachments={request.attachments} canUpload={false} />
+
+          <section className="panel" aria-labelledby="partner-share-heading">
+            <h2 id="partner-share-heading">Partner visibility</h2>
+            <p className="muted">
+              Share this request with a partner organisation. Use the organisation ID supplied by an administrator; the partner sees only the status and category of active shares.
+            </p>
+            <div>
+              <label htmlFor="partner-organisation">Partner organisation ID</label>
+              <input
+                id="partner-organisation"
+                value={organisationId}
+                placeholder="00000000-0000-0000-0000-000000000000"
+                onChange={(event) => setOrganisationId(event.target.value)}
+              />
+              <button
+                type="button"
+                disabled={sharing || !organisationId.trim()}
+                onClick={() => void shareWithPartner()}
+              >
+                Share
+              </button>
+            </div>
+            {shareMessage ? <p role="status">{shareMessage}</p> : null}
+            {shareError ? <ErrorState message={shareError} /> : null}
+            {shares.length > 0 ? (
+              <ul>
+                {shares.map((share) => (
+                  <li key={share.id}>
+                    <span>{share.organisationId}</span> · {share.status ?? "Status unavailable"}
+                    {" "}
+                    <button type="button" disabled={sharing} onClick={() => void revokeShare(share.id)}>
+                      Revoke
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="muted">No active partner shares.</p>
+            )}
+          </section>
+
           <RecommendationPanel targetId={id} />
           <ActionPanel request={request} onChanged={load} />
 
