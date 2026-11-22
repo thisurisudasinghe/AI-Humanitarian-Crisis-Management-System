@@ -23,11 +23,11 @@ participant "DecisionController (M3)" as DecisionCtrl
 participant "OperationsController (M4)" as OpsCtrl
 
 note over ReqCtrl, Db
-  Runtime prerequisite: backend/src/Cms.Api/Modules/CasesModule.cs is empty.
-  Member 1 must call Cms.Infrastructure.Cases.CasesModuleExtensions.AddCasesModule
-  or Cases controller activation fails with a DI resolution error.
-  Only NullRequestReader, NoOpRequestStatusService and DenyAllDecisionGate
-  have fail-closed fallbacks.
+  CasesModule delegates to CasesModuleExtensions.AddCasesModule,
+  and ModuleRegistration.AddCmsModules calls it. Source wiring is
+  verified by CasesModuleTests; controller activation still needs
+  a clean API run. Full build is currently blocked by M3-owned
+  notification/announcement source errors.
 end note
 
 == Citizen request submission ==
@@ -56,7 +56,9 @@ ReqSvc --> ReqCtrl : RequestDetailDto (still Submitted)
 ReqCtrl --> Staff : 200 OK (status unchanged)
 
 note over RecCtrl
-  No GET /api/v1/recommendations?targetId= endpoint exists.
+  DEV2 reads recommendations by target through
+  GET /api/v1/recommendations?targetId= or
+  GET /api/v1/recommendations/target/{targetId:guid}.
   Recommendation generation must not mutate request status.
 end note
 
@@ -88,6 +90,8 @@ ReqCtrl -> Workflow : TransitionAsync(id, request)
 Workflow -> StatusSvc : TransitionAsync(id, To, Reason, DecisionId)
 StatusSvc -> Db : Set<Request>().FirstOrDefaultAsync(id)
 
+StatusSvc -> StateMachine : Ensure(currentStatus, to)
+
 alt to = Closed AND urgency = Critical
     StatusSvc -> Gate : IsApprovedAsync(decisionId, requestId, ct)
     alt approved
@@ -98,8 +102,6 @@ alt to = Closed AND urgency = Critical
         ReqCtrl --> Staff : 403 Forbidden
     end
 end
-
-StatusSvc -> StateMachine : Ensure(currentStatus, to)
 StatusSvc -> Writer : NextRequestVersionAsync(requestId)
 StatusSvc -> Writer : AddHistoryAsync(from -> to,\nchangedByUserId, reason)
 StatusSvc -> Writer : AddAuditAsync("Request.StatusChanged",\n"Request", id, details, userId)
@@ -111,8 +113,8 @@ note over Gate
   DEV2 DecisionGateCloseCaseAdapter delegates to
   IDecisionGate.RequireApprovedAsync(decisionId,
   RecommendationType.CloseCase, requestId, ct).
-  It is fail-closed until Member 3 implements and
-  registers the real IDecisionGate.
+  DEV2 uses TryAddScoped; M3 registers the real
+  governance adapter after DEV2. Runtime is unverified.
 end note
 
 == Human decision and allocation handoff ==
@@ -132,9 +134,10 @@ StatusSvc -> Db : SaveChangesAsync()
 ReqCtrl --> Staff : 204 No Content
 
 note over DecisionCtrl, OpsCtrl
-  M3 and M4 owned endpoints. Allocation currently checks
-  DecisionOutcome.Approve/Modify while the enum defines
-  Approved/Modified; report this integration issue, do not fix here.
+  M3 and M4 owned endpoints. OperationsController now checks
+  DecisionOutcome.Approved/Modified, matching the shipped enum.
+  The resource-match route expected by UAT-10 still needs
+  confirmation from the owning member.
 end note
 
 == Critical close with CloseCase decision ==
@@ -142,8 +145,8 @@ end note
 Staff -> ReqCtrl : POST /api/v1/requests/{criticalId}/transition\n{"to":"Closed","decisionId":"..."}
 ReqCtrl -> Workflow : TransitionAsync(criticalId, Closed, reason, decisionId)
 Workflow -> StatusSvc : TransitionAsync(criticalId, Closed, reason, decisionId)
-StatusSvc -> Gate : IsApprovedAsync(decisionId, criticalId, ct)
 StatusSvc -> StateMachine : Ensure(Fulfilled, Closed)
+StatusSvc -> Gate : IsApprovedAsync(decisionId, criticalId, ct)
 alt approved CloseCase decision
     Gate --> StatusSvc : true
     StatusSvc -> Writer : AddHistoryAsync(Fulfilled -> Closed)

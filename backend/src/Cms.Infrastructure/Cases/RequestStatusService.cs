@@ -61,17 +61,21 @@ public sealed class RequestStatusService :
             .FirstOrDefaultAsync(r => r.Id == requestId, cancellationToken)
             ?? throw new NotFoundException("REQUEST_NOT_FOUND", $"Request {requestId} was not found.");
 
-        if (request.Status == to)
-        {
-            return;
-        }
-
         if (to == RequestStatus.Merged)
         {
             throw new ConflictException(
                 "MERGE_TARGET_REQUIRED",
                 "Use the merge endpoint to move a request to Merged.");
         }
+
+        if (request.Status == to)
+        {
+            return;
+        }
+
+        // Validate the state-machine rule before applying the Critical-close gate so an
+        // invalid transition is reported as 409 even when the request is Critical.
+        RequestStateMachine.Ensure(request.Status, to);
 
         if (to == RequestStatus.Closed && request.Urgency == Urgency.Critical)
         {
@@ -83,8 +87,6 @@ public sealed class RequestStatusService :
                     "Closing a Critical request requires an approved CloseCase decision.");
             }
         }
-
-        RequestStateMachine.Ensure(request.Status, to);
 
         var now = _dateTimeService.UtcNow;
         var from = request.Status;

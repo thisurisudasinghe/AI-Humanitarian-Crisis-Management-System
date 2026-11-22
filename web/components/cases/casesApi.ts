@@ -173,10 +173,21 @@ export interface KpiReport {
   generatedAt: string;
 }
 
+export interface ShortageProposalItem {
+  requestId: string;
+  category: string;
+  urgency: string;
+  requestedQuantity: number;
+  availableAtStart: number;
+  priorityPosition: number;
+  proposedPartialFulfilment: number;
+  explanation: string;
+}
+
 export interface ShortageProposal {
   resourceTypeId: string;
   availableQuantity: number;
-  items: Array<{ resourceTypeId: string; name?: string; shortfall: number }>;
+  items: ShortageProposalItem[];
   humanApprovalRequired: boolean;
 }
 
@@ -188,7 +199,14 @@ export interface Recommendation {
   confidence: number;
   rationale: string;
   source: string;
+  status?: string;
   createdAt: string;
+}
+
+export interface NotificationInbox {
+  items: Array<{ id: string; templateKey: string; readAt?: string | null }>;
+  unreadCount: number;
+  totalCount: number;
 }
 
 export interface ResourceType {
@@ -304,7 +322,7 @@ export const casesApi = {
   recommendationsByTarget: (targetId: string) =>
     api<Recommendation[]>(`/recommendations${queryString({ targetId })}`),
 
-  notifications: () => api<Array<{ id: string; templateKey: string; readAt?: string | null }>>("/notifications"),
+  notifications: () => api<NotificationInbox>("/notifications"),
 
   uploadAttachment: async (requestId: string, file: File): Promise<void> => {
     const body = new FormData();

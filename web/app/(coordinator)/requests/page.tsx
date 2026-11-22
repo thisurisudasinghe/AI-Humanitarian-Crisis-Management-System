@@ -10,11 +10,17 @@ import StatusBadge from "../../../components/cases/StatusBadge";
 
 export default function CoordinatorRequestsPage() {
   const [filters, setFilters] = useState<QueueFilterValues>(EMPTY_FILTERS);
+  const [debouncedFilters, setDebouncedFilters] = useState<QueueFilterValues>(EMPTY_FILTERS);
   const [page, setPage] = useState(1);
   const [result, setResult] = useState<Paged<RequestListItem> | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const pageSize = 20;
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedFilters(filters), 250);
+    return () => window.clearTimeout(timer);
+  }, [filters]);
 
   useEffect(() => {
     setLoading(true);
@@ -23,22 +29,23 @@ export default function CoordinatorRequestsPage() {
       .staffRequests({
         page,
         pageSize,
-        status: filters.status || undefined,
-        urgency: filters.urgency || undefined,
-        category: filters.category || undefined,
-        areaId: filters.areaId || undefined,
-        assignedTo: filters.assignedTo || undefined,
-        overdue: filters.overdue || undefined,
-        q: filters.q || undefined,
-        sortBy: filters.sortBy,
-        sortDescending: filters.sortDescending
+        status: debouncedFilters.status || undefined,
+        urgency: debouncedFilters.urgency || undefined,
+        category: debouncedFilters.category || undefined,
+        crisisId: debouncedFilters.crisisId || undefined,
+        areaId: debouncedFilters.areaId || undefined,
+        assignedTo: debouncedFilters.assignedTo || undefined,
+        overdue: debouncedFilters.overdue || undefined,
+        q: debouncedFilters.q || undefined,
+        sortBy: debouncedFilters.sortBy,
+        sortDescending: debouncedFilters.sortDescending
       })
       .then(setResult)
       .catch((cause: unknown) =>
         setError(cause instanceof Error ? cause.message : "Queue could not be loaded.")
       )
       .finally(() => setLoading(false));
-  }, [filters, page]);
+  }, [debouncedFilters, page]);
 
   return (
     <div>

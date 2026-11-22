@@ -44,6 +44,20 @@ export default function CoordinatorCrisesPage() {
     loadCrises();
   }, []);
 
+  async function updateSelectedStatus(status: CrisisStatus) {
+    if (!selectedId) return;
+    setError("");
+    try {
+      await casesApi.updateCrisis(selectedId, {
+        status,
+        endedAt: status === "Closed" ? new Date().toISOString() : undefined
+      });
+      loadCrises();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Crisis could not be updated.");
+    }
+  }
+
   useEffect(() => {
     if (!selectedId) return;
     casesApi.areas(selectedId).then(setAreas).catch(() => setAreas([]));
@@ -138,14 +152,8 @@ export default function CoordinatorCrisesPage() {
             <label htmlFor="crisis-status">Status</label>
             <select
               id="crisis-status"
-              onChange={(event) => {
-                void casesApi.updateCrisis(selectedId, {
-                  status: event.target.value as CrisisStatus,
-                  endedAt: event.target.value === "Closed" ? new Date().toISOString() : undefined
-                }).catch((cause: unknown) =>
-                  setError(cause instanceof Error ? cause.message : "Crisis could not be updated.")
-                );
-              }}
+              value={crises.find((crisis) => crisis.id === selectedId)?.status ?? ""}
+              onChange={(event) => void updateSelectedStatus(event.target.value as CrisisStatus)}
             >
               {CRISIS_STATUSES.map((status) => <option key={status} value={status}>{status}</option>)}
             </select>

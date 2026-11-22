@@ -170,7 +170,8 @@ export default function MyReportsPage() {
         <span>
           <b>Need to add important information?</b>
           <small>
-            Open a report and use “Add an update” rather than creating a duplicate report.
+            This screen shows status only. Use the official citizen portal for detail, timeline
+            and updates rather than creating a duplicate report.
           </small>
         </span>
       </div>

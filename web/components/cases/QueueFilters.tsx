@@ -6,6 +6,7 @@ export interface QueueFilterValues {
   status: string;
   urgency: string;
   category: string;
+  crisisId: string;
   areaId: string;
   assignedTo: string;
   overdue: boolean;
@@ -18,6 +19,7 @@ export const EMPTY_FILTERS: QueueFilterValues = {
   status: "",
   urgency: "",
   category: "",
+  crisisId: "",
   areaId: "",
   assignedTo: "",
   overdue: false,
@@ -60,6 +62,9 @@ export default function QueueFilters({
         {CATEGORIES.map((category) => <option key={category} value={category}>{category}</option>)}
       </select>
 
+      <label htmlFor="filter-crisis">Crisis ID</label>
+      <input id="filter-crisis" value={value.crisisId} onChange={(event) => set("crisisId", event.target.value)} />
+
       <label htmlFor="filter-area">Area ID</label>
       <input id="filter-area" value={value.areaId} onChange={(event) => set("areaId", event.target.value)} />
 
@@ -93,6 +98,10 @@ export default function QueueFilters({
         />{" "}
         Descending
       </label>
+
+      <p>
+        <button type="button" onClick={() => onChange(EMPTY_FILTERS)}>Reset filters</button>
+      </p>
     </section>
   );
 }

@@ -22,6 +22,7 @@ public class RequestConfiguration : IEntityTypeConfiguration<Request>
         builder.Property(r => r.Description).HasColumnName("description").IsRequired().HasMaxLength(2000);
         builder.Property(r => r.Lat).HasColumnName("lat").HasPrecision(18, 7);
         builder.Property(r => r.Lng).HasColumnName("lng").HasPrecision(18, 7);
+        builder.Property(r => r.Address).HasColumnName("address").HasMaxLength(500);
         builder.Property(r => r.HouseholdSize).HasColumnName("household_size").IsRequired();
         builder.Property(r => r.AccessibilityNeeds).HasColumnName("accessibility_needs").HasMaxLength(2000);
         builder.Property(r => r.Status).HasColumnName("status")

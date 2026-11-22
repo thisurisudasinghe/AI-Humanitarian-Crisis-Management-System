@@ -75,6 +75,7 @@ BEGIN
         [description] NVARCHAR(2000) NOT NULL,
         [lat] DECIMAL(18,7) NOT NULL,
         [lng] DECIMAL(18,7) NOT NULL,
+        [address] NVARCHAR(500) NULL,
         [household_size] INT NOT NULL,
         [accessibility_needs] NVARCHAR(2000) NULL,
         [status] NVARCHAR(30) NOT NULL,
@@ -89,6 +90,12 @@ BEGIN
         [updated_at] DATETIME2(7) NULL,
         CONSTRAINT [PK_requests] PRIMARY KEY ([id])
     );
+END
+GO
+
+IF COL_LENGTH(N'cases.requests', N'address') IS NULL
+BEGIN
+    ALTER TABLE [cases].[requests] ADD [address] NVARCHAR(500) NULL;
 END
 GO
 

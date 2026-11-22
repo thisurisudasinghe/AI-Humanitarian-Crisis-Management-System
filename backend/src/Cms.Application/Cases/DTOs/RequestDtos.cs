@@ -17,7 +17,7 @@ public class CreateRequestDto
 
     [Range(-90, 90)] public decimal Lat { get; set; }
     [Range(-180, 180)] public decimal Lng { get; set; }
-    public string? Address { get; set; }
+    [StringLength(500)] public string? Address { get; set; }
 
     [Range(1, 100)] public int HouseholdSize { get; set; } = 1;
     public string? AccessibilityNeeds { get; set; }
@@ -71,6 +71,7 @@ public class RequestDetailDto : RequestListItemDto
     public Guid? CrisisId { get; set; }
     public decimal Lat { get; set; }
     public decimal Lng { get; set; }
+    public string? Address { get; set; }
     public int HouseholdSize { get; set; }
     public string? AccessibilityNeeds { get; set; }
     public Guid? AssignedToUserId { get; set; }

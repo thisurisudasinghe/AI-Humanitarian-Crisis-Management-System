@@ -12,11 +12,8 @@ export interface CrisisReportInput {
   description: string;
   location: string;
   urgency: string;
-  firstName: string;
-  lastName: string;
-  phone: string;
-  email?: string;
-  consent: boolean;
+  lat?: number;
+  lng?: number;
 }
 
 export interface CrisisReportReceipt {
@@ -181,10 +178,10 @@ function clean(value: string): string {
 /**
  * Submits the supported report fields to `POST /api/v1/requests`.
  *
- * The backend creates requests against the signed-in Citizen and does not
- * expose firstName/lastName/email/consent in CreateRequestDto, so those
- * fields are deliberately not transmitted. The free-text location is sent as
- * `address`; the current form does not collect coordinates.
+ * The backend creates requests against the signed-in Citizen. Contact and
+ * consent fields are not part of CreateRequestDto and are not collected by the
+ * form. Free-text location is persisted as `address`; optional numeric
+ * coordinates are sent when supplied and default to 0 when omitted.
  */
 export async function submitCrisisReport(
   input: CrisisReportInput
@@ -193,8 +190,8 @@ export async function submitCrisisReport(
     category: reportCategoryToCaseCategory[input.category] ?? "Other",
     urgency: reportSeverityToCaseUrgency[input.urgency] ?? "Low",
     description: clean(input.description),
-    lat: 0,
-    lng: 0,
+    lat: input.lat ?? 0,
+    lng: input.lng ?? 0,
     address: clean(input.location),
     householdSize: 1
   };

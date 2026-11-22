@@ -27,11 +27,8 @@ export function ReportFlow() {
   const [severity, setSeverity] = useState<string>("Urgent");
   const [description, setDescription] = useState("");
   const [location, setLocation] = useState("");
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [email, setEmail] = useState("");
-  const [consent, setConsent] = useState(false);
+  const [lat, setLat] = useState("");
+  const [lng, setLng] = useState("");
   const [attachment, setAttachment] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -56,13 +53,14 @@ export function ReportFlow() {
   async function onSubmit() {
     setFormError(null);
 
-    if (!firstName.trim() || !lastName.trim() || !phone.trim()) {
-      setFormError("Add your name and a mobile number so response teams can reach you.");
-      return;
-    }
-
-    if (!consent) {
-      setFormError("Confirm that the information may be shared with authorized response teams.");
+    const parsedLat = lat.trim() ? Number(lat) : undefined;
+    const parsedLng = lng.trim() ? Number(lng) : undefined;
+    if (
+      (parsedLat !== undefined && !Number.isFinite(parsedLat)) ||
+      (parsedLng !== undefined && !Number.isFinite(parsedLng)) ||
+      (parsedLat === undefined) !== (parsedLng === undefined)
+    ) {
+      setFormError("Enter both latitude and longitude as numbers, or leave both blank.");
       return;
     }
 
@@ -74,11 +72,8 @@ export function ReportFlow() {
         description,
         location,
         urgency: severity,
-        firstName,
-        lastName,
-        phone,
-        email,
-        consent
+        lat: parsedLat,
+        lng: parsedLng
       });
       setReceipt(submitted);
     } catch (caught) {
@@ -107,16 +102,11 @@ export function ReportFlow() {
           <div className="reference-box">
             <span>Reference</span>
             <strong>{receipt.reference}</strong>
-            <button
-              type="button"
-              onClick={() => {
-                setReceipt(null);
-                setStep(3);
-              }}
-            >
-              Edit report
-            </button>
           </div>
+          <p className="muted">
+            Submitted reports are not edited here. Create a separate update through your reports page
+            instead of submitting a duplicate.
+          </p>
           <div className="next-steps">
             <b>What happens next?</b>
             <div>
@@ -167,7 +157,7 @@ export function ReportFlow() {
           <h1>Help us understand what&apos;s happening.</h1>
           <p>Share only what you safely can. You can review everything before submitting.</p>
           <div className="step-list">
-            {["What happened", "Location & needs", "Your details"].map((label, index) => (
+            {["What happened", "Location & needs", "Review"].map((label, index) => (
               <div
                 className={`${step === index + 1 ? "active" : ""} ${step > index + 1 ? "done" : ""}`}
                 key={label}
@@ -259,6 +249,30 @@ export function ReportFlow() {
                   onChange={(event) => setLocation(event.target.value)}
                 />
               </div>
+              <p className="muted">
+                This free-text location is saved with the request. Add coordinates below if you have them.
+              </p>
+
+              <div className="two-fields">
+                <label>
+                  <span className="field-label">Latitude (optional)</span>
+                  <input
+                    inputMode="decimal"
+                    value={lat}
+                    placeholder="7.2906"
+                    onChange={(event) => setLat(event.target.value)}
+                  />
+                </label>
+                <label>
+                  <span className="field-label">Longitude (optional)</span>
+                  <input
+                    inputMode="decimal"
+                    value={lng}
+                    placeholder="80.6337"
+                    onChange={(event) => setLng(event.target.value)}
+                  />
+                </label>
+              </div>
 
               <div className="map-placeholder">
                 <div className="map-roads" />
@@ -290,7 +304,7 @@ export function ReportFlow() {
                 <Icon name="upload" />
                 <span>
                   <b>{attachment ?? "Add photos or documents"}</b>
-                  <small>Optional · JPG, PNG or PDF up to 10 MB</small>
+                  <small>Optional · JPG, PNG or PDF up to 5 MB</small>
                   <small>File selection is a preview only; this form does not upload evidence.</small>
                 </span>
                 <input
@@ -311,54 +325,13 @@ export function ReportFlow() {
               <div className="form-heading">
                 <span>03</span>
                 <div>
-                  <h2>How can we reach you?</h2>
-                  <p>Contact details help response teams confirm information and share updates.</p>
+                  <h2>Review and submit</h2>
+                  <p>
+                    This report is linked to your signed-in account. Contact details and consent are
+                    not collected here because the case API does not accept them.
+                  </p>
                 </div>
               </div>
-
-              <div className="two-fields">
-                <label>
-                  <span className="field-label">First name</span>
-                  <input
-                    value={firstName}
-                    placeholder="First name"
-                    onChange={(event) => setFirstName(event.target.value)}
-                    autoComplete="given-name"
-                  />
-                </label>
-                <label>
-                  <span className="field-label">Last name</span>
-                  <input
-                    value={lastName}
-                    placeholder="Last name"
-                    onChange={(event) => setLastName(event.target.value)}
-                    autoComplete="family-name"
-                  />
-                </label>
-              </div>
-
-              <label>
-                <span className="field-label">Mobile number</span>
-                <input
-                  value={phone}
-                  placeholder="+1 555 000 0000"
-                  onChange={(event) => setPhone(event.target.value)}
-                  autoComplete="tel"
-                />
-              </label>
-
-              <label>
-                <span className="field-label">
-                  Email address <small>(optional)</small>
-                </span>
-                <input
-                  type="email"
-                  value={email}
-                  placeholder="you@example.org"
-                  onChange={(event) => setEmail(event.target.value)}
-                  autoComplete="email"
-                />
-              </label>
 
               <div className="review-card">
                 <b>Report summary</b>
@@ -371,22 +344,14 @@ export function ReportFlow() {
                   <strong>{location || "—"}</strong>
                 </div>
                 <div>
+                  <span>Coordinates</span>
+                  <strong>{lat && lng ? `${lat}, ${lng}` : "Not provided"}</strong>
+                </div>
+                <div>
                   <span>Urgency</span>
                   <strong>{severity}</strong>
                 </div>
               </div>
-
-              <label className="consent">
-                <input
-                  type="checkbox"
-                  checked={consent}
-                  onChange={(event) => setConsent(event.target.checked)}
-                />
-                <span>
-                  I confirm this information is accurate to the best of my knowledge and may be
-                  shared with authorized response teams.
-                </span>
-              </label>
 
               {formError ? (
                 <div className="form-error" role="alert">

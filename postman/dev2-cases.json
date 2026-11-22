@@ -2,24 +2,539 @@
   "info": {
     "_postman_id": "dev2-cases-collection",
     "name": "DEV2 - Cases & Citizen API",
-    "description": "Existing Member 2 (DEV2) Cases endpoints only. Set {{baseUrl}} and {{token}} before running. The {{token}} value must be a bearer token for the role named in each request description (Citizen, EmergencyCoordinator or CaseManager). Do not include the Bearer prefix in the variable because request headers add it.\n\nINTEGRATION NOTES (verify at runtime before relying on them):\n1. Runtime DI: backend/src/Cms.Api/Modules/CasesModule.cs now delegates to Cms.Infrastructure.Cases.CasesModuleExtensions.AddCasesModule, and ModuleRegistration calls it. The old empty-module blocker is resolved at source level.\n2. Critical close: closing a Critical request requires an approved CloseCase decision; the production fallback gate denies. Use a High-urgency request for the full loop or wait for Member 3's adapter.\n3. No partner-shares endpoint exists, so no partner-workspace request is included.\n4. Target-based recommendation reads exist at GET /api/v1/recommendations?targetId=. Recommendation decisions remain Member 3 owned and are not included in this collection.\n5. DEV2 outbox writes include entity_id/idempotency_key per docs/UAT_CORE_LOOP.md DEP-05; verify at runtime.\n6. The coordinator alert form now uses the authenticated casesApi.createAlert() client; the raw unauthenticated POST was removed.",
+    "description": "Executable DEV2 Cases & Citizen API checklist. Run folder 0 first to obtain role tokens, then run the role-specific folders. No runtime result is claimed by this file itself; UAT results remain blank until a clean database run is performed.\n\nINTEGRATION NOTES (source-verified, still require runtime confirmation):\n1. Runtime DI: backend/src/Cms.Api/Modules/CasesModule.cs delegates to Cms.Infrastructure.Cases.CasesModuleExtensions.AddCasesModule, and ModuleRegistration calls it.\n2. Critical close: closing a Critical request requires an approved CloseCase decision through the shared M3 IDecisionGate. DEV2 registers DecisionGateCloseCaseAdapter; if M3's real gate is not registered, the deny fallback causes 403 CLOSE_DECISION_REQUIRED. The negative collection case verifies that restriction.\n3. Partner shares are P2 (D2-11) and must not start before CP2; no partner endpoint exists yet, so no request is included.\n4. Target-based recommendation reads exist at GET /api/v1/recommendations?targetId=. Recommendation decisions remain Member 3 owned and are not included in this collection.\n5. DEV2 outbox writes include entity_id/idempotency_key per docs/UAT_CORE_LOOP.md DEP-05; verify at runtime.\n6. The coordinator alert form uses the authenticated casesApi.createAlert() client. Set {{citizenEmail}}, {{coordinatorEmail}}, {{caseManagerEmail}} and {{demoPassword}} for the demo seed, or override the role token variables manually. Do not include 'Bearer ' in token variables.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
-    { "key": "baseUrl", "value": "http://localhost:5210", "type": "string" },
-    { "key": "token", "value": "", "type": "string" },
-    { "key": "crisisId", "value": "1a000000-0000-0000-0000-000000000001", "type": "string" },
-    { "key": "areaId", "value": "1b000000-0000-0000-0000-000000000001", "type": "string" },
-    { "key": "requestId", "value": "1d000000-0000-0000-0000-000000000005", "type": "string" },
-    { "key": "closedRequestId", "value": "1d000000-0000-0000-0000-000000000001", "type": "string" },
-    { "key": "mergeSourceRequestId", "value": "1d000000-0000-0000-0000-000000000004", "type": "string" },
-    { "key": "targetRequestId", "value": "1d000000-0000-0000-0000-000000000005", "type": "string" },
-    { "key": "attachmentId", "value": "20000000-0000-0000-0000-000000000001", "type": "string" },
-    { "key": "alertId", "value": "21000000-0000-0000-0000-000000000002", "type": "string" },
-    { "key": "assignedToUserId", "value": "0b000000-0000-0000-0000-000000000003", "type": "string" },
-    { "key": "decisionId", "value": "", "type": "string" }
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5210",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "crisisId",
+      "value": "1a000000-0000-0000-0000-000000000001",
+      "type": "string"
+    },
+    {
+      "key": "areaId",
+      "value": "1b000000-0000-0000-0000-000000000001",
+      "type": "string"
+    },
+    {
+      "key": "requestId",
+      "value": "1d000000-0000-0000-0000-000000000005",
+      "type": "string"
+    },
+    {
+      "key": "closedRequestId",
+      "value": "1d000000-0000-0000-0000-000000000001",
+      "type": "string"
+    },
+    {
+      "key": "mergeSourceRequestId",
+      "value": "1d000000-0000-0000-0000-000000000004",
+      "type": "string"
+    },
+    {
+      "key": "targetRequestId",
+      "value": "1d000000-0000-0000-0000-000000000005",
+      "type": "string"
+    },
+    {
+      "key": "attachmentId",
+      "value": "20000000-0000-0000-0000-000000000001",
+      "type": "string"
+    },
+    {
+      "key": "alertId",
+      "value": "21000000-0000-0000-0000-000000000002",
+      "type": "string"
+    },
+    {
+      "key": "assignedToUserId",
+      "value": "0b000000-0000-0000-0000-000000000003",
+      "type": "string"
+    },
+    {
+      "key": "decisionId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "citizenEmail",
+      "value": "citizen@example.org",
+      "type": "string"
+    },
+    {
+      "key": "coordinatorEmail",
+      "value": "coordinator@example.org",
+      "type": "string"
+    },
+    {
+      "key": "caseManagerEmail",
+      "value": "casemanager@example.org",
+      "type": "string"
+    },
+    {
+      "key": "demoPassword",
+      "value": "Demo1234!",
+      "type": "string"
+    },
+    {
+      "key": "citizenToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "coordinatorToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "caseManagerToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "criticalRequestId",
+      "value": "1d000000-0000-0000-0000-000000000002",
+      "type": "string"
+    }
   ],
   "item": [
+    {
+      "name": "0. Setup and negative checks",
+      "item": [
+        {
+          "name": "Login as Citizen",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{None}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/auth/login",
+            "description": "Anonymous. Captures {{citizenToken}} from the demo seed user.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"{{citizenEmail}}\",\"password\":\"{{demoPassword}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.expect(body.accessToken).to.be.a(\"string\").and.not.empty;",
+                  "pm.expect(body.roles).to.include(\"Citizen\");",
+                  "pm.collectionVariables.set(\"citizenToken\", body.accessToken);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login as Coordinator",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{None}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/auth/login",
+            "description": "Anonymous. Captures {{coordinatorToken}}.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"{{coordinatorEmail}}\",\"password\":\"{{demoPassword}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.expect(body.accessToken).to.be.a(\"string\").and.not.empty;",
+                  "pm.expect(body.roles).to.include(\"EmergencyCoordinator\");",
+                  "pm.collectionVariables.set(\"coordinatorToken\", body.accessToken);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login as Case Manager",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{None}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/auth/login",
+            "description": "Anonymous. Captures {{caseManagerToken}}.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"{{caseManagerEmail}}\",\"password\":\"{{demoPassword}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.expect(body.accessToken).to.be.a(\"string\").and.not.empty;",
+                  "pm.expect(body.roles).to.include(\"CaseManager\");",
+                  "pm.collectionVariables.set(\"caseManagerToken\", body.accessToken);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject invalid password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{None}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/auth/login",
+            "description": "Negative authorization case. Expected 401.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"{{citizenEmail}}\",\"password\":\"wrong-password\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 401\", () => pm.response.to.have.status(401));",
+                  "const body = pm.response.json();",
+                  "pm.expect(body).to.have.property(\"detail\").or.have.property(\"title\");"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject unauthenticated staff queue",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/requests?page=1&pageSize=20",
+            "description": "Negative authorization case. Expected 401."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 401\", () => pm.response.to.have.status(401));",
+                  "const body = pm.response.json();",
+                  "pm.expect(body).to.have.property(\"detail\").or.have.property(\"title\");"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject citizen access to staff queue",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{citizenToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/requests?page=1&pageSize=20",
+            "description": "Negative role case. Expected 403."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 403\", () => pm.response.to.have.status(403));",
+                  "const body = pm.response.json();",
+                  "pm.expect(body).to.have.property(\"detail\").or.have.property(\"title\");"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject invalid create payload",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{citizenToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/requests",
+            "description": "Negative validation case: unsupported enum value and too-short description. Expected 400 or 422.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"category\":\"NotACategory\",\"urgency\":\"High\",\"description\":\"short\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.expect([400, 422]).to.include(pm.response.code);",
+                  "const body = pm.response.json();",
+                  "pm.expect(body).to.have.property(\"detail\").or.have.property(\"errors\").or.have.property(\"title\");"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject invalid status transition",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{coordinatorToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/requests/{{requestId}}/transition",
+            "description": "Negative state-machine case: Submitted -> Allocated is not allowed. Expected 409 INVALID_TRANSITION.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"to\":\"Allocated\",\"reason\":\"Invalid transition check.\",\"decisionId\":null}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 409\", () => pm.response.to.have.status(409));",
+                  "const body = pm.response.json();",
+                  "pm.expect(body.code).to.eql(\"INVALID_TRANSITION\");"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Accept self-transition no-op",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{coordinatorToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/requests/1d000000-0000-0000-0000-000000000010/transition",
+            "description": "Self-transition to the same Submitted status must be a 204 no-op with no new history row.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"to\":\"Submitted\",\"reason\":\"Self-transition check.\",\"decisionId\":null}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Advance critical request to Fulfilled",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{coordinatorToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/requests/{{criticalRequestId}}/transition",
+            "description": "Prerequisite for the Critical-close restriction. Seeded R2 is Dispatched; Dispatched -> Fulfilled is allowed.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"to\":\"Fulfilled\",\"reason\":\"Advance to closeable state.\",\"decisionId\":null}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject critical close without decision",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{coordinatorToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/requests/{{criticalRequestId}}/transition",
+            "description": "Negative Critical-close case. Expected 403 CLOSE_DECISION_REQUIRED without an approved CloseCase decision.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"to\":\"Closed\",\"reason\":\"No approved decision.\",\"decisionId\":null}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 403\", () => pm.response.to.have.status(403));",
+                  "const body = pm.response.json();",
+                  "pm.expect(body.code).to.eql(\"CLOSE_DECISION_REQUIRED\");"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
     {
       "name": "1. Citizen Requests",
       "item": [
@@ -28,48 +543,125 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "url": "{{baseUrl}}/api/v1/requests",
-            "description": "Role: Citizen. Creates a request. Address and evidenceAttachmentIds are accepted by the DTO but not persisted in the current implementation. Expected: 201 Created with { id }; 401, 403, 422, 500.",
+            "description": "Role: Citizen. Creates a request. Address is persisted and returned on detail. A non-empty evidenceAttachmentIds array is rejected with 422 EVIDENCE_ATTACHMENT_IDS_NOT_SUPPORTED; upload evidence after creation via the attachments endpoint. Expected: 201 Created with { id }; 401, 403, 422, 500.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"category\": \"Food\",\n  \"urgency\": \"High\",\n  \"description\": \"Family of four needs food parcels after floodwater entered the home.\",\n  \"lat\": 7.29,\n  \"lng\": 80.64,\n  \"address\": \"Harbour Ward, Colombo\",\n  \"householdSize\": 4,\n  \"accessibilityNeeds\": null,\n  \"crisisId\": \"{{crisisId}}\",\n  \"areaId\": \"{{areaId}}\",\n  \"evidenceAttachmentIds\": []\n}",
-              "options": { "raw": { "language": "json" } }
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 201\", () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.expect(body.id).to.be.a(\"string\").and.not.empty;",
+                  "pm.collectionVariables.set(\"requestId\", body.id);"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "List my requests",
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "url": "{{baseUrl}}/api/v1/requests/mine?page=1&pageSize=20&sortBy=urgency&sortDescending=true",
             "description": "Role: Citizen. sortBy accepts 'urgency' or 'age'; other values default to newest submittedAt. Expected: 200 OK; 401, 403, 500."
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "pm.expect(body).to.have.property(\"items\").that.is.an(\"array\");",
+                  "pm.expect(body).to.have.property(\"total\").that.is.a(\"number\");",
+                  "pm.expect(body).to.have.property(\"page\").that.is.a(\"number\");",
+                  "pm.expect(body).to.have.property(\"pageSize\").that.is.a(\"number\");",
+                  "body.items.forEach(item => { pm.expect(item).to.have.property(\"id\"); pm.expect(item).to.have.property(\"status\"); });"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Update my request",
           "request": {
             "method": "PATCH",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "url": "{{baseUrl}}/api/v1/requests/{{requestId}}",
             "description": "Role: Citizen for own Submitted request; staff may pass assignedToUserId. Category and urgency cannot be changed here. Expected: 204 No Content; 401, 403, 404, 409, 422, 500.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"description\": \"Updated description after coordinator call.\",\n  \"householdSize\": 4,\n  \"accessibilityNeeds\": null\n}",
-              "options": { "raw": { "language": "json" } }
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const token = pm.collectionVariables.get(\"citizenToken\") || \"\";",
+              "if (!token) { throw new Error(\"Missing citizenToken. Run folder 0 login requests first.\"); }",
+              "pm.variables.set(\"token\", token);"
+            ]
+          }
         }
       ]
     },
@@ -81,24 +673,71 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "url": "{{baseUrl}}/api/v1/requests/{{requestId}}",
             "description": "Roles: Citizen, EmergencyCoordinator, CaseManager. Citizen visibility is owner-scoped. Expected: 200 OK; 401, 403, 404, 500."
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.expect(body).to.have.property(\"id\");",
+                  "pm.expect(body).to.have.property(\"status\");",
+                  "pm.expect(body).to.have.property(\"category\");",
+                  "pm.expect(body).to.have.property(\"urgency\");"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Get request timeline",
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "url": "{{baseUrl}}/api/v1/requests/{{requestId}}/timeline",
             "description": "Roles: Citizen, EmergencyCoordinator, CaseManager. Returns status history with actor display names and reasons. Expected: 200 OK; 401, 403, 404, 500."
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.expect(pm.response.json()).to.be.an(\"array\");"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const token = pm.collectionVariables.get(\"citizenToken\") || \"\";",
+              "if (!token) { throw new Error(\"Missing citizenToken. Run folder 0 login requests first.\"); }",
+              "pm.variables.set(\"token\", token);"
+            ]
+          }
         }
       ]
     },
@@ -110,7 +749,10 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "url": "{{baseUrl}}/api/v1/requests/{{requestId}}/attachments",
             "description": "Role: Citizen. multipart/form-data with key 'file'. Request size limit is 5 MB; PNG/JPEG/PDF magic bytes are validated. Expected: 201 Created with { attachmentId }; 400, 401, 403, 404, 413, 422, 500.",
@@ -126,19 +768,61 @@
               ]
             }
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 201\", () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.expect(body.attachmentId).to.be.a(\"string\").and.not.empty;",
+                  "pm.collectionVariables.set(\"attachmentId\", body.attachmentId);"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Download attachment",
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "url": "{{baseUrl}}/api/v1/requests/{{requestId}}/attachments/{{attachmentId}}",
             "description": "Roles: Citizen, EmergencyCoordinator, CaseManager. Returns the file stream with original filename and content type. Expected: 200 OK; 401, 403, 404, 500."
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.expect(pm.response.headers.get(\"Content-Type\")).to.be.a(\"string\").and.not.empty;"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const token = pm.collectionVariables.get(\"citizenToken\") || \"\";",
+              "if (!token) { throw new Error(\"Missing citizenToken. Run folder 0 login requests first.\"); }",
+              "pm.variables.set(\"token\", token);"
+            ]
+          }
         }
       ]
     },
@@ -150,18 +834,54 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "url": "{{baseUrl}}/api/v1/requests/{{closedRequestId}}/feedback",
             "description": "Role: Citizen and owner of a Fulfilled or Closed request. Uses {{closedRequestId}} = seeded closed R1 because the default {{requestId}} is Submitted. Expected: 200 OK with { id }; 401, 403, 404, 409, 422, 500.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"comment\": \"Assistance received; thank you.\"\n}",
-              "options": { "raw": { "language": "json" } }
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.expect(body).to.have.property(\"id\");"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const token = pm.collectionVariables.get(\"citizenToken\") || \"\";",
+              "if (!token) { throw new Error(\"Missing citizenToken. Run folder 0 login requests first.\"); }",
+              "pm.variables.set(\"token\", token);"
+            ]
+          }
         }
       ]
     },
@@ -173,90 +893,221 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "url": "{{baseUrl}}/api/v1/requests?status=Submitted&urgency=High&category=Food&sortBy=urgency&page=1&pageSize=20",
             "description": "Roles: EmergencyCoordinator, CaseManager. Filter names match RequestFilter: requesterUserId, status, urgency, category, areaId, crisisId, assignedTo, overdue, q. Expected: 200 OK; 401, 403, 500."
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "pm.expect(body).to.have.property(\"items\").that.is.an(\"array\");",
+                  "pm.expect(body).to.have.property(\"total\").that.is.a(\"number\");",
+                  "pm.expect(body).to.have.property(\"page\").that.is.a(\"number\");",
+                  "pm.expect(body).to.have.property(\"pageSize\").that.is.a(\"number\");",
+                  "body.items.forEach(item => { pm.expect(item.status).to.eql(\"Submitted\"); pm.expect(item.urgency).to.eql(\"High\"); });"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "List overdue requests",
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "url": "{{baseUrl}}/api/v1/requests/overdue?page=1&pageSize=20",
             "description": "Roles: EmergencyCoordinator, CaseManager. Uses configured SLA (default 24h from CasesOptions). Expected: 200 OK; 401, 403, 500."
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "pm.expect(body).to.have.property(\"items\").that.is.an(\"array\");",
+                  "pm.expect(body).to.have.property(\"total\").that.is.a(\"number\");",
+                  "pm.expect(body).to.have.property(\"page\").that.is.a(\"number\");",
+                  "pm.expect(body).to.have.property(\"pageSize\").that.is.a(\"number\");"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "List unresolved requests",
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "url": "{{baseUrl}}/api/v1/requests/unresolved?page=1&pageSize=20",
             "description": "Roles: EmergencyCoordinator, CaseManager. Builds all open RequestStatus values. Expected: 200 OK; 401, 403, 500."
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "pm.expect(body).to.have.property(\"items\").that.is.an(\"array\");",
+                  "pm.expect(body).to.have.property(\"total\").that.is.a(\"number\");",
+                  "pm.expect(body).to.have.property(\"page\").that.is.a(\"number\");",
+                  "pm.expect(body).to.have.property(\"pageSize\").that.is.a(\"number\");"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Transition request status",
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "url": "{{baseUrl}}/api/v1/requests/{{requestId}}/transition",
             "description": "Roles: EmergencyCoordinator, CaseManager. Valid status strings are Submitted, Verified, Rejected, Triaged, Recommended, Approved, Allocated, Dispatched, InProgress, Fulfilled, Closed, Escalated, Merged, OnHold, Reopened. Critical close requires an approved decisionId. Expected: 204 No Content; 401, 403, 404, 409, 422, 500.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"to\": \"Verified\",\n  \"reason\": \"Verified against call centre record.\",\n  \"decisionId\": null\n}",
-              "options": { "raw": { "language": "json" } }
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Assign request",
           "request": {
             "method": "PATCH",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "url": "{{baseUrl}}/api/v1/requests/{{requestId}}/assign",
             "description": "Roles: EmergencyCoordinator, CaseManager. Expected: 204 No Content; 401, 403, 404, 422, 500.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"assignedToUserId\": \"{{assignedToUserId}}\"\n}",
-              "options": { "raw": { "language": "json" } }
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Merge request",
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "url": "{{baseUrl}}/api/v1/requests/{{mergeSourceRequestId}}/merge",
             "description": "Roles: EmergencyCoordinator, CaseManager. Uses {{mergeSourceRequestId}} = seeded Verified R4 into non-terminal {{targetRequestId}} = R5. The default {{requestId}} is Submitted and is not mergeable. Expected: 204 No Content; 401, 403, 404, 409, 422, 500.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"targetRequestId\": \"{{targetRequestId}}\",\n  \"reason\": \"Duplicate report.\"\n}",
-              "options": { "raw": { "language": "json" } }
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const token = pm.collectionVariables.get(\"coordinatorToken\") || \"\";",
+              "if (!token) { throw new Error(\"Missing coordinatorToken. Run folder 0 login requests first.\"); }",
+              "pm.variables.set(\"token\", token);"
+            ]
+          }
         }
       ]
     },
@@ -268,60 +1119,153 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "url": "{{baseUrl}}/api/v1/crises",
             "description": "Roles: Citizen, EmergencyCoordinator, CaseManager. Note: task document states EmergencyCoordinator for this read, but implementation uses RequestReaders. Expected: 200 OK; 401, 403, 500."
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.expect(pm.response.json()).to.be.an(\"array\");"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Create crisis",
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "url": "{{baseUrl}}/api/v1/crises",
             "description": "Role: EmergencyCoordinator. Expected: 201 Created with { id }; 401, 403, 422, 500.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"name\": \"Eastern Rainfall Response\",\n  \"type\": \"Flood\",\n  \"description\": \"Demo crisis created from the DEV2 collection.\",\n  \"startedAt\": \"2026-11-21T06:00:00\"\n}",
-              "options": { "raw": { "language": "json" } }
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 201\", () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.expect(body.id).to.be.a(\"string\").and.not.empty;",
+                  "pm.collectionVariables.set(\"crisisId\", body.id);"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Update crisis",
           "request": {
             "method": "PATCH",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "url": "{{baseUrl}}/api/v1/crises/{{crisisId}}",
             "description": "Role: EmergencyCoordinator. Status values are Active and Closed. Expected: 204 No Content; 401, 403, 404, 422, 500.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"description\": \"Updated coordination notes.\",\n  \"status\": \"Active\"\n}",
-              "options": { "raw": { "language": "json" } }
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Get crisis summary",
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "url": "{{baseUrl}}/api/v1/crises/{{crisisId}}/summary",
             "description": "Roles: EmergencyCoordinator, CaseManager. Returns byStatus, byUrgency, byArea, openTotal and overdueTotal. Expected: 200 OK; 401, 403, 404, 500."
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.expect(body).to.have.property(\"byStatus\");",
+                  "pm.expect(body).to.have.property(\"byUrgency\");",
+                  "pm.expect(body).to.have.property(\"byArea\");",
+                  "pm.expect(body).to.have.property(\"openTotal\");",
+                  "pm.expect(body).to.have.property(\"overdueTotal\");"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const token = pm.collectionVariables.get(\"coordinatorToken\") || \"\";",
+              "if (!token) { throw new Error(\"Missing coordinatorToken. Run folder 0 login requests first.\"); }",
+              "pm.variables.set(\"token\", token);"
+            ]
+          }
         }
       ]
     },
@@ -333,66 +1277,163 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "url": "{{baseUrl}}/api/v1/areas?crisisId={{crisisId}}",
             "description": "Roles: Citizen, EmergencyCoordinator, CaseManager. Note: task document states EmergencyCoordinator, implementation uses RequestReaders. Expected: 200 OK; 401, 403, 500."
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.expect(pm.response.json()).to.be.an(\"array\");"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Create area for crisis",
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "url": "{{baseUrl}}/api/v1/crises/{{crisisId}}/areas",
             "description": "Role: EmergencyCoordinator. Crisis ID comes from the route. Expected: 200 OK with { id }; 401, 403, 404, 422, 500.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"name\": \"North Embankment\",\n  \"description\": \"Raised embankment near the river.\",\n  \"lat\": 7.315,\n  \"lng\": 80.675,\n  \"radiusKm\": 3\n}",
-              "options": { "raw": { "language": "json" } }
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.expect(body.id).to.be.a(\"string\").and.not.empty;",
+                  "pm.collectionVariables.set(\"areaId\", body.id);"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Create alert for crisis",
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "url": "{{baseUrl}}/api/v1/crises/{{crisisId}}/alerts",
             "description": "Role: EmergencyCoordinator. Publish=true creates a Published alert; false creates Draft. Expected: 200 OK with { id }; 401, 403, 404, 422, 500.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"title\": \"Water supply interruption\",\n  \"body\": \"Supply in Riverside Ward is interrupted while repairs continue.\",\n  \"publish\": true\n}",
-              "options": { "raw": { "language": "json" } }
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.expect(body.id).to.be.a(\"string\").and.not.empty;",
+                  "pm.collectionVariables.set(\"alertId\", body.id);"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Publish or update alert",
           "request": {
             "method": "PATCH",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "url": "{{baseUrl}}/api/v1/alerts/{{alertId}}",
             "description": "Role: EmergencyCoordinator. Publish is nullable: true publishes, false unpublishes, omitted leaves visibility unchanged. Expected: 204 No Content; 401, 403, 404, 422, 500.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"title\": \"Shelter capacity update\",\n  \"body\": \"Additional capacity is open at the Harbour Ward Relief Centre.\",\n  \"publish\": true\n}",
-              "options": { "raw": { "language": "json" } }
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const token = pm.collectionVariables.get(\"coordinatorToken\") || \"\";",
+              "if (!token) { throw new Error(\"Missing coordinatorToken. Run folder 0 login requests first.\"); }",
+              "pm.variables.set(\"token\", token);"
+            ]
+          }
         }
       ]
     },
@@ -407,7 +1448,19 @@
             "url": "{{baseUrl}}/api/v1/public/alerts",
             "description": "Anonymous. Returns only Published alerts. Expected: 200 OK; 500."
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.expect(pm.response.json()).to.be.an(\"array\");"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "List public service centres",
@@ -417,7 +1470,19 @@
             "url": "{{baseUrl}}/api/v1/public/service-centres",
             "description": "Anonymous. Returns only IsActive service centres. Expected: 200 OK; 500."
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.expect(pm.response.json()).to.be.an(\"array\");"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
@@ -429,30 +1494,83 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "url": "{{baseUrl}}/api/v1/households/me",
             "description": "Role: Citizen. Sensitive fields are decrypted for the authorised owner. Expected: 200 OK; 401, 403, 404, 500."
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.expect(body).to.have.property(\"id\");",
+                  "pm.expect(body).to.have.property(\"size\");"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Save my household profile",
           "request": {
             "method": "PUT",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "url": "{{baseUrl}}/api/v1/households/me",
             "description": "Role: Citizen. Upserts by current user ID. Sensitive values are encrypted by HouseholdService. Expected: 200 OK with { id }; 401, 403, 422, 500.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"size\": 4,\n  \"accessibilityNeeds\": null,\n  \"contactPhone\": null\n}",
-              "options": { "raw": { "language": "json" } }
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.expect(body).to.have.property(\"id\");"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const token = pm.collectionVariables.get(\"citizenToken\") || \"\";",
+              "if (!token) { throw new Error(\"Missing citizenToken. Run folder 0 login requests first.\"); }",
+              "pm.variables.set(\"token\", token);"
+            ]
+          }
         }
       ]
     }
