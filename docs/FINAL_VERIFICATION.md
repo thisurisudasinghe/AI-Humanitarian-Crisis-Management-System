@@ -54,4 +54,4 @@ This pass focused on final professionalization, coursework compliance mapping, c
 ## Final Commit / PR
 
 - Final commit: `d8ffbfda33383a1a5837cd95312cf13a7b1c0d53` (code/docs pass); see git log for final handover-doc update commit
-- PR: `PENDING_PR`
+- PR: PENDING (not created) - create via https://github.com/thisurisudasinghe/AI-Humanitarian-Crisis-Management-System/pull/new/final/professionalization-compliance

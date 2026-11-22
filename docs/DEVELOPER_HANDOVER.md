@@ -9,7 +9,7 @@ Base: `origin/develop` @ `2e00edb2e17eac26eda43f0ba1f3cd7c9b0e3357` (includes me
 | Item | Status | Notes |
 |---|---|---|
 | Final commit | `d8ffbfda33383a1a5837cd95312cf13a7b1c0d53` (code/docs pass); see git log for final handover-doc update commit | Changes committed on `final/professionalization-compliance`. |
-| PR to `develop` | `PENDING_PR` | `gh` CLI is not installed in this environment and no GitHub token was confirmed. Push/PR must be done with authenticated GitHub access. |
+| PR to `develop` | PENDING (not created) | Branch pushed to `origin/final/professionalization-compliance`. `gh` CLI is not installed and no GitHub token was confirmed, so PR creation could not be automated. Create PR: https://github.com/thisurisudasinghe/AI-Humanitarian-Crisis-Management-System/pull/new/final/professionalization-compliance or compare https://github.com/thisurisudasinghe/AI-Humanitarian-Crisis-Management-System/compare/develop...final/professionalization-compliance |
 | Merge to `develop` | PENDING | Do not merge until PR checks/protection pass. Normal merge only; no force-push, reset, discard, branch deletion, direct `develop`/`main` push, or protection bypass. |
 | Local `develop` sync | PENDING | After merge, sync local `develop` with `origin/develop` and record final merged commit hash here. |
 
