@@ -30,6 +30,21 @@ public class HaversineTests
     }
 
     [Fact]
+    public async Task Map_provider_down_FallsBackToHaversine_WithoutBlockingOrClaimingPrecision()
+    {
+        var service = new HaversineOnlyGeoService();
+
+        var result = await service.GetDistanceAsync(
+            new GeoPoint(6.9271, 79.8612),
+            new GeoPoint(7.2088, 79.8358));
+        var geocode = await service.GeocodeAsync("any address");
+
+        Assert.True(result.IsApproximate);
+        Assert.InRange(result.Km, 30d, 35d);
+        Assert.Null(geocode);
+    }
+
+    [Fact]
     public async Task Colombo_to_Kandy_is_about_95_km()
     {
         var service = new HaversineOnlyGeoService();

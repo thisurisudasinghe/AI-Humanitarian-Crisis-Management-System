@@ -1,5 +1,7 @@
-﻿using Cms.Application.DTOs.AI;
+﻿using Cms.Api.Constants;
+using Cms.Application.DTOs.AI;
 using Cms.Application.Interfaces.AI;
+using Cms.Domain.Constants;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -7,7 +9,7 @@ namespace Cms.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize]
+[Authorize(Roles = AuthorizedRoles.Staff)]
 public class RecommendationController : ControllerBase
 {
     private readonly IRecommendationService _recommendationService;
@@ -48,6 +50,8 @@ public class RecommendationController : ControllerBase
         return Ok(recommendation);
     }
 
+    /// <summary>Generates an advisory crisis summary for EmergencyCoordinator review.</summary>
+    [Authorize(Roles = Roles.EmergencyCoordinator)]
     [HttpPost("crisis/{crisisId:guid}/generate")]
     public async Task<IActionResult> GenerateForCrisis(
         Guid crisisId,

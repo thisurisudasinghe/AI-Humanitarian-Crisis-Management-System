@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Button, Input, Skeleton, Toast } from "@/components/ui";
 import { AuthGuard } from "@/components/AuthGuard";
-import { api, errorMessage } from "@/lib/api";
+import { api, apiBlob, errorMessage } from "@/lib/api";
 import {
   formatDate,
   formatMetric,
@@ -17,6 +17,8 @@ import {
   type RoleName
 } from "@/lib/roles";
 import { useAuth } from "@/lib/auth";
+import { currentMonthRange } from "@/lib/dates";
+import { useDebouncedValue } from "@/lib/useDebouncedValue";
 
 const kpiRoles: RoleName[] = [
   RoleNames.SystemAdmin,
@@ -76,37 +78,92 @@ function AreaTable({ rows }: { rows: KpiAreaBreakdown[] }) {
 
 export default function KpiPage() {
   const { user } = useAuth();
-  const [from, setFrom] = useState("2026-11-01");
-  const [to, setTo] = useState("2026-11-30");
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
   const [crisisEventId, setCrisisEventId] = useState("");
   const [areaId, setAreaId] = useState("");
   const [report, setReport] = useState<KpiReportDto | null>(null);
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
   const [notice, setNotice] = useState<Notice>(null);
+
+  const debouncedCrisisEventId = useDebouncedValue(crisisEventId);
+  const debouncedAreaId = useDebouncedValue(areaId);
+
+  useEffect(() => {
+    const range = currentMonthRange();
+    setFrom(range.from);
+    setTo(range.to);
+  }, []);
 
   const crisisInvalid =
     crisisEventId.trim().length > 0 && !guidPattern.test(crisisEventId.trim());
   const areaInvalid =
     areaId.trim().length > 0 && !guidPattern.test(areaId.trim());
 
-  const load = useCallback(async () => {
+  const buildParams = useCallback((): URLSearchParams | null => {
+    if (!from || !to) {
+      return null;
+    }
+
     const params = new URLSearchParams({
       from: `${from}T00:00:00Z`,
       to: `${to}T23:59:59Z`
     });
 
-    const crisis = parseGuid(crisisEventId, "Crisis event ID");
+    const crisis = parseGuid(debouncedCrisisEventId, "Crisis event ID");
     if (crisis) {
       params.set("crisisEventId", crisis);
     }
 
-    const area = parseGuid(areaId, "Area ID");
+    const area = parseGuid(debouncedAreaId, "Area ID");
     if (area) {
       params.set("areaId", area);
     }
 
+    return params;
+  }, [debouncedAreaId, debouncedCrisisEventId, from, to]);
+
+  const load = useCallback(async (): Promise<KpiReportDto | null> => {
+    const params = buildParams();
+
+    if (!params) {
+      return null;
+    }
+
     return api<KpiReportDto>(`/api/v1/kpis?${params.toString()}`);
-  }, [areaId, crisisEventId, from, to]);
+  }, [buildParams]);
+
+  async function handleExport() {
+    const params = buildParams();
+
+    if (!params) {
+      return;
+    }
+
+    setExporting(true);
+
+    try {
+      const { blob, fileName } = await apiBlob(
+        `/api/v1/kpis/export?${params.toString()}`
+      );
+
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = fileName ?? "kpi-report.csv";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+
+      setNotice({ message: "KPI report downloaded.", tone: "success" });
+    } catch (caught) {
+      setNotice({ message: errorMessage(caught), tone: "error" });
+    } finally {
+      setExporting(false);
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -114,7 +171,7 @@ export default function KpiPage() {
 
     void load()
       .then((value) => {
-        if (!cancelled) {
+        if (!cancelled && value) {
           setReport(value);
         }
       })
@@ -144,9 +201,18 @@ export default function KpiPage() {
             <h1>KPIs</h1>
             <p>Cross-module performance indicators for the selected period.</p>
           </div>
-          <Button onClick={() => void load().then(setReport).catch((caught: unknown) => setNotice({ message: errorMessage(caught), tone: "error" }))} disabled={loading}>
-            Refresh
-          </Button>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <Button
+              variant="secondary"
+              onClick={() => void handleExport()}
+              disabled={loading || exporting || !report}
+            >
+              {exporting ? "Exporting…" : "Export CSV"}
+            </Button>
+            <Button onClick={() => void load().then(setReport).catch((caught: unknown) => setNotice({ message: errorMessage(caught), tone: "error" }))} disabled={loading}>
+              Refresh
+            </Button>
+          </div>
         </header>
 
         {!allowed ? null : (
@@ -186,7 +252,7 @@ export default function KpiPage() {
 
             {report?.isPlaceholder ? (
               <section className="notice">
-                Identity and donation aggregates are live.
+                Identity, donation and notification aggregates are live.
                 {report.pendingSections.length > 0
                   ? ` Still provisional: ${report.pendingSections.join(", ")} — waiting on Members 2–4 to publish their table and column names.`
                   : null}{" "}
@@ -239,6 +305,18 @@ export default function KpiPage() {
                     <div className="metric__label">AI override rate</div>
                     <div className="metric__value">
                       {formatMetric(report?.aiOverrideRatePercent, "%")}
+                    </div>
+                  </div>
+                  <div className="card">
+                    <div className="metric__label">Total notifications</div>
+                    <div className="metric__value">
+                      {report?.totalNotificationCount ?? "—"}
+                    </div>
+                  </div>
+                  <div className="card">
+                    <div className="metric__label">Sent notifications</div>
+                    <div className="metric__value">
+                      {report?.sentNotificationCount ?? "—"}
                     </div>
                   </div>
                   <div className="card">

@@ -13,6 +13,10 @@ namespace Cms.Api.Controllers;
 /// Kept alongside <see cref="OutboxController"/> so the existing admin route
 /// remains available while both modules share the transactional outbox.
 /// </summary>
+/// <remarks>
+/// Dead-lettered notifications are visible to administrators and are retried
+/// explicitly; payload and idempotency key are omitted from the admin projection.
+/// </remarks>
 [ApiController]
 [Authorize(Policy = "AdminOnly")]
 [Route("api/v1/admin/dead-letters")]
@@ -30,7 +34,7 @@ public sealed class DeadLetterController : ControllerBase
         _auditLogger = auditLogger;
     }
 
-    // GET: api/v1/admin/dead-letters
+    /// <summary>Lists dead-lettered outbox messages in paged form.</summary>
     [HttpGet]
     [ProducesResponseType(typeof(PagedResultDto<OutboxMessageDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
@@ -44,7 +48,7 @@ public sealed class DeadLetterController : ControllerBase
         return Ok(await _outboxAdminService.GetDeadLetteredAsync(query, cancellationToken));
     }
 
-    // POST: api/v1/admin/dead-letters/{id}/retry
+    /// <summary>Requeues one dead-lettered message for another delivery attempt.</summary>
     [HttpPost("{id:guid}/retry")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]

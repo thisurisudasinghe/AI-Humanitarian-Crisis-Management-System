@@ -51,6 +51,10 @@ public class DecisionController : ControllerBase
         {
             return BadRequest(new { message = ex.Message });
         }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
         catch (UnauthorizedAccessException)
         {
             return Unauthorized();

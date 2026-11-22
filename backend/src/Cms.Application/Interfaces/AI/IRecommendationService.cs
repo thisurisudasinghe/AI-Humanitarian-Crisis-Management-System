@@ -13,6 +13,19 @@ public interface IRecommendationService
         Guid recommendationId,
         CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<Recommendation>> GetByTargetAsync(
+        Guid targetId,
+        string? type = null,
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<Recommendation>> GetAllAsync(
+        string? type = null,
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<MatchCandidateDto>> GetMatchesAsync(
+        MatchRequestDto request,
+        CancellationToken cancellationToken = default);
+
     Task<Guid> GenerateForCrisisAsync(
         Guid crisisId,
         CancellationToken cancellationToken = default);

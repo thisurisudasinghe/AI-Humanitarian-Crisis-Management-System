@@ -26,3 +26,8 @@ export function hasAnyRole(roles: readonly string[], allowed: readonly string[])
 export function isStaff(roles: readonly string[]): boolean {
   return hasAnyRole(roles, StaffRoles);
 }
+
+/** Landing route that matches the roles returned by the identity API. */
+export function homePathForRoles(roles: readonly string[]): string {
+  return isStaff(roles) ? "/operations" : "/dashboard";
+}

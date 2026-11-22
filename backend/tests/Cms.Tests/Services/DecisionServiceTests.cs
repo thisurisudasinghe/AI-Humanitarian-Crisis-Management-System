@@ -1,6 +1,7 @@
 ﻿
 using Cms.Application.Contracts;
 using Cms.Application.Interfaces;
+using Cms.Domain.Constants;
 using Cms.Domain.Entities;
 using Cms.Domain.Enums;
 using Cms.Infrastructure.Data;
@@ -13,9 +14,16 @@ namespace Cms.Tests.Services;
 
 public class DecisionServiceTests
 {
-    private readonly Mock<ICurrentUser> _currentUserMock = new();
+    private readonly Mock<ICurrentUser> _currentUserMock = CreateCurrentUserMock();
     private readonly Mock<IAuditLogger> _auditMock = new();
     private readonly Mock<IDateTimeService> _dateTimeMock = new();
+
+    private static Mock<ICurrentUser> CreateCurrentUserMock()
+    {
+        var mock = new Mock<ICurrentUser>();
+        mock.Setup(x => x.Roles).Returns(new[] { Roles.EmergencyCoordinator });
+        return mock;
+    }
 
     private CmsDbContext CreateContext()
     {
@@ -35,7 +43,7 @@ public class DecisionServiceTests
         var userId = Guid.NewGuid();
         var recommendation = new Recommendation
         {
-            Type = "CrisisResponse",
+            Type = RecommendationTypes.CloseCase,
             TargetId = Guid.NewGuid(),
             PayloadJson = "{}",
             Confidence = 0.70m,
@@ -181,7 +189,7 @@ public class DecisionServiceTests
 
         var recommendation = new Recommendation
         {
-            Type = "CrisisResponse",
+            Type = RecommendationTypes.CloseCase,
             TargetId = Guid.NewGuid(),
             PayloadJson = "{}",
             Confidence = 0.85m,
@@ -223,7 +231,7 @@ public class DecisionServiceTests
 
         var recommendation = new Recommendation
         {
-            Type = "CrisisResponse",
+            Type = RecommendationTypes.CloseCase,
             TargetId = Guid.NewGuid(),
             PayloadJson = "{}",
             Confidence = 0.85m,
@@ -269,7 +277,7 @@ public class DecisionServiceTests
 
         var recommendation = new Recommendation
         {
-            Type = "CrisisResponse",
+            Type = RecommendationTypes.CloseCase,
             TargetId = Guid.NewGuid(),
             PayloadJson = "{}",
             Confidence = 0.85m,
@@ -343,5 +351,78 @@ public class DecisionServiceTests
                 Guid.NewGuid(),
                 (DecisionOutcome)999,
                 "Invalid outcome"));
+    }
+
+    [Fact]
+    public async Task RecordDecisionAsync_UnauthorisedRole_ThrowsException()
+    {
+        await using var context = CreateContext();
+
+        var recommendation = new Recommendation
+        {
+            Type = RecommendationTypes.CloseCase,
+            TargetId = Guid.NewGuid(),
+            PayloadJson = "{}",
+            Confidence = 0.8m,
+            Rationale = "Test recommendation",
+            Source = RecommendationSources.Rule
+        };
+        await context.Recommendations.AddAsync(recommendation);
+        await context.SaveChangesAsync();
+
+        var unauthorisedUser = new Mock<ICurrentUser>();
+        unauthorisedUser.Setup(x => x.IsAuthenticated).Returns(true);
+        unauthorisedUser.Setup(x => x.UserId).Returns(Guid.NewGuid());
+        unauthorisedUser.Setup(x => x.Roles).Returns(new[] { Roles.Citizen });
+
+        var service = new DecisionService(
+            context,
+            unauthorisedUser.Object,
+            _auditMock.Object,
+            _dateTimeMock.Object);
+
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(
+            () => service.RecordDecisionAsync(
+                recommendation.Id,
+                DecisionOutcome.Approved,
+                "Approved"));
+    }
+
+    [Fact]
+    public async Task RecordDecisionAsync_SecondDecision_ThrowsImmutabilityException()
+    {
+        await using var context = CreateContext();
+
+        var recommendation = new Recommendation
+        {
+            Type = RecommendationTypes.CloseCase,
+            TargetId = Guid.NewGuid(),
+            PayloadJson = "{}",
+            Confidence = 0.8m,
+            Rationale = "Test recommendation",
+            Source = RecommendationSources.Rule
+        };
+        await context.Recommendations.AddAsync(recommendation);
+        await context.SaveChangesAsync();
+
+        _currentUserMock.Setup(x => x.IsAuthenticated).Returns(true);
+        _currentUserMock.Setup(x => x.UserId).Returns(Guid.NewGuid());
+
+        var service = new DecisionService(
+            context,
+            _currentUserMock.Object,
+            _auditMock.Object,
+            _dateTimeMock.Object);
+
+        await service.RecordDecisionAsync(
+            recommendation.Id,
+            DecisionOutcome.Approved,
+            "First decision");
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => service.RecordDecisionAsync(
+                recommendation.Id,
+                DecisionOutcome.Rejected,
+                "Second decision"));
     }
 }

@@ -22,6 +22,7 @@ import {
 } from "@/lib/donations";
 import { RoleNames, hasAnyRole } from "@/lib/roles";
 import { useAuth } from "@/lib/auth";
+import { currentMonthRange } from "@/lib/dates";
 
 const donationRoles = [
   RoleNames.SystemAdmin,
@@ -33,10 +34,6 @@ const donationRoles = [
 const managerRoles = [RoleNames.SystemAdmin, RoleNames.DonorOfficer];
 
 type Notice = { message: string; tone: "error" | "success" } | null;
-
-function isoDate(date: Date): string {
-  return date.toISOString().slice(0, 10);
-}
 
 function parsePositive(value: string): number | null {
   const parsed = Number(value);
@@ -84,9 +81,9 @@ export default function DonationsPage() {
   const allowed = user ? hasAnyRole(user.roles, donationRoles) : false;
 
   useEffect(() => {
-    const now = new Date();
-    setFrom(isoDate(new Date(now.getFullYear(), now.getMonth(), 1)));
-    setTo(isoDate(now));
+    const range = currentMonthRange();
+    setFrom(range.from);
+    setTo(range.to);
   }, []);
 
   const loadAll = useCallback(async () => {
@@ -498,6 +495,7 @@ export default function DonationsPage() {
                 <div className="filters">
                   <Select
                     label="Donor"
+                    id="donation-donor"
                     value={donationDonorId}
                     onChange={(event) => setDonationDonorId(event.target.value)}
                   >
@@ -512,6 +510,7 @@ export default function DonationsPage() {
                   </Select>
                   <Select
                     label="Type"
+                    id="donation-type"
                     value={donationType}
                     onChange={(event) =>
                       setDonationType(event.target.value as DonationType)
@@ -525,6 +524,7 @@ export default function DonationsPage() {
                   </Select>
                   <Input
                     label="Currency"
+                    id="donation-currency"
                     value={donationCurrency}
                     maxLength={3}
                     onChange={(event) =>
@@ -534,6 +534,7 @@ export default function DonationsPage() {
                   {donationType === "Monetary" ? (
                     <Input
                       label="Amount"
+                      id="donation-amount"
                       type="number"
                       min="0.01"
                       step="0.01"
@@ -588,6 +589,7 @@ export default function DonationsPage() {
                 <div className="filters">
                   <Select
                     label="Donation"
+                    id="allocation-donation"
                     value={allocationDonationId}
                     onChange={(event) => setAllocationDonationId(event.target.value)}
                   >
@@ -602,6 +604,7 @@ export default function DonationsPage() {
                   </Select>
                   <Select
                     label="Campaign"
+                    id="allocation-campaign"
                     value={allocationCampaignId}
                     onChange={(event) => setAllocationCampaignId(event.target.value)}
                   >
@@ -614,6 +617,7 @@ export default function DonationsPage() {
                   </Select>
                   <Input
                     label="Amount"
+                    id="allocation-amount"
                     type="number"
                     min="0.01"
                     step="0.01"
@@ -786,6 +790,7 @@ export default function DonationsPage() {
                     />
                     <Input
                       label="Currency"
+                      id="campaign-currency"
                       value={campaignCurrency}
                       maxLength={3}
                       onChange={(event) =>
@@ -804,6 +809,7 @@ export default function DonationsPage() {
                   <div className="filters">
                     <Select
                       label="Campaign"
+                      id="expense-campaign"
                       value={expenseCampaignId}
                       onChange={(event) => setExpenseCampaignId(event.target.value)}
                     >
@@ -823,6 +829,7 @@ export default function DonationsPage() {
                     />
                     <Input
                       label="Amount"
+                      id="expense-amount"
                       type="number"
                       min="0.01"
                       step="0.01"

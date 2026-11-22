@@ -10,6 +10,7 @@ import {
   type Column
 } from "@/components/ui";
 import { AuthGuard } from "@/components/AuthGuard";
+import { AdminNav } from "@/components/safeway/AdminNav";
 import { api, errorMessage } from "@/lib/api";
 import {
   formatDate,
@@ -17,6 +18,7 @@ import {
   type PagedResult
 } from "@/lib/admin";
 import { RoleNames } from "@/lib/roles";
+import { useDebouncedValue } from "@/lib/useDebouncedValue";
 
 type Notice = { message: string; tone: "error" | "success" } | null;
 
@@ -41,6 +43,11 @@ export default function AuditPage() {
   const [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState<Notice>(null);
 
+  const debouncedAction = useDebouncedValue(action);
+  const debouncedEntityType = useDebouncedValue(entityType);
+  const debouncedEntityId = useDebouncedValue(entityId);
+  const debouncedActorUserId = useDebouncedValue(actorUserId);
+
   const load = useCallback(async () => {
     const params = new URLSearchParams({ page: String(page), pageSize: "20" });
 
@@ -50,10 +57,10 @@ export default function AuditPage() {
       }
     };
 
-    add("action", action);
-    add("entityType", entityType);
-    add("entityId", entityId);
-    add("actorUserId", actorUserId);
+    add("action", debouncedAction);
+    add("entityType", debouncedEntityType);
+    add("entityId", debouncedEntityId);
+    add("actorUserId", debouncedActorUserId);
 
     const fromIso = toUtcIso(from);
     const toIso = toUtcIso(to);
@@ -69,7 +76,15 @@ export default function AuditPage() {
     return api<PagedResult<AuditEventDto>>(
       `/api/v1/audit-events?${params.toString()}`
     );
-  }, [action, actorUserId, entityId, entityType, from, page, to]);
+  }, [
+    debouncedAction,
+    debouncedActorUserId,
+    debouncedEntityId,
+    debouncedEntityType,
+    from,
+    page,
+    to
+  ]);
 
   useEffect(() => {
     let cancelled = false;
@@ -157,6 +172,8 @@ export default function AuditPage() {
             Clear filters
           </Button>
         </header>
+
+        <AdminNav />
 
         <section className="card">
           <div className="filters">

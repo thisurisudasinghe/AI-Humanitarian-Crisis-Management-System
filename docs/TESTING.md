@@ -1,12 +1,13 @@
 # Testing and UAT
 
-This document is the Dev 1 (team lead) testing hand-off for Task 3. It records
-the test layers, the commands, current coverage, the end-to-end UAT loop, and the
-manual regression checklist for the modules Dev 1 owns (`identity`, `common`,
-`don`, administration, audit, KPIs and the frontend shell).
+This document records the test layers, commands, coverage, end-to-end UAT loop
+and manual regression checklist across the shared platform and the Dev 3
+(AI, governance, notifications) modules. Run `dotnet test` for the current
+backend test count rather than relying on a number copied into this document.
 
-Cross-module steps stay marked **pending** until Members 2–4 publish their SQL
-scripts and endpoints. Nothing in this document assumes another member's schema.
+The final Dev3 live run and its exact responses are recorded in
+`docs/DEV3_LIVE_EVIDENCE.md`. Any item not exercised in that run is explicitly
+marked as not exercised rather than reported as passed.
 
 ## 1. Test layers
 
@@ -28,25 +29,29 @@ SQL Server.
 dotnet build backend/Cms.sln
 dotnet test backend/tests/Cms.Tests/Cms.Tests.csproj
 
-# Frontend
+# Frontend (use npm.cmd on Windows; plain npm is blocked in this environment)
 cd frontend
-npm ci
-npm run typecheck
-npm run build
+npm.cmd ci
+npm.cmd run typecheck
+npm.cmd run build
 ```
 
 Database (canonical order, every script is idempotent — run each one twice to
 prove it):
 
 ```powershell
-# 00_common.sql -> 03_ai.sql -> 01_cases.sql ... 08_don.sql
+# 00_common.sql -> 02_notif.sql -> 03_ai.sql -> 01_cases.sql ... 08_don.sql
 # -> 98_foreign_keys.sql -> 99_seed_users.sql
-# -> 90_seed_scenario.sql, 91_seed_ops.sql
+# -> 90_seed_scenario.sql (seeded data), 91_seed_ops.sql
+# Note: 91_seed_ops.sql currently fails in this checkout because M4 EF mappings
+# expect snake_case res.* objects while 04_res.sql creates PascalCase tables.
 sqlcmd -S "(localdb)\mssqllocaldb" -d CmsDb -I -b -i backend/db/00_common.sql
+sqlcmd -S "(localdb)\mssqllocaldb" -d CmsDb -I -b -i backend/db/02_notif.sql
 sqlcmd -S "(localdb)\mssqllocaldb" -d CmsDb -I -b -i backend/db/03_ai.sql
 sqlcmd -S "(localdb)\mssqllocaldb" -d CmsDb -I -b -i backend/db/08_don.sql
 sqlcmd -S "(localdb)\mssqllocaldb" -d CmsDb -I -b -i backend/db/98_foreign_keys.sql
 sqlcmd -S "(localdb)\mssqllocaldb" -d CmsDb -I -b -i backend/db/99_seed_users.sql
+sqlcmd -S "(localdb)\mssqllocaldb" -d CmsDb -I -b -i backend/db/91_seed_ops.sql
 ```
 
 Run the API for manual checks:
@@ -75,9 +80,12 @@ for local development; do not re-add them to User Secrets.
 
 ## 3. Current coverage
 
-- 141 backend tests, 0 skipped (unit + integration).
-- 30 frontend routes build statically, including `/notifications`, `/donations`
-  and `/kpis`.
+- Backend unit + integration tests: run `dotnet test` for the current count and
+  skip status. No fixed number is recorded here because modules are still being
+  integrated.
+- Frontend routes build statically; `npm.cmd run build` prints the current route
+  list, including `/notifications`, `/donations`, `/kpis`, `/operations/ai`,
+  `/operations/ai/chat` and `/operations/decisions`.
 
 | Area | Covered by |
 |---|---|
@@ -91,26 +99,53 @@ for local development; do not re-add them to User Secrets.
 | Outbox enqueue, idempotency, dispatch, retry, dead-letter, stale recovery and admin view | `OutboxServiceTests`, `OutboxProcessorTests`, `OutboxEndpointTests` |
 | Notification inbox, read state, failed-delivery admin view | `NotificationEndpointTests` |
 | `Notification.Send` handler: in-app + email rows, idempotent retry, failed delivery, inactive recipient | `EmailNotificationHandlerTests` |
-| Cases, AI, governance, resources, shelter, volunteers, mapping | Pending other modules |
+| AI recommendations, human decisions, post-incident review, announcements | Dev 3 unit tests (see `docs/DEV3_REPORT.md` for the final run) |
+| FAQ chat is informational only; rules/LLM fallback and outbox dead-letter handling | Dev 3 resilience checks (below) |
+| Cases, resources, shelter, volunteers, mapping | Other module owners |
 
 ## 4. End-to-end UAT loop
 
 The SRS core loop is the UAT scenario. Each step is listed with its owner and
 current readiness.
 
-| # | Step | Owner | Ready | Verified today by |
+| # | Step | Owner | Final live result | Evidence |
 |---|---|---|---|---|
-| 1 | Citizen registers and logs in | Dev 1 | Yes | `AuthFlowTests`, manual login of `citizen@example.org` |
-| 2 | Citizen submits a request | Dev 2 | Pending | Waiting on `01_cases.sql` and request endpoints |
-| 3 | Coordinator verifies the request | Dev 2 | Pending | Waiting on request workflow endpoints |
-| 4 | AI classifies and scores with confidence and rationale | Dev 3 | Pending | Waiting on AI endpoints and decision records |
-| 5 | Human approves, modifies or rejects the recommendation | Dev 3 | Pending | Waiting on governance endpoints |
-| 6 | Resource, shelter and/or volunteer allocation | Dev 4 | Pending | Waiting on allocation endpoints |
-| 7 | Notification is sent to the citizen | Dev 1 | Yes | `EmailNotificationHandlerTests`, in-app inbox via `GET /api/v1/notifications` |
-| 8 | Case is completed and the audit trail is reviewable | Dev 2 + Dev 1 | Partly | Audit viewer, filters and append-only guard are ready; case closure is pending |
+| 1 | Citizen registers and logs in | Dev 1 | Yes | Live login HTTP 200; `AuthFlowTests` |
+| 2 | Citizen submits a request | Dev 2 | Yes | Live `POST /api/v1/requests` HTTP 201 |
+| 3 | Coordinator verifies the request | Dev 2 | Not exercised in final run | Seeded request was already `Triaged`; workflow tests remain with Dev 2 |
+| 4 | AI classifies and scores with confidence and rationale | Dev 3 | Yes | Live `Classification` and `Priority` rows from the outbox |
+| 5 | Human approves, modifies or rejects the recommendation | Dev 3 | Yes | Live 403/201/409 decision checks and `Recommended -> Approved` |
+| 6 | Resource, shelter and/or volunteer allocation | Dev 4 | Partial | No-decision allocation denied (403); M4 allocation write has a transaction defect; workflow transitions and Dev3 close gate passed |
+| 7 | Notification is sent to the citizen | Dev 3 channels / Dev 1 outbox | Yes | 12 InApp/Email notification rows verified; all `Sent` |
+| 8 | Case is completed and the audit trail is reviewable | Dev 2 + Dev 3 + Dev 1 | Yes for this scenario | Request `Closed`, history and audit rows verified; append-only triggers present |
 
 The SRS counts this as seven UAT steps; audit is treated as the cross-cutting
 control rather than a separate user action.
+
+### Dev 3 resilience and failure injection
+
+Expected behaviour when a dependency is unavailable (record the actual result
+in `docs/DEV3_REPORT.md` after the final run):
+
+1. **AI down / timeout / low confidence** — the rule-based provider answers and
+   the stored recommendation has `Source = Rule`. Submitting a request is never
+   blocked by the AI call.
+2. **Map down** — geocoding uses the cache, then Haversine with
+   `IsApproximate = true`; the UI shows "approximate". Submitting is not blocked.
+3. **Email/SMTP down** — the email notification row is `Failed`, the outbox
+   retries with back-off and moves the message to `DeadLetter` after three
+   attempts. `GET /api/v1/admin/dead-letters` shows it to an admin and
+   `POST /api/v1/admin/dead-letters/{id}/retry` requeues it.
+4. **Duplicate delivery** — processing the same outbox idempotency key twice
+   produces one notification for the recipient.
+5. **FAQ chat** — `POST /api/v1/ai/chat` returns an answer only. Confirm it
+   cannot create, approve or reject a decision; the UI notice states
+   "Information only - this chat does not make or approve decisions."
+6. **Templates** — `backend/db/02_notif.sql` seeds English (`en`) and Spanish
+   (`es`) rows in `common.notification_templates`, keyed by template key plus
+   language. The in-code fallback registry currently holds English defaults;
+   if a second-language template is added it must use the same key/language
+   convention rather than a new template key.
 
 ## 5. Demo accounts
 
@@ -136,10 +171,12 @@ startup by `DevelopmentDemoSeeder` after the SQL schema scripts have run.
 
 Run this before every Dev 1 hand-off or demo.
 
-1. Run `00_common.sql`, `08_don.sql`, `98_foreign_keys.sql` and
-   `99_seed_users.sql` twice. Both passes must succeed; `common.system_settings`
-   must contain three rows. Then start the API once in Development so
-   `DevelopmentDemoSeeder` creates the demo users.
+1. Run `00_common.sql`, `02_notif.sql`, `03_ai.sql`, `08_don.sql`,
+   `98_foreign_keys.sql` and `99_seed_users.sql` twice. Both passes must succeed;
+   `common.system_settings` must contain three rows and
+   `common.notification_templates` must contain `en` and `es` rows. Then start
+   the API once in Development so `DevelopmentDemoSeeder` creates the demo
+   users.
 2. Log in as each active demo account and confirm `GET /api/v1/auth/me` returns
    the expected roles. `inactive@example.org` must return `401`.
 3. Confirm the authorization matrix:
@@ -168,8 +205,10 @@ Run this before every Dev 1 hand-off or demo.
    inbox) and one `Email` row. Retrying the same event must not duplicate rows.
    With no `Smtp:Host` configured the log sender records the email delivery; a
    failing sender leaves the email row `Failed` and the event retries.
-9. Frontend: `npm run typecheck` and `npm run build` must pass; `/notifications`,
-   `/donations` and `/kpis` must appear in the route list. As a signed-in user,
+9. Frontend: `npm.cmd run typecheck` and `npm.cmd run build` must pass;
+   `/notifications`, `/donations`, `/kpis`, `/operations/ai`,
+   `/operations/ai/chat` and `/operations/decisions` must appear in the route
+   list. As a signed-in user,
    `/notifications` shows the inbox with All/Unread filters, per-item and
    mark-all read, and `/dashboard` shows the three most recent messages.
 10. Files: upload a PNG as `citizen@example.org`; confirm `201` with a 32-hex key
@@ -197,13 +236,18 @@ Apply to `/login`, `/register`, `/dashboard`, `/admin/*`, `/donations` and
 
 ## 8. Blocked coverage
 
-These items cannot be completed until the owning modules publish their schemas
-and endpoints:
+These items remain outside the Dev3 pass result:
 
-- `01_cases.sql` … `07_geo.sql` and the `90_seed_scenario.sql` /
-  `91_seed_ops.sql` repeatable scenario.
+- `91_seed_ops.sql` fails on the M4 PascalCase/snake_case resource mismatch. The
+  live run used test-only compatibility views in a disposable database; no
+  production schema change was committed.
 - Cross-module foreign keys in `98_foreign_keys.sql` beyond the notification →
-  user relationship (which Dev 1 now owns).
-- Integration tests for requests, AI, governance, resources, shelter, volunteers
-  and mapping.
-- The full UAT run and the Task 3 UAT evidence pack.
+  user relationship remain with their owning modules.
+- Integration tests for requests, resources, shelter, volunteers and mapping
+  remain with their owners; Dev3 AI/governance coverage is listed above.
+- The M4 allocation endpoint's EF retry/transaction defect prevents a successful
+  allocation write. The Dev3 core-loop evidence therefore uses the Dev3-owned
+  Critical close decision gate for the positive case action, and records the
+  no-decision allocation denial as the governance negative check.
+- Swagger JSON generation fails on `FilesController.Upload`; direct API calls
+  were used for the live run.

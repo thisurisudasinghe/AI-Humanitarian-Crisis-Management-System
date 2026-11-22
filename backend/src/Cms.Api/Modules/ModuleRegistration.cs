@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Configuration;
+
 namespace Cms.Api.Modules;
 
 /// <summary>
@@ -6,12 +8,14 @@ namespace Cms.Api.Modules;
 /// </summary>
 public static class ModuleRegistration
 {
-    public static IServiceCollection AddCmsModules(this IServiceCollection services)
+    public static IServiceCollection AddCmsModules(
+        this IServiceCollection services,
+        IConfiguration configuration)
     {
         // Order matters only for overrides: each module registers after the
         // foundation, so its real implementation replaces the fail-closed stub.
         services.AddIdentityModule();
-        services.AddCasesModule();
+        services.AddCasesModule(configuration);
         services.AddAiModule();
         services.AddLogisticsModule();
 

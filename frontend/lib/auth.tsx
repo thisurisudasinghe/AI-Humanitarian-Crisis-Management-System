@@ -30,8 +30,8 @@ interface RegisterInput {
 interface AuthContextValue {
   user: CurrentUser | null;
   ready: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  register: (input: RegisterInput) => Promise<void>;
+  login: (email: string, password: string) => Promise<CurrentUser>;
+  register: (input: RegisterInput) => Promise<CurrentUser>;
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
   can: (allowed: readonly string[]) => boolean;
@@ -46,6 +46,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const loadCurrentUser = useCallback(async () => {
     const current = await api<CurrentUser>("/api/v1/auth/me");
     setUser(current);
+    return current;
   }, []);
 
   useEffect(() => {
@@ -77,7 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const completeAuth = useCallback(
     async (auth: AuthResponse) => {
       setTokens(auth);
-      await loadCurrentUser();
+      return loadCurrentUser();
     },
     [loadCurrentUser]
   );
@@ -88,7 +89,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email,
         password
       });
-      await completeAuth(auth);
+      return completeAuth(auth);
     },
     [completeAuth]
   );
@@ -96,7 +97,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const register = useCallback(
     async (input: RegisterInput) => {
       const auth = await apiJson<AuthResponse>("/api/v1/auth/register", "POST", input);
-      await completeAuth(auth);
+      return completeAuth(auth);
     },
     [completeAuth]
   );

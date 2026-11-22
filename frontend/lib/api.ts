@@ -199,6 +199,39 @@ export function apiJson<T>(
   });
 }
 
+/** Fetches a binary attachment with the same auth/refresh handling as `api`. */
+export async function apiBlob(
+  path: string,
+  init: RequestInit = {},
+  retryOnUnauthorized = true
+): Promise<{ blob: Blob; fileName: string | null }> {
+  let response = await send(path, init, true);
+
+  if (
+    response.status === 401 &&
+    retryOnUnauthorized &&
+    !path.startsWith("/api/v1/auth/")
+  ) {
+    const refreshed = await refreshAccessToken();
+
+    if (refreshed) {
+      response = await send(path, init, true);
+    }
+  }
+
+  if (!response.ok) {
+    throw await toApiError(response);
+  }
+
+  const disposition = response.headers.get("Content-Disposition") ?? "";
+  const match = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(disposition);
+
+  return {
+    blob: await response.blob(),
+    fileName: match ? decodeURIComponent(match[1]) : null
+  };
+}
+
 export function errorMessage(error: unknown): string {
   if (error instanceof ApiError) {
     const fieldErrors = Object.values(error.details.errors ?? {})

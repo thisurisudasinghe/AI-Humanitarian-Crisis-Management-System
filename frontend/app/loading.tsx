@@ -1,9 +1,13 @@
-import { Skeleton } from "@/components/ui";
+import { Brand } from "@/components/safeway/Brand";
 
 export default function Loading() {
   return (
-    <main className="page">
-      <Skeleton rows={6} />
+    <main className="loading-screen">
+      <div>
+        <Brand />
+        <div className="skeleton-block" style={{ marginTop: 24 }} />
+        <p>Loading SAFEWAY…</p>
+      </div>
     </main>
   );
 }

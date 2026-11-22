@@ -14,6 +14,7 @@ import {
   type Column
 } from "@/components/ui";
 import { AuthGuard } from "@/components/AuthGuard";
+import { AdminNav } from "@/components/safeway/AdminNav";
 import { api, apiJson, errorMessage } from "@/lib/api";
 import {
   OrganisationTypes,
@@ -21,6 +22,7 @@ import {
   type PagedResult
 } from "@/lib/admin";
 import { RoleNames } from "@/lib/roles";
+import { useDebouncedValue } from "@/lib/useDebouncedValue";
 
 type Notice = { message: string; tone: "error" | "success" } | null;
 
@@ -55,11 +57,13 @@ export default function OrganisationsPage() {
   const [saving, setSaving] = useState(false);
   const [statusTarget, setStatusTarget] = useState<OrganisationDto | null>(null);
 
+  const debouncedSearch = useDebouncedValue(search);
+
   const load = useCallback(async () => {
     const params = new URLSearchParams({ page: String(page), pageSize: "20" });
 
-    if (search.trim()) {
-      params.set("search", search.trim());
+    if (debouncedSearch.trim()) {
+      params.set("search", debouncedSearch.trim());
     }
 
     if (active !== "all") {
@@ -69,7 +73,7 @@ export default function OrganisationsPage() {
     return api<PagedResult<OrganisationDto>>(
       `/api/v1/organisations?${params.toString()}`
     );
-  }, [active, page, search]);
+  }, [active, debouncedSearch, page]);
 
   useEffect(() => {
     let cancelled = false;
@@ -244,6 +248,8 @@ export default function OrganisationsPage() {
           </div>
           <Button onClick={openCreate}>Create organisation</Button>
         </header>
+
+        <AdminNav />
 
         <section className="card">
           <div className="filters">

@@ -97,6 +97,9 @@ public static class DependencyInjection
                 ? ActivatorUtilities.CreateInstance<LogNotificationSender>(provider)
                 : ActivatorUtilities.CreateInstance<SmtpNotificationSender>(provider);
         });
+        services.TryAddScoped<InAppNotificationChannel>();
+        services.TryAddScoped<EmailNotificationChannel>();
+        services.TryAddScoped<INotificationChannelFactory, NotificationChannelFactory>();
         services.TryAddEnumerable(
             ServiceDescriptor.Scoped<IOutboxHandler, EmailNotificationHandler>());
 

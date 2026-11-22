@@ -1,0 +1,131 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import {
+  Badge,
+  Button,
+  ServerTable,
+  Skeleton,
+  Toast,
+  type Column
+} from "@/components/ui";
+import { AuthGuard } from "@/components/AuthGuard";
+import { AdminNav } from "@/components/safeway/AdminNav";
+import { api, errorMessage } from "@/lib/api";
+import { formatDate, type PagedResult } from "@/lib/admin";
+import type { NotificationDto } from "@/lib/notifications";
+import { RoleNames } from "@/lib/roles";
+
+type Notice = { message: string; tone: "error" | "success" } | null;
+
+export default function FailedNotificationsPage() {
+  const [page, setPage] = useState(1);
+  const [result, setResult] = useState<PagedResult<NotificationDto> | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [notice, setNotice] = useState<Notice>(null);
+
+  const load = useCallback(async () => {
+    const params = new URLSearchParams({ page: String(page), pageSize: "20" });
+    return api<PagedResult<NotificationDto>>(
+      `/api/v1/admin/notifications/failed?${params.toString()}`
+    );
+  }, [page]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+
+    void load()
+      .then((value) => {
+        if (!cancelled) {
+          setResult(value);
+        }
+      })
+      .catch((caught: unknown) => {
+        if (!cancelled) {
+          setNotice({ message: errorMessage(caught), tone: "error" });
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [load]);
+
+  const columns: Column<NotificationDto>[] = [
+    {
+      key: "created",
+      header: "Failed at",
+      render: (notification) => formatDate(notification.createdAt)
+    },
+    {
+      key: "recipient",
+      header: "Recipient",
+      render: (notification) => <code>{notification.recipientUserId}</code>
+    },
+    {
+      key: "channel",
+      header: "Channel",
+      render: (notification) => <Badge>{notification.channel}</Badge>
+    },
+    {
+      key: "template",
+      header: "Template",
+      render: (notification) => <strong>{notification.templateKey}</strong>
+    },
+    {
+      key: "subject",
+      header: "Subject",
+      render: (notification) => notification.subject ?? "—"
+    },
+    {
+      key: "status",
+      header: "Status",
+      render: (notification) => <Badge>{notification.status}</Badge>
+    }
+  ];
+
+  return (
+    <AuthGuard allowedRoles={[RoleNames.SystemAdmin]}>
+      <div className="page">
+        <header className="page__header">
+          <div>
+            <h1>Failed notifications</h1>
+            <p>
+              Delivery attempts that failed. The outbox owns retries; this view
+              helps administrators spot channels that need attention.
+            </p>
+          </div>
+          <Button variant="secondary" onClick={() => void load().then(setResult)}>
+            Refresh
+          </Button>
+        </header>
+
+        <AdminNav />
+
+        <section className="card">
+          {loading ? (
+            <Skeleton rows={6} />
+          ) : (
+            <ServerTable
+              columns={columns}
+              rows={result?.items ?? []}
+              page={result?.page ?? page}
+              pageSize={result?.pageSize ?? 20}
+              totalCount={result?.totalCount ?? 0}
+              onPageChange={setPage}
+              emptyMessage="No failed notification deliveries."
+            />
+          )}
+        </section>
+      </div>
+
+      <Toast message={notice?.message ?? null} tone={notice?.tone} onDismiss={() => setNotice(null)} />
+    </AuthGuard>
+  );
+}

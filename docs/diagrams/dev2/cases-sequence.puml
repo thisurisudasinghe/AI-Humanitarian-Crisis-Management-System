@@ -1,0 +1,231 @@
+@startuml
+title DEV2 Cases - Submission, AI Review, Allocation and Critical Close
+
+autonumber
+
+actor "Citizen" as Citizen
+actor "EmergencyCoordinator /\nCaseManager" as Staff
+actor "LogisticsManager" as Logistics
+actor "SystemAdmin" as Admin
+
+participant "RequestsController" as ReqCtrl
+participant "IRequestService /\nRequestService" as ReqSvc
+participant "IRequestWorkflowService /\nRequestWorkflowService" as Workflow
+participant "IRequestMergeService /\nRequestStatusService" as StatusSvc
+participant "RequestStateMachine" as StateMachine
+participant "CaseWriteHelper" as Writer
+participant "ICloseCaseDecisionGate" as Gate
+participant "CmsDbContext" as Db
+participant "AuditEventsController" as AuditCtrl
+participant "NotificationsController" as NotifyCtrl
+participant "RecommendationController (M3)" as RecCtrl
+participant "DecisionController (M3)" as DecisionCtrl
+participant "OperationsController (M4)" as OpsCtrl
+
+note over ReqCtrl, Db
+  CasesModule delegates to CasesModuleExtensions.AddCasesModule,
+  and ModuleRegistration.AddCmsModules calls it. Source wiring is
+  verified by CasesModuleTests; controller activation still needs
+  a clean API run. The merged tree builds and tests pass; clean
+  API runtime confirmation is still required.
+end note
+
+== Citizen request submission ==
+
+Citizen -> ReqCtrl : POST /api/v1/requests (CreateRequestDto)
+ReqCtrl -> ReqSvc : SubmitAsync(request)
+ReqSvc -> ReqSvc : Validate ApprovedCategories\nand area/crisis match
+ReqSvc -> Db : Set<Area>().FirstOrDefaultAsync(AreaId)
+ReqSvc -> ReqSvc : Protect(AccessibilityNeeds)\nStatus = RequestStatus.Submitted
+ReqSvc -> Db : IRequestRepository.AddAsync(Request)
+ReqSvc -> Writer : AddHistoryAsync(Submitted -> Submitted,\nreason = "Request submitted")
+ReqSvc -> Writer : AddAuditAsync("Request.Submitted",\n"Request", id, details, userId)
+ReqSvc -> Writer : AddOutboxAsync("Request.Submitted",\nid, payload, idempotencyKey)
+ReqSvc -> Db : SaveChangesAsync()
+ReqCtrl --> Citizen : 201 Created { id }
+
+== AI recommendations appear; request status unchanged ==
+
+Staff -> RecCtrl : POST /api/recommendation/crisis/{crisisId}/generate
+RecCtrl --> Staff : 200 OK { recommendationId }
+Staff -> RecCtrl : GET /api/recommendation/{recommendationId}
+RecCtrl --> Staff : 200 OK (recommendation; advisory only)
+Staff -> ReqCtrl : GET /api/v1/requests/{id}
+ReqCtrl --> ReqSvc : GetDetailAsync(id)
+ReqSvc --> ReqCtrl : RequestDetailDto (still Submitted)
+ReqCtrl --> Staff : 200 OK (status unchanged)
+
+note over RecCtrl
+  DEV2 reads recommendations by target through
+  GET /api/v1/recommendations?targetId= or
+  GET /api/v1/recommendations/target/{targetId:guid}.
+  Recommendation generation must not mutate request status.
+end note
+
+== Verify then triage ==
+
+Staff -> ReqCtrl : POST /api/v1/requests/{id}/transition\n{"to":"Verified","reason":"Verified against call centre record."}
+ReqCtrl -> Workflow : TransitionAsync(id, Verified, reason, null)
+Workflow -> StatusSvc : TransitionAsync(id, Verified, reason, null)
+StatusSvc -> StateMachine : Ensure(Submitted, Verified)
+StatusSvc -> Writer : AddHistoryAsync(Submitted -> Verified)
+StatusSvc -> Writer : AddAuditAsync("Request.StatusChanged")
+StatusSvc -> Writer : AddNotificationAsync(id, requesterUserId,\n"request.status.Verified", data, version, ct)
+StatusSvc -> Db : SaveChangesAsync()
+ReqCtrl --> Staff : 204 No Content
+
+Staff -> ReqCtrl : POST /api/v1/requests/{id}/transition\n{"to":"Triaged","reason":"Food priority set."}
+ReqCtrl -> Workflow : TransitionAsync(id, Triaged, reason, null)
+Workflow -> StatusSvc : TransitionAsync(id, Triaged, reason, null)
+StatusSvc -> StateMachine : Ensure(Verified, Triaged)
+StatusSvc -> Writer : AddHistoryAsync(Verified -> Triaged)
+StatusSvc -> Writer : AddAuditAsync("Request.StatusChanged")
+StatusSvc -> Db : SaveChangesAsync()
+ReqCtrl --> Staff : 204 No Content
+
+Staff -> ReqCtrl : POST /api/v1/requests/{id}/transition\n{"to":"Recommended","reason":"Recommendation reviewed."}
+ReqCtrl -> Workflow : TransitionAsync(id, Recommended, reason, null)
+Workflow -> StatusSvc : TransitionAsync(id, Recommended, reason, null)
+StatusSvc -> StateMachine : Ensure(Triaged, Recommended)
+StatusSvc -> Writer : AddHistoryAsync(Triaged -> Recommended)
+StatusSvc -> Writer : AddAuditAsync("Request.StatusChanged")
+StatusSvc -> Writer : AddNotificationAsync(id, requesterUserId,\n"request.status.Recommended", data, version, ct)
+StatusSvc -> Db : SaveChangesAsync()
+ReqCtrl --> Staff : 204 No Content
+
+Staff -> ReqCtrl : POST /api/v1/requests/{id}/transition\n{"to":"Approved","reason":"Recommendation approved."}
+ReqCtrl -> Workflow : TransitionAsync(id, Approved, reason, null)
+Workflow -> StatusSvc : TransitionAsync(id, Approved, reason, null)
+StatusSvc -> StateMachine : Ensure(Recommended, Approved)
+StatusSvc -> Writer : AddHistoryAsync(Recommended -> Approved)
+StatusSvc -> Writer : AddAuditAsync("Request.StatusChanged")
+StatusSvc -> Writer : AddNotificationAsync(id, requesterUserId,\n"request.status.Approved", data, version, ct)
+StatusSvc -> Db : SaveChangesAsync()
+ReqCtrl --> Staff : 204 No Content
+
+== Coordinator verification and status transition ==
+
+Staff -> ReqCtrl : POST /api/v1/requests/{id}/transition\n(TransitionRequestDto)
+ReqCtrl -> Workflow : TransitionAsync(id, request)
+Workflow -> StatusSvc : TransitionAsync(id, To, Reason, DecisionId)
+StatusSvc -> Db : Set<Request>().FirstOrDefaultAsync(id)
+
+StatusSvc -> StateMachine : Ensure(currentStatus, to)
+
+alt to = Closed AND urgency = Critical
+    StatusSvc -> Gate : IsApprovedAsync(decisionId, requestId, ct)
+    alt approved
+        Gate --> StatusSvc : true
+    else denied / missing decision
+        Gate --> StatusSvc : false
+        StatusSvc --> ReqCtrl : ForbiddenException\nCLOSE_DECISION_REQUIRED
+        ReqCtrl --> Staff : 403 Forbidden
+    end
+end
+StatusSvc -> Writer : NextRequestVersionAsync(requestId)
+StatusSvc -> Writer : AddHistoryAsync(from -> to,\nchangedByUserId, reason)
+StatusSvc -> Writer : AddAuditAsync("Request.StatusChanged",\n"Request", id, details, userId)
+StatusSvc -> Writer : AddNotificationAsync(requestId,\nrequesterUserId, "request.status.{to}", data, version, ct)
+StatusSvc -> Db : SaveChangesAsync()
+ReqCtrl --> Staff : 204 No Content
+
+note over Gate
+  DEV2 DecisionGateCloseCaseAdapter delegates to
+  IDecisionGate.RequireApprovedAsync(decisionId,
+  RecommendationType.CloseCase, requestId, ct).
+  DEV2 uses TryAddScoped; M3 registers the real
+  governance adapter after DEV2. Runtime is unverified.
+end note
+
+== Human decision and allocation handoff ==
+
+Staff -> DecisionCtrl : POST /api/decision\n{"recommendationId": "...", "outcome": "Approved",\n"finalPayloadJson": "{\"requestId\":\"...\",\"inventoryId\":\"42000000-...0001\",\"quantity\":1}"}
+DecisionCtrl --> Staff : 201 Created { decisionId }
+Staff -> OpsCtrl : GET /api/v1/recommendations/match/resources/{id}
+OpsCtrl --> Staff : 200 OK (ranked candidates and explanations)
+Staff -> OpsCtrl : POST /api/v1/allocations\nIdempotency-Key: uat-alloc-{id}\n{"decisionId":"..."}
+OpsCtrl --> Staff : 201 Created { status: "Allocated" }
+Staff -> ReqCtrl : POST /api/v1/requests/{id}/transition\n{"to":"Allocated","decisionId":"..."}
+ReqCtrl -> Workflow : TransitionAsync(id, Allocated, reason, decisionId)
+Workflow -> StatusSvc : TransitionAsync(id, Allocated, reason, decisionId)
+StatusSvc -> StateMachine : Ensure(Approved, Allocated)
+StatusSvc -> Writer : AddAuditAsync("Request.StatusChanged")
+StatusSvc -> Db : SaveChangesAsync()
+ReqCtrl --> Staff : 204 No Content
+
+note over DecisionCtrl, OpsCtrl
+  M3 and M4 owned endpoints. OperationsController now checks
+  DecisionOutcome.Approved/Modified, matching the shipped enum.
+  The resource-match route is present in source; runtime behaviour
+  still needs confirmation. Allocation requires a ResourceMatch
+  decision with requestId, inventoryId and quantity.
+end note
+
+== Critical close with CloseCase decision ==
+
+Staff -> ReqCtrl : POST /api/v1/requests/{criticalId}/transition\n{"to":"Closed","decisionId":"..."}
+ReqCtrl -> Workflow : TransitionAsync(criticalId, Closed, reason, decisionId)
+Workflow -> StatusSvc : TransitionAsync(criticalId, Closed, reason, decisionId)
+StatusSvc -> StateMachine : Ensure(Fulfilled, Closed)
+StatusSvc -> Gate : IsApprovedAsync(decisionId, criticalId, ct)
+alt approved CloseCase decision
+    Gate --> StatusSvc : true
+    StatusSvc -> Writer : AddHistoryAsync(Fulfilled -> Closed)
+    StatusSvc -> Writer : AddAuditAsync("Request.StatusChanged")
+    StatusSvc -> Writer : AddNotificationAsync(criticalId,\nrequesterUserId, "request.status.Closed", data, version, ct)
+    StatusSvc -> Db : SaveChangesAsync()
+    ReqCtrl --> Staff : 200 OK (decision-gated Critical close)
+else denied or missing decisionId
+    Gate --> StatusSvc : false
+    StatusSvc --> ReqCtrl : ForbiddenException CLOSE_DECISION_REQUIRED
+    ReqCtrl --> Staff : 403 Forbidden; status remains Fulfilled
+end
+
+== Assignment ==
+
+Staff -> ReqCtrl : PATCH /api/v1/requests/{id}/assign\n(AssignRequestDto)
+ReqCtrl -> ReqSvc : AssignAsync(id, request)
+ReqSvc -> Db : Set<Request>().FirstOrDefaultAsync(id)
+ReqSvc -> ReqSvc : EnsureStaff()
+ReqSvc -> ReqSvc : AssignedToUserId = request.AssignedToUserId
+ReqSvc -> Writer : AddAuditAsync("Request.Assigned",\n"Request", id, details, userId)
+ReqSvc -> Db : SaveChangesAsync()
+ReqCtrl --> Staff : 204 No Content
+
+== Merge ==
+
+Staff -> ReqCtrl : POST /api/v1/requests/{id}/merge\n(MergeRequestDto)
+ReqCtrl -> StatusSvc : MergeAsync(sourceId, targetRequestId, reason)
+StatusSvc -> Db : Load source and target Request
+StatusSvc -> StateMachine : Ensure(source.Status, Merged,\nhasMergeTarget = true)
+StatusSvc -> Writer : AddHistoryAsync(source Merged)
+StatusSvc -> Writer : AddHistoryAsync(target unchanged)
+StatusSvc -> Db : Set<RequestLink>().AddAsync(Merged)
+StatusSvc -> Writer : AddAuditAsync("Request.Merged")
+StatusSvc -> Writer : AddAuditAsync("Request.MergeTarget")
+StatusSvc -> Writer : AddNotificationAsync(source.Id, sourceRequester,\n"request.status.Merged", data, sourceVersion, ct)
+StatusSvc -> Writer : AddNotificationAsync(target.Id, targetRequester,\n"request.status.Merged", data, targetVersion, ct)
+StatusSvc -> Db : SaveChangesAsync()
+ReqCtrl --> Staff : 204 No Content
+
+== Timeline and cross-member verification ==
+
+Citizen -> ReqCtrl : GET /api/v1/requests/{id}/timeline
+ReqCtrl -> ReqSvc : GetTimelineAsync(id)
+ReqSvc -> Db : Query RequestStatusHistory\nand identity.Users
+ReqCtrl --> Citizen : 200 OK (RequestTimelineEntryDto list)
+
+Admin -> AuditCtrl : GET /api/v1/audit-events
+AuditCtrl --> Admin : 200 OK (shared audit trail)
+Staff -> AuditCtrl : GET /api/v1/audit-events
+AuditCtrl --> Staff : 403 Forbidden (AdminOnly policy)
+
+Citizen -> NotifyCtrl : GET /api/v1/notifications
+NotifyCtrl --> Citizen : 200 OK (in-app inbox)
+
+note over NotifyCtrl
+  Inbox delivery depends on the Member 1/Member 3
+  outbox processor consuming Notification.Send messages.
+end note
+
+@enduml

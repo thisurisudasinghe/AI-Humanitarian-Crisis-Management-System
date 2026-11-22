@@ -1,0 +1,568 @@
+@startuml
+title DEV2 Cases & Citizen - Class Diagram (actual implementation)
+
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+
+package "Cms.Api - Controllers" {
+  class "RequestsController" as RequestsController {
+    -IRequestService _requests
+    -IRequestWorkflowService _workflow
+    -IRequestMergeService _merge
+    -IAttachmentService _attachments
+    +Submit(CreateRequestDto) : IActionResult
+    +Mine(PagedQuery) : IActionResult
+    +GetById(Guid) : IActionResult
+    +Update(Guid, UpdateRequestDto) : IActionResult
+    +Timeline(Guid) : IActionResult
+    +UploadAttachment(Guid, IFormFile) : IActionResult
+    +DownloadAttachment(Guid, Guid) : IActionResult
+    +AddFeedback(Guid, CreateFeedbackDto) : IActionResult
+    +ListStaff(RequestFilter, PagedQuery) : IActionResult
+    +Overdue(PagedQuery) : IActionResult
+    +Unresolved(PagedQuery) : IActionResult
+    +Transition(Guid, TransitionRequestDto) : IActionResult
+    +Assign(Guid, AssignRequestDto) : IActionResult
+    +Merge(Guid, MergeRequestDto) : IActionResult
+  }
+
+  class "CrisesController" as CrisesController {
+    -ICrisisService _crises
+    +List() : IActionResult
+    +Create(CreateCrisisDto) : IActionResult
+    +Update(Guid, UpdateCrisisDto) : IActionResult
+    +CreateArea(Guid, CreateAreaDto) : IActionResult
+    +CreateAlert(Guid, CreateAlertDto) : IActionResult
+    +Summary(Guid) : IActionResult
+  }
+
+  class "AreasController" as AreasController {
+    -ICrisisService _crises
+    +List(Guid?) : IActionResult
+  }
+
+  class "AlertsController" as AlertsController {
+    -ICrisisService _crises
+    +Update(Guid, UpdateAlertDto) : IActionResult
+  }
+
+  class "PublicController" as PublicController {
+    -ICrisisService _crises
+    +Alerts() : IActionResult
+    +ServiceCentres() : IActionResult
+  }
+
+  class "HouseholdsController" as HouseholdsController {
+    -IHouseholdService _households
+    +GetMine() : IActionResult
+    +SaveMine(SaveHouseholdDto) : IActionResult
+  }
+}
+
+package "Cms.Application - Cases contracts and interfaces" {
+  interface "IRequestService" as IRequestService {
+    +SubmitAsync(CreateRequestDto) : Guid
+    +ListMineAsync(PagedQuery) : PagedResult~RequestListItemDto~
+    +GetDetailAsync(Guid) : RequestDetailDto
+    +UpdateMineAsync(Guid, UpdateRequestDto) : void
+    +GetTimelineAsync(Guid) : IReadOnlyList~RequestTimelineEntryDto~
+    +AddFeedbackAsync(Guid, CreateFeedbackDto) : Guid
+    +ListStaffAsync(RequestFilter, PagedQuery) : PagedResult~RequestListItemDto~
+    +AssignAsync(Guid, AssignRequestDto) : void
+  }
+
+  interface "ICrisisService" as ICrisisService {
+    +ListCrisesAsync() : IReadOnlyList~CrisisDto~
+    +CreateCrisisAsync(CreateCrisisDto) : Guid
+    +UpdateCrisisAsync(Guid, UpdateCrisisDto) : void
+    +ListAreasAsync(Guid?) : IReadOnlyList~AreaDto~
+    +CreateAreaAsync(Guid, CreateAreaDto) : Guid
+    +CreateAlertAsync(Guid, CreateAlertDto) : Guid
+    +UpdateAlertAsync(Guid, UpdateAlertDto) : void
+    +ListPublicAlertsAsync() : IReadOnlyList~AlertDto~
+    +ListPublicServiceCentresAsync() : IReadOnlyList~ServiceCentreDto~
+    +GetSummaryAsync(Guid) : CrisisSummaryDto
+  }
+
+  interface "IRequestRepository" as IRequestRepository {
+    +GetByIdAsync(Guid) : Request
+    +GetByIdForUpdateAsync(Guid) : Request
+    +ListAsync(RequestFilter, PagedQuery) : PagedResult~Request~
+    +AddAsync(Request) : void
+  }
+
+  interface "IRequestStatusService" as IRequestStatusService {
+    +TransitionAsync(Guid, RequestStatus, string) : void
+  }
+
+  interface "IRequestDecisionTransitionService" as IRequestDecisionTransitionService {
+    +TransitionAsync(Guid, RequestStatus, string, Guid?) : void
+  }
+
+  interface "IRequestMergeService" as IRequestMergeService {
+    +MergeAsync(Guid, Guid, string) : void
+  }
+
+  interface "IRequestWorkflowService" as IRequestWorkflowService {
+    +TransitionAsync(Guid, TransitionRequestDto) : void
+  }
+
+  interface "IRequestReader" as IRequestReader {
+    +GetAsync(Guid) : RequestSummaryDto
+  }
+
+  interface "IAttachmentService" as IAttachmentService {
+    +UploadAsync(Guid, UploadedFile) : Guid
+    +GetForDownloadAsync(Guid, Guid) : AttachmentDownload
+  }
+
+  interface "IHouseholdService" as IHouseholdService {
+    +GetMineAsync() : HouseholdDto
+    +UpsertMineAsync(SaveHouseholdDto) : Guid
+  }
+
+  interface "IOverduePolicy" as IOverduePolicy {
+    +SlaHours : int
+    +IsOverdue(DateTime, DateTime) : bool
+    +AgeHours(DateTime, DateTime) : int
+  }
+
+  interface "ISensitiveDataProtector" as ISensitiveDataProtector {
+    +Protect(string) : string
+    +Unprotect(string) : string
+    +MaskPhone(string) : string
+    +MaskText(string) : string
+  }
+
+  interface "ICloseCaseDecisionGate" as ICloseCaseDecisionGate {
+    +IsApprovedAsync(Guid, Guid, CancellationToken) : bool
+  }
+
+  interface "IDecisionGate (M3-owned)" as IDecisionGate {
+    +RequireApprovedAsync(Guid, RecommendationType, Guid, CancellationToken) : DecisionDto
+  }
+
+  interface "IFileStore (module-local)" as ILocalFileStore {
+    +SaveAsync(Stream, string, CancellationToken) : Task
+    +OpenReadAsync(string, CancellationToken) : Task~Stream~
+  }
+}
+
+package "Cms.Infrastructure - Cases implementations" {
+  class "RequestService" as RequestService {
+    -IRequestRepository _repository
+    -ICurrentUser _currentUser
+    -IDateTimeService _dateTimeService
+    -IOverduePolicy _overduePolicy
+    -ISensitiveDataProtector _protector
+    -CasesOptions _options
+    -CaseWriteHelper _writer
+    +SubmitAsync(CreateRequestDto) : Guid
+    +ListMineAsync(PagedQuery) : PagedResult~RequestListItemDto~
+    +GetDetailAsync(Guid) : RequestDetailDto
+    +UpdateMineAsync(Guid, UpdateRequestDto) : void
+    +GetTimelineAsync(Guid) : IReadOnlyList~RequestTimelineEntryDto~
+    +AddFeedbackAsync(Guid, CreateFeedbackDto) : Guid
+    +ListStaffAsync(RequestFilter, PagedQuery) : PagedResult~RequestListItemDto~
+    +AssignAsync(Guid, AssignRequestDto) : void
+  }
+
+  class "CrisisService" as CrisisService {
+    +ListCrisesAsync() : IReadOnlyList~CrisisDto~
+    +CreateCrisisAsync(CreateCrisisDto) : Guid
+    +UpdateCrisisAsync(Guid, UpdateCrisisDto) : void
+    +ListAreasAsync(Guid?) : IReadOnlyList~AreaDto~
+    +CreateAreaAsync(Guid, CreateAreaDto) : Guid
+    +CreateAlertAsync(Guid, CreateAlertDto) : Guid
+    +UpdateAlertAsync(Guid, UpdateAlertDto) : void
+    +ListPublicAlertsAsync() : IReadOnlyList~AlertDto~
+    +ListPublicServiceCentresAsync() : IReadOnlyList~ServiceCentreDto~
+    +GetSummaryAsync(Guid) : CrisisSummaryDto
+  }
+
+  class "RequestRepository" as RequestRepository {
+    -CmsDbContext _context
+    -IOverduePolicy _overduePolicy
+    -IDateTimeService _dateTimeService
+    +GetByIdAsync(Guid) : Request
+    +GetByIdForUpdateAsync(Guid) : Request
+    +ListAsync(RequestFilter, PagedQuery) : PagedResult~Request~
+    +AddAsync(Request) : void
+  }
+
+  class "RequestReader" as RequestReader {
+    +GetAsync(Guid) : RequestSummaryDto
+  }
+
+  class "RequestStatusService" as RequestStatusService {
+    -CmsDbContext _context
+    -ICurrentUser _currentUser
+    -IDateTimeService _dateTimeService
+    -ICloseCaseDecisionGate _decisionGate
+    -CaseWriteHelper _writer
+    +TransitionAsync(Guid, RequestStatus, string) : void
+    +TransitionAsync(Guid, RequestStatus, string, Guid?) : void
+    +MergeAsync(Guid, Guid, string) : void
+  }
+
+  class "RequestWorkflowService" as RequestWorkflowService {
+    -IRequestDecisionTransitionService _statusService
+    +TransitionAsync(Guid, TransitionRequestDto) : void
+  }
+
+  class "AttachmentService" as AttachmentService {
+    +UploadAsync(Guid, UploadedFile) : Guid
+    +GetForDownloadAsync(Guid, Guid) : AttachmentDownload
+  }
+
+  class "HouseholdService" as HouseholdService {
+    +GetMineAsync() : HouseholdDto
+    +UpsertMineAsync(SaveHouseholdDto) : Guid
+  }
+
+  class "OverduePolicy" as OverduePolicy {
+    +SlaHours : int
+    +IsOverdue(DateTime, DateTime) : bool
+    +AgeHours(DateTime, DateTime) : int
+  }
+
+  class "SensitiveDataProtector" as SensitiveDataProtector {
+    +Protect(string) : string
+    +Unprotect(string) : string
+    +MaskPhone(string) : string
+    +MaskText(string) : string
+  }
+
+  class "CaseWriteHelper" as CaseWriteHelper {
+    -CmsDbContext _context
+    -IDateTimeService _dateTimeService
+    -CasesOptions _options
+    -IOutbox _outbox
+    +NextRequestVersionAsync(Guid, CancellationToken) : int
+    +AddHistoryAsync(RequestStatusHistory, CancellationToken) : void
+    +AddAuditAsync(string, string, Guid, object, Guid?, CancellationToken) : void
+    +AddOutboxAsync(string, Guid, object, string, CancellationToken) : void
+    +AddNotificationAsync(Guid, Guid, string, object, int, CancellationToken) : void
+  }
+
+  class "DecisionGateCloseCaseAdapter" as DecisionGateCloseCaseAdapter {
+    -IDecisionGate _decisionGate
+    +IsApprovedAsync(Guid, Guid, CancellationToken) : bool
+  }
+
+  class "UnavailableCloseCaseDecisionGate (legacy, not registered)" as UnavailableCloseCaseDecisionGate {
+    +IsApprovedAsync(Guid, Guid, CancellationToken) : bool
+  }
+
+  class "LocalFileStore (module-local)" as LocalFileStore {
+    +SaveAsync(Stream, string, CancellationToken) : Task
+    +OpenReadAsync(string, CancellationToken) : Task~Stream~
+  }
+
+  class "CasesOptions" as CasesOptions {
+    +SlaHours : int
+    +UploadRoot : string
+    +DataProtectionKeyRing : string
+    +DefaultLanguage : string
+    +ApprovedCategories : IReadOnlyCollection~Category~
+  }
+}
+
+package "Cms.Domain - Cases" {
+  class "RequestStateMachine" as RequestStateMachine <<static>> {
+    +CanTransition(RequestStatus, RequestStatus) : bool
+    +Ensure(RequestStatus, RequestStatus) : void
+    +Ensure(RequestStatus, RequestStatus, bool) : void
+    +IsTerminal(RequestStatus) : bool
+    +IsOpen(RequestStatus) : bool
+  }
+
+  class "CasesRoles" as CasesRoles <<static>> {
+    +Citizen : string
+    +Staff : string
+    +RequestReaders : string
+    +CoordinatorOnly : string
+  }
+
+  class "Crisis" as Crisis {
+    +Name : string
+    +Type : string
+    +Description : string
+    +Status : CrisisStatus
+    +StartedAt : DateTime
+    +EndedAt : DateTime?
+  }
+
+  class "Area" as Area {
+    +CrisisId : Guid
+    +Name : string
+    +Description : string
+    +Lat : decimal
+    +Lng : decimal
+    +RadiusKm : decimal?
+  }
+
+  class "Household" as Household {
+    +UserId : Guid
+    +Size : int
+    +AccessibilityNeeds : string
+    +ContactPhone : string
+  }
+
+  class "Request" as Request {
+    +RequesterUserId : Guid
+    +CrisisId : Guid?
+    +AreaId : Guid?
+    +Category : Category
+    +Urgency : Urgency
+    +Description : string
+    +Lat : decimal
+    +Lng : decimal
+    +Address : string?
+    +HouseholdSize : int
+    +AccessibilityNeeds : string
+    +Status : RequestStatus
+    +AssignedToUserId : Guid?
+    +MergedIntoRequestId : Guid?
+    +SubmittedAt : DateTime
+    +VerifiedAt : DateTime?
+    +TriagedAt : DateTime?
+    +ClosedAt : DateTime?
+    +RowVersion : byte[]
+  }
+
+  class "RequestStatusHistory" as RequestStatusHistory {
+    +RequestId : Guid
+    +FromStatus : RequestStatus
+    +ToStatus : RequestStatus
+    +ChangedByUserId : Guid?
+    +Reason : string
+  }
+
+  class "RequestLink" as RequestLink {
+    +RequestId : Guid
+    +LinkedRequestId : Guid
+    +LinkType : RequestLinkType
+  }
+
+  class "Attachment" as Attachment {
+    +RequestId : Guid
+    +StoredFileName : string
+    +OriginalFileName : string
+    +ContentType : string
+    +SizeBytes : long
+    +UploadedByUserId : Guid
+  }
+
+  class "Alert" as Alert {
+    +CrisisId : Guid?
+    +Title : string
+    +Body : string
+    +Status : AlertStatus
+    +PublishedAt : DateTime?
+  }
+
+  class "ServiceCentre" as ServiceCentre {
+    +CrisisId : Guid?
+    +Name : string
+    +Address : string
+    +Lat : decimal
+    +Lng : decimal
+    +Services : string
+    +OpeningHours : string
+    +IsActive : bool
+  }
+
+  class "Feedback" as Feedback {
+    +RequestId : Guid
+    +SubmittedByUserId : Guid
+    +Comment : string
+  }
+
+  class "PartnerShare" as PartnerShare {
+    +RequestId : Guid
+    +OrganisationId : Guid
+    +SharedByUserId : Guid
+    +SharedAt : DateTime
+    +RevokedAt : DateTime?
+  }
+
+  enum "RequestStatus" as RequestStatus {
+    Submitted
+    Verified
+    Rejected
+    Triaged
+    Recommended
+    Approved
+    Allocated
+    Dispatched
+    InProgress
+    Fulfilled
+    Closed
+    Escalated
+    Merged
+    OnHold
+    Reopened
+  }
+
+  enum "Category" as Category {
+    Food
+    Medicine
+    Shelter
+    Transport
+    Accessibility
+    Other
+  }
+
+  enum "Urgency" as Urgency {
+    Low
+    Medium
+    High
+    Critical
+  }
+
+  enum "CrisisStatus" as CrisisStatus {
+    Active
+    Closed
+  }
+
+  enum "AlertStatus" as AlertStatus {
+    Draft
+    Published
+  }
+
+  enum "RequestLinkType" as RequestLinkType {
+    DuplicateCandidate
+    Merged
+  }
+}
+
+package "Shared / Member 1" {
+  interface "ICurrentUser" as ICurrentUser {
+    +UserId : Guid?
+    +OrgId : Guid?
+    +Email : string?
+    +Roles : IReadOnlyCollection~string~
+    +IsAuthenticated : bool
+    +IsInRole(string) : bool
+  }
+
+  interface "IDateTimeService" as IDateTimeService {
+    +UtcNow : DateTime
+  }
+
+  interface "IOutbox" as IOutbox {
+    +EnqueueAsync(string, Guid, object, string, CancellationToken) : void
+  }
+
+  class "CmsDbContext" as CmsDbContext {
+    +Set~T~()
+    +SaveChangesAsync()
+  }
+
+  class "AuditEvent" as AuditEvent {
+    +Action : string
+    +EntityType : string
+    +EntityId : string
+    +ActorUserId : Guid?
+    +Details : string
+  }
+
+  class "OutboxMessage" as OutboxMessage {
+    +Type : string
+    +EntityId : Guid
+    +Payload : string
+    +IdempotencyKey : string
+    +Status : OutboxMessageStatus
+  }
+}
+
+RequestsController --> IRequestService
+RequestsController --> IRequestWorkflowService
+RequestsController --> IRequestMergeService
+RequestsController --> IAttachmentService
+CrisesController --> ICrisisService
+AreasController --> ICrisisService
+AlertsController --> ICrisisService
+PublicController --> ICrisisService
+HouseholdsController --> IHouseholdService
+
+RequestService ..|> IRequestService
+RequestService --> IRequestRepository
+RequestService --> ISensitiveDataProtector
+RequestService --> IOverduePolicy
+RequestService --> CaseWriteHelper
+RequestService --> CmsDbContext
+
+CrisisService ..|> ICrisisService
+RequestRepository ..|> IRequestRepository
+RequestRepository --> IOverduePolicy
+RequestRepository --> CmsDbContext
+RequestReader ..|> IRequestReader
+
+RequestStatusService ..|> IRequestStatusService
+RequestStatusService ..|> IRequestDecisionTransitionService
+RequestStatusService ..|> IRequestMergeService
+RequestStatusService --> RequestStateMachine
+RequestStatusService --> ICloseCaseDecisionGate
+RequestStatusService --> CaseWriteHelper
+RequestStatusService --> CmsDbContext
+
+RequestWorkflowService ..|> IRequestWorkflowService
+RequestWorkflowService --> IRequestDecisionTransitionService
+UnavailableCloseCaseDecisionGate ..|> ICloseCaseDecisionGate
+DecisionGateCloseCaseAdapter ..|> ICloseCaseDecisionGate
+DecisionGateCloseCaseAdapter --> IDecisionGate
+AttachmentService ..|> IAttachmentService
+HouseholdService ..|> IHouseholdService
+OverduePolicy ..|> IOverduePolicy
+SensitiveDataProtector ..|> ISensitiveDataProtector
+LocalFileStore ..|> ILocalFileStore
+
+CaseWriteHelper --> CmsDbContext
+CaseWriteHelper --> IOutbox
+CaseWriteHelper --> AuditEvent
+CaseWriteHelper --> OutboxMessage
+
+Crisis "1" -- "*" Area
+Crisis "1" -- "*" Request
+Crisis "1" -- "*" Alert
+Crisis "1" -- "*" ServiceCentre
+Area "1" -- "*" Request
+Request "1" -- "*" RequestStatusHistory
+Request "1" -- "*" RequestLink : source
+Request "1" -- "*" RequestLink : target
+Request "1" -- "*" Attachment
+Request "1" -- "*" Feedback
+Request "1" -- "*" PartnerShare
+Request "0..1" -- "*" Request : merged into
+Request --> RequestStatus
+Request --> Category
+Request --> Urgency
+Crisis --> CrisisStatus
+Alert --> AlertStatus
+RequestLink --> RequestLinkType
+
+note bottom of RequestStatusService
+  All request status writes go through this class.
+  Outbox/audit/history are staged and committed with one SaveChangesAsync.
+end note
+
+note bottom of DecisionGateCloseCaseAdapter
+  DEV2 composition only: delegates to the shared M3 contract
+  with RecommendationType.CloseCase and the request as target.
+  It contains no decision lookup or approval logic.
+end note
+
+note bottom of UnavailableCloseCaseDecisionGate
+  Legacy type retained only for source compatibility; it is not
+  registered. CasesModuleExtensions uses TryAddScoped for
+  DecisionGateCloseCaseAdapter so M3 can override it.
+end note
+
+note bottom of LocalFileStore
+  Module-local IFileStore is aliased and registered by CasesModuleExtensions.
+  Cms.Application.Contracts.IFileStore has a different signature and is not used here.
+end note
+
+@enduml

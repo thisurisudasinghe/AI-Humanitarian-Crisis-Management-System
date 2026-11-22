@@ -126,7 +126,14 @@ builder.Services.AddFoundation(builder.Configuration);
 builder.Services.AddJwtAuthentication(builder.Configuration);
 
 // Every feature module registers itself here.
-builder.Services.AddCmsModules();
+builder.Services.AddCmsModules(builder.Configuration);
+
+// Development-only demo users. This keeps the documented demo accounts usable
+// with the developer's own keys (user-secrets or ephemeral process keys).
+if (isDevelopment)
+{
+    builder.Services.AddHostedService<DevelopmentDemoSeeder>();
+}
 
 // Development-only demo users. This keeps the documented demo accounts usable
 // with the developer's own keys (user-secrets or ephemeral process keys).
