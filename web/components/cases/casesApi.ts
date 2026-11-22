@@ -299,8 +299,10 @@ export const casesApi = {
   crises: () => api<Crisis[]>("/crises"),
   createCrisis: (payload: { name: string; type: string; description?: string; startedAt: string }) =>
     api<{ id: string }>("/crises", { method: "POST", body: JSON.stringify(payload) }),
-  updateCrisis: (id: string, payload: { status?: CrisisStatus; endedAt?: string }) =>
-    api<void>(`/crises/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
+  updateCrisis: (
+    id: string,
+    payload: { name?: string; type?: string; description?: string; status?: CrisisStatus; endedAt?: string }
+  ) => api<void>(`/crises/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
   areas: (crisisId?: string) => api<Area[]>(`/areas${queryString({ crisisId })}`),
   createArea: (
     crisisId: string,
@@ -350,6 +352,7 @@ export const casesApi = {
     anchor.href = url;
     anchor.download = fileName;
     anchor.click();
-    URL.revokeObjectURL(url);
+    // Defer revocation so the browser has consumed the blob URL.
+    window.setTimeout(() => URL.revokeObjectURL(url), 0);
   }
 };

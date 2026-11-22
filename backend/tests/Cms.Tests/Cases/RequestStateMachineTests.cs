@@ -39,7 +39,13 @@ public class RequestStateMachineTests
         (RequestStatus.Allocated, RequestStatus.OnHold),
         (RequestStatus.Dispatched, RequestStatus.OnHold),
         (RequestStatus.InProgress, RequestStatus.OnHold),
-        (RequestStatus.Fulfilled, RequestStatus.OnHold)
+        (RequestStatus.Fulfilled, RequestStatus.OnHold),
+        (RequestStatus.Escalated, RequestStatus.Escalated),
+        (RequestStatus.Escalated, RequestStatus.OnHold),
+        (RequestStatus.OnHold, RequestStatus.Escalated),
+        (RequestStatus.OnHold, RequestStatus.OnHold),
+        (RequestStatus.Reopened, RequestStatus.Escalated),
+        (RequestStatus.Reopened, RequestStatus.OnHold)
     };
 
     public static IEnumerable<object[]> Matrix() =>
@@ -64,6 +70,15 @@ public class RequestStateMachineTests
             Assert.Equal("INVALID_TRANSITION", ex.Code);
             Assert.Contains(from.ToString(), ex.Message);
             Assert.Contains(to.ToString(), ex.Message);
+        }
+    }
+
+    [Fact]
+    public void Open_states_are_exactly_the_non_terminal_states()
+    {
+        foreach (var status in Enum.GetValues<RequestStatus>())
+        {
+            Assert.Equal(!RequestStateMachine.IsTerminal(status), RequestStateMachine.IsOpen(status));
         }
     }
 

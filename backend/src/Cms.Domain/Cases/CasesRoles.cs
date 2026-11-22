@@ -1,21 +1,23 @@
+using Cms.Domain.Constants;
+
 namespace Cms.Domain.Cases;
 
 /// <summary>
-/// Module-local copy of the frozen role strings. Contract request: replace with
-/// Member 1's shared RoleNames constants when they are available.
+/// Module-local aliases for the shared frozen role names. The contract request
+/// is resolved by referencing Member 1's RoleNames constants instead of raw strings.
 /// </summary>
 public static class CasesRoles
 {
-    public const string Citizen = "Citizen";
-    public const string EmergencyCoordinator = "EmergencyCoordinator";
-    public const string CaseManager = "CaseManager";
-    public const string LogisticsManager = "LogisticsManager";
-    public const string ShelterAdmin = "ShelterAdmin";
-    public const string VolunteerCoordinator = "VolunteerCoordinator";
-    public const string Volunteer = "Volunteer";
-    public const string DonorOfficer = "DonorOfficer";
-    public const string PartnerOfficer = "PartnerOfficer";
-    public const string SystemAdmin = "SystemAdmin";
+    public const string Citizen = RoleNames.Citizen;
+    public const string EmergencyCoordinator = RoleNames.EmergencyCoordinator;
+    public const string CaseManager = RoleNames.CaseManager;
+    public const string LogisticsManager = RoleNames.LogisticsManager;
+    public const string ShelterAdmin = RoleNames.ShelterAdmin;
+    public const string VolunteerCoordinator = RoleNames.VolunteerCoordinator;
+    public const string Volunteer = RoleNames.Volunteer;
+    public const string DonorOfficer = RoleNames.DonorOfficer;
+    public const string PartnerOfficer = RoleNames.PartnerOfficer;
+    public const string SystemAdmin = RoleNames.SystemAdmin;
 
     // D2-07/D2-08 restrict case workflow and crisis writes to these exact roles.
     public const string CaseStaff = EmergencyCoordinator + "," + CaseManager;

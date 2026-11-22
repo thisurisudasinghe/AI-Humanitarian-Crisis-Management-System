@@ -2,18 +2,13 @@
   "info": {
     "_postman_id": "dev2-cases-collection",
     "name": "DEV2 - Cases & Citizen API",
-    "description": "Executable DEV2 Cases & Citizen API checklist. Run folder 0 first to obtain role tokens, then run the role-specific folders. No runtime result is claimed by this file itself; UAT results remain blank until a clean database run is performed.\n\nINTEGRATION NOTES (source-verified, still require runtime confirmation):\n1. Runtime DI: backend/src/Cms.Api/Modules/CasesModule.cs delegates to Cms.Infrastructure.Cases.CasesModuleExtensions.AddCasesModule, and ModuleRegistration calls it.\n2. Critical close: closing a Critical request requires an approved CloseCase decision through the shared M3 IDecisionGate. DEV2 registers DecisionGateCloseCaseAdapter; if M3's real gate is not registered, the deny fallback causes 403 CLOSE_DECISION_REQUIRED. The negative collection case verifies that restriction.\n3. Partner shares are P2 (D2-11) and must not start before CP2; no partner endpoint exists yet, so no request is included.\n4. Target-based recommendation reads exist at GET /api/v1/recommendations?targetId=. Recommendation decisions remain Member 3 owned and are not included in this collection.\n5. DEV2 outbox writes include entity_id/idempotency_key per docs/UAT_CORE_LOOP.md DEP-05; verify at runtime.\n6. The coordinator alert form uses the authenticated casesApi.createAlert() client. Set {{citizenEmail}}, {{coordinatorEmail}}, {{caseManagerEmail}} and {{demoPassword}} for the demo seed, or override the role token variables manually. Do not include 'Bearer ' in token variables.",
+    "description": "Executable DEV2 Cases & Citizen API checklist. Run folder 0 first to obtain role tokens, then run the role-specific folders. No runtime result is claimed by this file itself; UAT results remain blank until a clean database run is performed.\n\nINTEGRATION NOTES (source-verified, still require runtime confirmation):\n1. Runtime DI: backend/src/Cms.Api/Modules/CasesModule.cs delegates to Cms.Infrastructure.Cases.CasesModuleExtensions.AddCasesModule, and ModuleRegistration calls it.\n2. Critical close: closing a Critical request requires an approved CloseCase decision through the shared M3 IDecisionGate. DEV2 registers DecisionGateCloseCaseAdapter; if M3's real gate is not registered, the deny fallback causes 403 CLOSE_DECISION_REQUIRED. The negative collection case verifies that restriction.\n3. Partner shares are P2 (D2-11) and must not start before CP2; no partner endpoint exists yet, so no request is included.\n4. Target-based recommendation reads exist at GET /api/v1/recommendations?targetId=. Recommendation decisions remain Member 3 owned and are not included in this collection.\n5. DEV2 outbox writes include entity_id/idempotency_key per docs/UAT_CORE_LOOP.md DEP-05; verify at runtime.\n6. Every authenticated request uses a role-specific variable ({{citizenToken}}, {{coordinatorToken}} or {{caseManagerToken}}). Set {{citizenEmail}}, {{coordinatorEmail}}, {{caseManagerEmail}} and {{demoPassword}} for the demo seed, or override the role token variables manually. Do not include 'Bearer ' in token variables.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
     {
       "key": "baseUrl",
       "value": "http://localhost:5210",
-      "type": "string"
-    },
-    {
-      "key": "token",
-      "value": "",
       "type": "string"
     },
     {
@@ -119,10 +114,6 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{None}}"
               }
             ],
             "url": "{{baseUrl}}/api/v1/auth/login",
@@ -162,10 +153,6 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{None}}"
               }
             ],
             "url": "{{baseUrl}}/api/v1/auth/login",
@@ -205,10 +192,6 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{None}}"
               }
             ],
             "url": "{{baseUrl}}/api/v1/auth/login",
@@ -248,10 +231,6 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{None}}"
               }
             ],
             "url": "{{baseUrl}}/api/v1/auth/login",
@@ -532,6 +511,86 @@
               }
             }
           ]
+        },
+        {
+          "name": "Reject area/crisis mismatch",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{citizenToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/requests",
+            "description": "Negative D2-08 case. The selected area belongs to a different crisis. Expected: 422 AREA_CRISIS_MISMATCH.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"category\":\"Food\",\"urgency\":\"High\",\"description\":\"Area and crisis mismatch check.\",\"lat\":7.29,\"lng\":80.64,\"householdSize\":1,\"crisisId\":\"1a000000-0000-0000-0000-000000000009\",\"areaId\":\"{{areaId}}\",\"evidenceAttachmentIds\":[]}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 422\", () => pm.response.to.have.status(422));",
+                  "const body = pm.response.json();",
+                  "pm.expect(body.code).to.eql(\"AREA_CRISIS_MISMATCH\");"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject citizen crisis write",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{citizenToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/crises",
+            "description": "Negative D2-08 case. Crisis writes require EmergencyCoordinator. Expected: 403 Forbidden.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\":\"Unauthorised crisis\",\"type\":\"Flood\",\"startedAt\":\"2026-11-22T00:00:00Z\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 403\", () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
@@ -549,7 +608,7 @@
               },
               {
                 "key": "Authorization",
-                "value": "Bearer {{token}}"
+                "value": "Bearer {{citizenToken}}"
               }
             ],
             "url": "{{baseUrl}}/api/v1/requests",
@@ -587,7 +646,7 @@
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{token}}"
+                "value": "Bearer {{citizenToken}}"
               }
             ],
             "url": "{{baseUrl}}/api/v1/requests/mine?page=1&pageSize=20&sortBy=urgency&sortDescending=true",
@@ -622,7 +681,7 @@
               },
               {
                 "key": "Authorization",
-                "value": "Bearer {{token}}"
+                "value": "Bearer {{citizenToken}}"
               }
             ],
             "url": "{{baseUrl}}/api/v1/requests/{{requestId}}",
@@ -675,7 +734,7 @@
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{token}}"
+                "value": "Bearer {{citizenToken}}"
               }
             ],
             "url": "{{baseUrl}}/api/v1/requests/{{requestId}}",
@@ -706,7 +765,7 @@
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{token}}"
+                "value": "Bearer {{citizenToken}}"
               }
             ],
             "url": "{{baseUrl}}/api/v1/requests/{{requestId}}/timeline",
@@ -751,7 +810,7 @@
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{token}}"
+                "value": "Bearer {{citizenToken}}"
               }
             ],
             "url": "{{baseUrl}}/api/v1/requests/{{requestId}}/attachments",
@@ -791,7 +850,7 @@
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{token}}"
+                "value": "Bearer {{citizenToken}}"
               }
             ],
             "url": "{{baseUrl}}/api/v1/requests/{{requestId}}/attachments/{{attachmentId}}",
@@ -840,7 +899,7 @@
               },
               {
                 "key": "Authorization",
-                "value": "Bearer {{token}}"
+                "value": "Bearer {{citizenToken}}"
               }
             ],
             "url": "{{baseUrl}}/api/v1/requests/{{closedRequestId}}/feedback",
@@ -895,7 +954,7 @@
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{token}}"
+                "value": "Bearer {{caseManagerToken}}"
               }
             ],
             "url": "{{baseUrl}}/api/v1/requests?status=Submitted&urgency=High&category=Food&sortBy=urgency&page=1&pageSize=20",
@@ -926,7 +985,7 @@
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{token}}"
+                "value": "Bearer {{caseManagerToken}}"
               }
             ],
             "url": "{{baseUrl}}/api/v1/requests/overdue?page=1&pageSize=20",
@@ -956,7 +1015,7 @@
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{token}}"
+                "value": "Bearer {{caseManagerToken}}"
               }
             ],
             "url": "{{baseUrl}}/api/v1/requests/unresolved?page=1&pageSize=20",
@@ -990,11 +1049,11 @@
               },
               {
                 "key": "Authorization",
-                "value": "Bearer {{token}}"
+                "value": "Bearer {{caseManagerToken}}"
               }
             ],
             "url": "{{baseUrl}}/api/v1/requests/{{requestId}}/transition",
-            "description": "Roles: EmergencyCoordinator, CaseManager. Valid status strings are Submitted, Verified, Rejected, Triaged, Recommended, Approved, Allocated, Dispatched, InProgress, Fulfilled, Closed, Escalated, Merged, OnHold, Reopened. Critical close requires an approved decisionId. Expected: 204 No Content; 401, 403, 404, 409, 422, 500.",
+            "description": "Roles: EmergencyCoordinator, CaseManager. Valid status strings are Submitted, Verified, Rejected, Triaged, Recommended, Approved, Allocated, Dispatched, InProgress, Fulfilled, Closed, Escalated, Merged, OnHold, Reopened. Decision-gated Critical close requires an approved decisionId and returns 200 OK; every other transition returns 204 No Content. Expected: 200, 204; 401, 403, 404, 409, 422, 500.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"to\": \"Verified\",\n  \"reason\": \"Verified against call centre record.\",\n  \"decisionId\": null\n}",
@@ -1029,7 +1088,7 @@
               },
               {
                 "key": "Authorization",
-                "value": "Bearer {{token}}"
+                "value": "Bearer {{caseManagerToken}}"
               }
             ],
             "url": "{{baseUrl}}/api/v1/requests/{{requestId}}/assign",
@@ -1068,7 +1127,7 @@
               },
               {
                 "key": "Authorization",
-                "value": "Bearer {{token}}"
+                "value": "Bearer {{caseManagerToken}}"
               }
             ],
             "url": "{{baseUrl}}/api/v1/requests/{{mergeSourceRequestId}}/merge",
@@ -1121,7 +1180,7 @@
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{token}}"
+                "value": "Bearer {{coordinatorToken}}"
               }
             ],
             "url": "{{baseUrl}}/api/v1/crises",
@@ -1152,7 +1211,7 @@
               },
               {
                 "key": "Authorization",
-                "value": "Bearer {{token}}"
+                "value": "Bearer {{coordinatorToken}}"
               }
             ],
             "url": "{{baseUrl}}/api/v1/crises",
@@ -1194,7 +1253,7 @@
               },
               {
                 "key": "Authorization",
-                "value": "Bearer {{token}}"
+                "value": "Bearer {{coordinatorToken}}"
               }
             ],
             "url": "{{baseUrl}}/api/v1/crises/{{crisisId}}",
@@ -1229,7 +1288,7 @@
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{token}}"
+                "value": "Bearer {{coordinatorToken}}"
               }
             ],
             "url": "{{baseUrl}}/api/v1/crises/{{crisisId}}/summary",
@@ -1279,7 +1338,7 @@
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{token}}"
+                "value": "Bearer {{coordinatorToken}}"
               }
             ],
             "url": "{{baseUrl}}/api/v1/areas?crisisId={{crisisId}}",
@@ -1310,7 +1369,7 @@
               },
               {
                 "key": "Authorization",
-                "value": "Bearer {{token}}"
+                "value": "Bearer {{coordinatorToken}}"
               }
             ],
             "url": "{{baseUrl}}/api/v1/crises/{{crisisId}}/areas",
@@ -1352,7 +1411,7 @@
               },
               {
                 "key": "Authorization",
-                "value": "Bearer {{token}}"
+                "value": "Bearer {{coordinatorToken}}"
               }
             ],
             "url": "{{baseUrl}}/api/v1/crises/{{crisisId}}/alerts",
@@ -1394,7 +1453,7 @@
               },
               {
                 "key": "Authorization",
-                "value": "Bearer {{token}}"
+                "value": "Bearer {{coordinatorToken}}"
               }
             ],
             "url": "{{baseUrl}}/api/v1/alerts/{{alertId}}",
@@ -1496,7 +1555,7 @@
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{token}}"
+                "value": "Bearer {{citizenToken}}"
               }
             ],
             "url": "{{baseUrl}}/api/v1/households/me",
@@ -1529,7 +1588,7 @@
               },
               {
                 "key": "Authorization",
-                "value": "Bearer {{token}}"
+                "value": "Bearer {{citizenToken}}"
               }
             ],
             "url": "{{baseUrl}}/api/v1/households/me",

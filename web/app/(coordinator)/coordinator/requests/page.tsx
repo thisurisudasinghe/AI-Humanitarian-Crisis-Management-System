@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import type { Paged, RequestListItem } from "../../../components/cases/casesApi";
-import { casesApi } from "../../../components/cases/casesApi";
-import { EmptyState, ErrorState, LoadingState } from "../../../components/cases/PageState";
-import QueueFilters, { EMPTY_FILTERS, type QueueFilterValues } from "../../../components/cases/QueueFilters";
-import StatusBadge from "../../../components/cases/StatusBadge";
+import type { Paged, RequestListItem } from "../../../../components/cases/casesApi";
+import { casesApi } from "../../../../components/cases/casesApi";
+import { EmptyState, ErrorState, LoadingState } from "../../../../components/cases/PageState";
+import QueueFilters, { EMPTY_FILTERS, type QueueFilterValues } from "../../../../components/cases/QueueFilters";
+import StatusBadge from "../../../../components/cases/StatusBadge";
+import { CATEGORY_LABELS, URGENCY_LABELS } from "../../../../components/cases/statusLabels";
 
 export default function CoordinatorRequestsPage() {
   const [filters, setFilters] = useState<QueueFilterValues>(EMPTY_FILTERS);
@@ -69,10 +70,10 @@ export default function CoordinatorRequestsPage() {
             <tbody>
               {result.items.map((item) => (
                 <tr key={item.id}>
-                  <td><Link href={`/requests/${item.id}`}>{item.id.slice(0, 8)}</Link></td>
-                  <td>{item.category}</td>
-                  <td>{item.urgency}</td>
-                  <td><StatusBadge status={item.status} /></td>
+                  <td><Link href={`/coordinator/requests/${item.id}`}>{item.id.slice(0, 8)}</Link></td>
+                  <td>{CATEGORY_LABELS[item.category]}</td>
+                  <td>{URGENCY_LABELS[item.urgency]}</td>
+                  <td><StatusBadge status={item.status} overdue={item.isOverdue} /></td>
                   <td>{item.slaAgeHours} h{item.isOverdue ? " · overdue" : ""}</td>
                   <td>{new Date(item.submittedAt).toLocaleString()}</td>
                 </tr>

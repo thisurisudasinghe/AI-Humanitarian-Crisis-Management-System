@@ -264,7 +264,7 @@ package "Cms.Infrastructure - Cases implementations" {
     +UploadRoot : string
     +DataProtectionKeyRing : string
     +DefaultLanguage : string
-    +ApprovedCategories : IReadOnlyList~Category~
+    +ApprovedCategories : IReadOnlyCollection~Category~
   }
 }
 
@@ -561,8 +561,8 @@ note bottom of UnavailableCloseCaseDecisionGate
 end note
 
 note bottom of LocalFileStore
-  Cms.Application.Contracts.IFileStore also exists with a different signature.
-  Member 1 must confirm which interface is canonical before freeze.
+  Module-local IFileStore is aliased and registered by CasesModuleExtensions.
+  Cms.Application.Contracts.IFileStore has a different signature and is not used here.
 end note
 
 @enduml

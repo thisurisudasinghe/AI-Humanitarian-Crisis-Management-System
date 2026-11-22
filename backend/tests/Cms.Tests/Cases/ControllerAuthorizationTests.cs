@@ -1,6 +1,7 @@
 using System.Reflection;
 using Cms.Api.Controllers;
 using Cms.Domain.Cases;
+using Cms.Domain.Constants;
 using Microsoft.AspNetCore.Authorization;
 
 namespace Cms.Tests.Cases;
@@ -10,16 +11,16 @@ public class ControllerAuthorizationTests
     [Fact]
     public void Module_role_sets_match_the_frozen_contract()
     {
-        Assert.Equal("Citizen", CasesRoles.Citizen);
-        Assert.Equal("EmergencyCoordinator", CasesRoles.EmergencyCoordinator);
-        Assert.Equal("CaseManager", CasesRoles.CaseManager);
-        Assert.Equal("ShelterAdmin", CasesRoles.ShelterAdmin);
-        Assert.Equal("PartnerOfficer", CasesRoles.PartnerOfficer);
-        Assert.Equal("SystemAdmin", CasesRoles.SystemAdmin);
-        Assert.Equal("EmergencyCoordinator,CaseManager", CasesRoles.CaseStaff);
-        Assert.Equal("EmergencyCoordinator", CasesRoles.CoordinatorOnly);
-        Assert.DoesNotContain("SystemAdmin", CasesRoles.CaseStaff.Split(','));
-        Assert.DoesNotContain("SystemAdmin", CasesRoles.CoordinatorOnly.Split(','));
+        Assert.Equal(RoleNames.Citizen, CasesRoles.Citizen);
+        Assert.Equal(RoleNames.EmergencyCoordinator, CasesRoles.EmergencyCoordinator);
+        Assert.Equal(RoleNames.CaseManager, CasesRoles.CaseManager);
+        Assert.Equal(RoleNames.ShelterAdmin, CasesRoles.ShelterAdmin);
+        Assert.Equal(RoleNames.PartnerOfficer, CasesRoles.PartnerOfficer);
+        Assert.Equal(RoleNames.SystemAdmin, CasesRoles.SystemAdmin);
+        Assert.Equal($"{RoleNames.EmergencyCoordinator},{RoleNames.CaseManager}", CasesRoles.CaseStaff);
+        Assert.Equal(RoleNames.EmergencyCoordinator, CasesRoles.CoordinatorOnly);
+        Assert.DoesNotContain(RoleNames.SystemAdmin, CasesRoles.CaseStaff.Split(','));
+        Assert.DoesNotContain(RoleNames.SystemAdmin, CasesRoles.CoordinatorOnly.Split(','));
     }
 
     [Fact]

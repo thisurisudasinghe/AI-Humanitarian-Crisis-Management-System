@@ -115,7 +115,8 @@ Checks(check_name, expected, actual) AS (
          WHERE [id] IN ('1d000000-0000-0000-0000-000000000006',
                         '1d000000-0000-0000-0000-000000000007',
                         '1d000000-0000-0000-0000-000000000008')
-           AND [category] = N'Food')
+           AND [category] = N'Food'
+           AND [urgency] IN (N'Critical', N'High'))
     UNION ALL
     SELECT N'back-dated Submitted request R10', 1,
         (SELECT COUNT(*) FROM [cases].[requests]

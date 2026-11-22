@@ -2,6 +2,7 @@ using Cms.Application.Cases.Common;
 using Cms.Application.Cases.DTOs;
 using Cms.Application.Cases.Interfaces;
 using Cms.Domain.Cases;
+using Cms.Domain.Enums.Cases;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -221,6 +222,8 @@ public class RequestsController : ControllerBase
 
     [HttpPost("{id:guid}/transition")]
     [Authorize(Roles = CasesRoles.Staff)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> Transition(
         Guid id,
         [FromBody] TransitionRequestDto request,
@@ -228,8 +231,16 @@ public class RequestsController : ControllerBase
     {
         try
         {
+            // The frozen contract expects 200 for a decision-gated Critical close
+            // and 204 for every other transition. Read the urgency before the write
+            // so the response shape is not based on an unverified client hint.
+            var decisionGatedClose =
+                request.To == RequestStatus.Closed &&
+                request.DecisionId.HasValue &&
+                (await _requests.GetDetailAsync(id, cancellationToken))?.Urgency == Urgency.Critical;
+
             await _workflow.TransitionAsync(id, request, cancellationToken);
-            return NoContent();
+            return decisionGatedClose ? Ok() : NoContent();
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {

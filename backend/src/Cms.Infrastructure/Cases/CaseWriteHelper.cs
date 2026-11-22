@@ -1,20 +1,15 @@
-using System.Text.Json;
 using Cms.Application.Cases.Common;
 using Cms.Application.Contracts;
 using Cms.Application.Interfaces;
 using Cms.Domain.Entities;
 using Cms.Infrastructure.Data;
+using Cms.Infrastructure.Security;
 using Microsoft.EntityFrameworkCore;
 
 namespace Cms.Infrastructure.Cases;
 
 public sealed class CaseWriteHelper
 {
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-    };
-
     private readonly CmsDbContext _context;
     private readonly IDateTimeService _dateTimeService;
     private readonly CasesOptions _options;
@@ -61,7 +56,7 @@ public sealed class CaseWriteHelper
             Action = action,
             EntityType = entityType,
             EntityId = entityId.ToString(),
-            Details = details is null ? null : JsonSerializer.Serialize(details, JsonOptions),
+            Details = SensitiveDataMasker.MaskObject(details),
             CreatedAt = _dateTimeService.UtcNow
         };
 
