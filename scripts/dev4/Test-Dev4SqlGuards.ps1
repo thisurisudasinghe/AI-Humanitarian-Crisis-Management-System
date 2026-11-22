@@ -19,7 +19,8 @@ $temp = Join-Path $evidenceRoot "sql-guards-$runId"
 New-Item -ItemType Directory -Path $temp | Out-Null
 
 function Invoke-Sql([string]$Query) {
-    $output = & $sqlcmd.Source -S $Server -d $Database -I -b -h -1 -W -Q $Query 2>&1
+    # SET NOCOUNT ON keeps sqlcmd's "(N rows affected)" footer out of assertions.
+    $output = & $sqlcmd.Source -S $Server -d $Database -I -b -h -1 -W -Q "SET NOCOUNT ON; $Query" 2>&1
     if ($LASTEXITCODE -ne 0) { throw "SQL failed: $($output -join [Environment]::NewLine)" }
     return ($output -join [Environment]::NewLine).Trim()
 }
@@ -27,7 +28,28 @@ function Start-SqlFile([string]$Path, [string]$Name) {
     $out = Join-Path $temp "$Name.out.txt"
     $err = Join-Path $temp "$Name.err.txt"
     Remove-Item $out,$err -Force -ErrorAction SilentlyContinue
-    return Start-Process -FilePath $sqlcmd.Source -ArgumentList @('-S',$Server,'-d',$Database,'-I','-b','-i',('"' + $Path + '"')) -PassThru -NoNewWindow -RedirectStandardOutput $out -RedirectStandardError $err
+
+    # Start-Process -NoNewWindow does not populate ExitCode reliably in Windows
+    # PowerShell. Use System.Diagnostics.Process so the SQL exit code is real.
+    $psi = New-Object System.Diagnostics.ProcessStartInfo($sqlcmd.Source)
+    $psi.Arguments = '-S "' + $Server + '" -d "' + $Database + '" -I -b -i "' + $Path + '"'
+    $psi.UseShellExecute = $false
+    $psi.RedirectStandardOutput = $true
+    $psi.RedirectStandardError = $true
+    $process = [System.Diagnostics.Process]::Start($psi)
+    return [pscustomobject]@{
+        Process = $process
+        OutPath = $out
+        ErrPath = $err
+        OutTask = $process.StandardOutput.ReadToEndAsync()
+        ErrTask = $process.StandardError.ReadToEndAsync()
+    }
+}
+function Wait-SqlFile($Job) {
+    $Job.Process.WaitForExit()
+    Set-Content -Path $Job.OutPath -Value $Job.OutTask.Result -Encoding UTF8
+    Set-Content -Path $Job.ErrPath -Value $Job.ErrTask.Result -Encoding UTF8
+    return $Job.Process.ExitCode
 }
 function Assert-OneWins([string]$Label, [string]$Query, [string]$ResetQuery, [string]$VerifyQuery, [string]$Expected) {
     $a = Join-Path $temp "$Label-A.sql"; $b = Join-Path $temp "$Label-B.sql"
@@ -36,8 +58,8 @@ function Assert-OneWins([string]$Label, [string]$Query, [string]$ResetQuery, [st
     for ($iteration = 1; $iteration -le $Iterations; $iteration++) {
         Invoke-Sql $ResetQuery | Out-Null
         $p1 = Start-SqlFile $a "$Label-A"; $p2 = Start-SqlFile $b "$Label-B"
-        Wait-Process -Id $p1.Id,$p2.Id
-        if ($p1.ExitCode -ne 0 -or $p2.ExitCode -ne 0) { throw "$Label SQL race failed on iteration $iteration. Inspect $temp." }
+        $exit1 = Wait-SqlFile $p1; $exit2 = Wait-SqlFile $p2
+        if ($exit1 -ne 0 -or $exit2 -ne 0) { throw "$Label SQL race failed on iteration $iteration (exit $exit1/$exit2). Inspect $temp." }
         $actual = Invoke-Sql $VerifyQuery
         if ($actual -ne $Expected) { throw "$Label race iteration $iteration expected '$Expected' but got '$actual'." }
     }
@@ -100,8 +122,8 @@ END CATCH;
 "@
         Set-Content $a $insertRace -Encoding UTF8; Set-Content $b $insertRace -Encoding UTF8
         $p1 = Start-SqlFile $a "Idempotency-A-$iteration"; $p2 = Start-SqlFile $b "Idempotency-B-$iteration"
-        Wait-Process -Id $p1.Id,$p2.Id
-        if ($p1.ExitCode -ne 0 -or $p2.ExitCode -ne 0) { throw "Idempotency race failed on iteration $iteration." }
+        $exit1 = Wait-SqlFile $p1; $exit2 = Wait-SqlFile $p2
+        if ($exit1 -ne 0 -or $exit2 -ne 0) { throw "Idempotency race failed on iteration $iteration (exit $exit1/$exit2)." }
         $count = Invoke-Sql "SELECT COUNT(*) FROM res.allocations WHERE idempotency_key='$iterationKey';"
         if ($count -ne '1') { throw "Idempotency iteration $iteration expected one row; found $count." }
     }

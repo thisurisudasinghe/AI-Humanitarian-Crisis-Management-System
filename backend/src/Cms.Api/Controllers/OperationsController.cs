@@ -28,7 +28,9 @@ public sealed class OperationsController(IOperationsService operations) : Contro
     [HttpGet("resources"), Authorize(Roles = StaffRoles)]
     public async Task<IActionResult> Resources(CancellationToken ct) => Ok(await operations.GetResourceTypesAsync(ct));
 
-    [HttpGet("resources/types"), Authorize(Roles = StaffRoles)]
+    // Shelter admins need the read-only type list to file resource assistance
+    // requests from the shelter workspace; they still cannot create stock types.
+    [HttpGet("resources/types"), Authorize(Roles = StaffRoles + "," + RoleNames.ShelterAdmin)]
     public async Task<IActionResult> ResourceTypes(CancellationToken ct) => Ok(await operations.GetResourceTypesAsync(ct));
 
     [HttpPost("resources/types"), Authorize(Roles = RoleNames.LogisticsManager + "," + RoleNames.SystemAdmin)]
@@ -150,7 +152,7 @@ public sealed class OperationsController(IOperationsService operations) : Contro
         [FromQuery] int page = 1, [FromQuery] int pageSize = 50, CancellationToken ct = default) =>
         Ok(await operations.GetMyTasksAsync(page, pageSize, ct));
 
-    [HttpGet("volunteer-tasks"), Authorize(Roles = "VolunteerCoordinator," + RoleNames.EmergencyCoordinator)]
+    [HttpGet("volunteer-tasks"), Authorize(Roles = "VolunteerCoordinator," + RoleNames.EmergencyCoordinator + "," + RoleNames.SystemAdmin)]
     public async Task<IActionResult> VolunteerTasks(
         [FromQuery] string? status, [FromQuery] int page = 1, [FromQuery] int pageSize = 50, CancellationToken ct = default) =>
         Ok(await operations.GetVolunteerTasksAsync(status, page, pageSize, ct));
@@ -177,14 +179,14 @@ public sealed class OperationsController(IOperationsService operations) : Contro
     // -----------------------------------------------------------------------
     // M5 assistance + shortage.
     // -----------------------------------------------------------------------
-    [HttpPost("assistance-requests"), Authorize(Roles = RoleNames.LogisticsManager + ",ShelterAdmin," + RoleNames.PartnerOfficer)]
+    [HttpPost("assistance-requests"), Authorize(Roles = RoleNames.LogisticsManager + ",ShelterAdmin," + RoleNames.PartnerOfficer + "," + RoleNames.SystemAdmin)]
     public async Task<IActionResult> CreateAssistanceRequest(CreateAssistanceRequestInput input, CancellationToken ct)
     {
         var row = await operations.CreateAssistanceRequestAsync(input, ct);
         return Created($"/api/v1/assistance-requests/{row.Id}", row);
     }
 
-    [HttpGet("assistance-requests"), Authorize(Roles = RoleNames.LogisticsManager + ",ShelterAdmin," + RoleNames.PartnerOfficer)]
+    [HttpGet("assistance-requests"), Authorize(Roles = RoleNames.LogisticsManager + ",ShelterAdmin," + RoleNames.PartnerOfficer + "," + RoleNames.SystemAdmin)]
     public async Task<IActionResult> AssistanceRequests(
         [FromQuery] string? direction, [FromQuery] string? status,
         [FromQuery] int page = 1, [FromQuery] int pageSize = 50, CancellationToken ct = default) =>
@@ -227,6 +229,11 @@ public sealed class OperationsController(IOperationsService operations) : Contro
     // -----------------------------------------------------------------------
     // M10 mapping proxy endpoints.
     // -----------------------------------------------------------------------
+    [HttpGet("operations/areas"), Authorize(Roles =
+        StaffRoles + "," + RoleNames.ShelterAdmin + "," + RoleNames.VolunteerCoordinator)]
+    public async Task<IActionResult> MapAreas(CancellationToken ct) =>
+        Ok(await operations.GetMapAreasAsync(ct));
+
     [HttpGet("geo/distance"), AllowAnonymous]
     public async Task<IActionResult> Distance(
         [FromQuery] double fromLat, [FromQuery] double fromLng,

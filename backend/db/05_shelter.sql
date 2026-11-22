@@ -49,6 +49,13 @@ BEGIN
 END;
 GO
 
+-- A single approved ShelterMatch decision may authorise only one occupancy
+-- allocation. The unique index turns concurrent duplicate submissions into a
+-- replayable conflict instead of double-counting the household.
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE [name] = N'UQ_shelter_allocations_decision' AND [object_id] = OBJECT_ID(N'[shelter].[shelter_allocations]'))
+    CREATE UNIQUE INDEX [UQ_shelter_allocations_decision] ON [shelter].[shelter_allocations] ([decision_id]);
+GO
+
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE [name] = N'IX_shelter_shelters_org' AND [object_id] = OBJECT_ID(N'[shelter].[shelters]'))
     CREATE INDEX [IX_shelter_shelters_org] ON [shelter].[shelters] ([org_id]);
 GO

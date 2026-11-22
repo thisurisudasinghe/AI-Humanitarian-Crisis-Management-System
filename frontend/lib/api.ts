@@ -2,6 +2,7 @@ export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5210";
 
 const REFRESH_TOKEN_KEY = "cms.refreshToken";
+export const AUTH_INVALIDATED_EVENT = "cms:auth-invalidated";
 let accessToken: string | null = null;
 let refreshPromise: Promise<string | null> | null = null;
 
@@ -79,6 +80,14 @@ export function getRefreshToken(): string | null {
   return window.sessionStorage.getItem(REFRESH_TOKEN_KEY);
 }
 
+/** Clear credentials and notify AuthGuard-backed pages to force a re-login. */
+export function invalidateAuth(): void {
+  clearTokens();
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event(AUTH_INVALIDATED_EVENT));
+  }
+}
+
 function jsonHeaders(): HeadersInit {
   return {
     "Content-Type": "application/json",
@@ -148,7 +157,7 @@ async function performRefresh(): Promise<string | null> {
   );
 
   if (!response.ok) {
-    clearTokens();
+    invalidateAuth();
     return null;
   }
 
@@ -173,6 +182,8 @@ export async function api<T>(
 
     if (refreshed) {
       response = await send(path, init, true);
+    } else {
+      invalidateAuth();
     }
   }
 
@@ -216,6 +227,8 @@ export async function apiBlob(
 
     if (refreshed) {
       response = await send(path, init, true);
+    } else {
+      invalidateAuth();
     }
   }
 

@@ -1,51 +1,66 @@
-# Member 4 verification evidence
+# Member 4 verification evidence — executed 22 November 2026
 
-This folder contains repeatable verification scripts. A script being present is **not** evidence that it has been executed. Save the command output and screenshots here only after running it on the Windows development machine.
+These logs are execution evidence from Windows + LocalDB, not just script inventory. The disposable database is `CmsDev4Verification`; demo password is `Demo1234!`.
 
-## Required sequence
+## Reproduce locally
 
-1. Open PowerShell at the repository root.
-2. Create a disposable LocalDB database and run schema scripts:
+Open PowerShell at the repository root:
 
-   ```powershell
-   .\scripts\dev4\Initialize-Dev4LocalDb.ps1 -Database CmsDev4Verification -ResetExisting
-   ```
+```powershell
+.\scripts\dev4\Initialize-Dev4LocalDb.ps1 -Database CmsDev4Verification -ResetExisting
+```
 
-3. Start the API in `Development` against `CmsDev4Verification`. Set `ConnectionStrings__DefaultConnection` to `Server=(localdb)\MSSQLLocalDB;Database=CmsDev4Verification;Trusted_Connection=True;TrustServerCertificate=True;MultipleActiveResultSets=true;`. Wait for `GET http://localhost:5210/api/health` to return `Healthy`. The DevelopmentDemoSeeder creates the demo users.
-4. Run the case and operations demo seeds and re-run idempotent scripts:
+Start the API in `Development` so the demo users are seeded, then wait for `GET http://localhost:5210/api/health` to return `Healthy`:
 
-   ```powershell
-   .\scripts\dev4\Initialize-Dev4LocalDb.ps1 -Database CmsDev4Verification -RunScenarioSeeds
-   ```
+```powershell
+$env:ASPNETCORE_ENVIRONMENT='Development'
+$env:ConnectionStrings__DefaultConnection='Server=(localdb)\MSSQLLocalDB;Database=CmsDev4Verification;Trusted_Connection=True;TrustServerCertificate=True;MultipleActiveResultSets=true;'
+dotnet run --project backend/src/Cms.Api/Cms.Api.csproj --launch-profile http
+```
 
-5. Run the real SQL Server guard probes:
+Seed the scenario rows and re-run idempotently:
 
-   ```powershell
-   .\scripts\dev4\Test-Dev4SqlGuards.ps1 -Database CmsDev4Verification
-   ```
+```powershell
+.\scripts\dev4\Initialize-Dev4LocalDb.ps1 -Database CmsDev4Verification -RunScenarioSeeds
+.\scripts\dev4\Test-Dev4SqlGuards.ps1 -Database CmsDev4Verification -Iterations 20
+.\scripts\dev4\Invoke-Dev4LiveVerification.ps1 -ApiBaseUrl 'http://localhost:5210' -Database 'CmsDev4Verification'
+.\scripts\dev4\Test-Dev4PostmanStatic.ps1
+```
 
-   This runs 20 iterations each of last-unit inventory updates, last-place shelter updates and concurrent idempotency-key inserts, then probes the inventory/shelter CHECK constraints using concurrent SQL Server sessions. SQL process output is retained under `docs/evidence/dev4/runs/`. It does **not** replace a concurrent HTTP/API test through `OperationsService`.
-6. Obtain role-specific bearer tokens and approved decision IDs from the live application, then run the full operational flow. In local Development only, the seeder creates `logistics@example.org`, `shelter@example.org`, `volunteercoordinator@example.org` and `volunteer@example.org` (default demo password `Demo1234!`). Obtain each `accessToken` with `POST /api/v1/auth/login` and the corresponding email/password. Never reuse these demo credentials outside local Development. The resource and shelter decision IDs must already be approved by the AI decision workflow.
+Build/test and frontend checks:
 
-   Run the full operational flow:
+```powershell
+dotnet build backend/Cms.sln --nologo -v q
+dotnet test backend/Cms.sln --nologo -v q --no-build
+cd frontend
+npm run typecheck
+npm run build
+```
 
-   ```powershell
-   .\scripts\dev4\Invoke-Dev4EndToEnd.ps1 `
-     -LogisticsManagerToken '<token>' -ApprovedResourceDecisionId '<approved-resource-decision-guid>' `
-     -ShelterAdminToken '<token>' -ApprovedShelterDecisionId '<approved-shelter-decision-guid>' `
-     -VolunteerCoordinatorToken '<token>' -VolunteerToken '<token>'
-   ```
+## Saved results
 
-7. Run the 41-request `docs/postman/Member4_Operations.postman_collection.json` against the same API with valid environment variables and role tokens. Export Newman/Postman results to this folder.
-8. Run `dotnet build Cms.slnx` and `dotnet test Cms.slnx` from `backend`, then run `npm ci`, `npm run typecheck` and `npm run build` from `frontend`.
+| File | Result |
+| --- | --- |
+| `build.log` | Build succeeded: 0 warnings, 0 errors |
+| `test.log` | 586 passed, 0 failed, 0 skipped |
+| `frontend-typecheck.log` | `tsc --noEmit` passed |
+| `frontend-build.log` | Next.js production build passed |
+| `fresh-db-init.log` | Fresh `CmsDev4Verification` schema initialized |
+| `scenario-seeds.log` | Scenario seeds and idempotent re-run passed |
+| `sql-guards.log` | Resource 20/20, shelter 20/20, key uniqueness 20/20, CHECK constraints PASS |
+| `localdb-races.log` | Copy of the final SQL race output |
+| `live-api.log` | Live API verification: 41 PASS, 0 FAIL |
+| `postman-static.log` | 41 Postman requests; all required endpoints and negative key probe present |
+| `geo-tests.log` | Geo adapter/service tests passed |
+| `api-run.log` | API run output; expected outbox/MARS warnings only |
+| `ui-verification.md` | Manual browser results for Resources, Shelters, Volunteers and Map |
+| `runs/` | Retained raw SQL process output from the guard script |
 
-## Evidence still required after these scripts
+## Notes
 
-- Live HTTP parallel requests through the allocation and shelter endpoints (not only direct SQL guard statements), repeated at least 20 times each.
-- Same-key concurrent allocation API replay proving one allocation row and the expected existing DTO response.
-- Phase-3 request-status failure followed by the explicit retry endpoint; confirm the committed allocation remains and audit event is written.
-- Audit/outbox/notification delivery verification for allocation, dispatch, delivery, shelter and volunteer transitions.
-- Nominatim real-clock spacing proof from `OperationsGeoAdapterTests.Geocode_RealClock_SeparatesProviderRequestsByAtLeastOneSecond` and OSRM-down fallback test output.
-- Manual responsive UI checks at 360, 768 and 1280 px, including 403/409/validation and provider-offline cases.
-
-Do not write PASS beside an item until the corresponding command or manual test has actually completed and its output has been saved here.
+- `GET /resources/types` remains read-only for `ShelterAdmin`; creating resource types still requires `LogisticsManager` or `SystemAdmin`.
+- Area markers use the dedicated `GET /operations/areas`, not the Dev 2 case-reader endpoint.
+- A cleared manual coordinate is ignored by `MapPickerInner`; it never becomes `(0, 0)`.
+- Failed token refresh now invalidates the session and redirects guarded pages to `/login`.
+- The resources recovery panel only offers transitions allowed by `RequestStateMachine`; already-at-target retries are idempotent and illegal direct retries return `409 STATUS_TRANSITION_NOT_RETRYABLE`.
+- `SHELTER_FULL`, duplicate shelter-key exceptions in the API log, no-recipient outbox warnings and MARS savepoint warnings are expected evidence from the negative probes and LocalDB configuration.

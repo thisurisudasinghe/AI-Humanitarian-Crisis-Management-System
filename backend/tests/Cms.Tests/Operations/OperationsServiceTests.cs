@@ -212,6 +212,57 @@ public class OperationsServiceTests
     }
 
     [Fact]
+    public async Task PendingTransitions_ExcludeRowsWithoutALegalDirectTransition()
+    {
+        var h = SeedAllocationScenario(available: 10, quantity: 4);
+        var allocation = new Allocation
+        {
+            Id = Guid.NewGuid(),
+            RequestId = OpsIds.Request,
+            InventoryId = OpsIds.Inventory,
+            Quantity = 4,
+            DecisionId = OpsIds.Decision,
+            IdempotencyKey = "seeded-no-retry"
+        };
+        h.Db.Allocations.Add(allocation);
+        h.Db.Requests.Single().Status = RequestStatus.Verified;
+        await h.Db.SaveChangesAsync();
+
+        Assert.Empty(await h.Service.GetPendingTransitionsAsync(CancellationToken.None));
+
+        var ex = await Assert.ThrowsAsync<ConflictException>(
+            () => h.Service.RetryStatusTransitionAsync(allocation.Id, CancellationToken.None));
+        Assert.Equal("STATUS_TRANSITION_NOT_RETRYABLE", ex.Code);
+        h.Status.Verify(s => s.TransitionAsync(It.IsAny<Guid>(), It.IsAny<RequestStatus>(),
+            It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task RetryStatusTransition_AlreadyAtTarget_IsIdempotent()
+    {
+        var h = SeedAllocationScenario(available: 10, quantity: 4);
+        var allocation = new Allocation
+        {
+            Id = Guid.NewGuid(),
+            RequestId = OpsIds.Request,
+            InventoryId = OpsIds.Inventory,
+            Quantity = 4,
+            DecisionId = OpsIds.Decision,
+            IdempotencyKey = "seeded-already-transitioned"
+        };
+        h.Db.Allocations.Add(allocation);
+        h.Db.Requests.Single().Status = RequestStatus.Allocated;
+        await h.Db.SaveChangesAsync();
+
+        var retried = await h.Service.RetryStatusTransitionAsync(allocation.Id, CancellationToken.None);
+
+        Assert.NotNull(retried);
+        Assert.NotNull(retried.CompletedAt);
+        h.Status.Verify(s => s.TransitionAsync(It.IsAny<Guid>(), It.IsAny<RequestStatus>(),
+            It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
     public async Task AllocateShelter_FullShelter_IsRejectedAndOccupancyIsUnchanged()
     {
         var h = OpsHarness.Create();
@@ -334,7 +385,7 @@ public class OperationsServiceTests
         h.Db.ResourceTypes.Add(OpsSeed.FoodType());
         h.Db.Inventories.Add(OpsSeed.Inventory(available));
         h.Db.DecisionRecords.Add(OpsSeed.DecisionRecord(OpsIds.Decision, payload));
-        h.Db.Requests.Add(OpsSeed.Request(OpsIds.Request, Urgency.Critical));
+        h.Db.Requests.Add(OpsSeed.Request(OpsIds.Request, Urgency.Critical, status: RequestStatus.Approved));
         h.DecisionGate.Setup(g => g.RequireApprovedAsync(It.IsAny<Guid>(), It.IsAny<RecommendationType>(),
                 It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(OpsSeed.Decision(OpsIds.Decision, payload));

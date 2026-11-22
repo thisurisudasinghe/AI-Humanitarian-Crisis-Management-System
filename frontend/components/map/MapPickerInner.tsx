@@ -123,6 +123,9 @@ export default function MapPickerInner({
   };
 
   const updateManual = (field: "lat" | "lng", raw: string) => {
+    // Number("") is 0: ignore an empty field while the user is editing it so a
+    // cleared coordinate never silently relocates the pin to (0, 0).
+    if (raw.trim() === "") return;
     const parsed = Number(raw);
     if (!Number.isFinite(parsed)) return;
     commit({ ...point, [field]: parsed });

@@ -87,7 +87,7 @@ function OperationsMapContent() {
       }
 
       try {
-        const areas = await api<Area[]>("/areas");
+        const areas = await api<Area[]>("/operations/areas");
         areas.forEach((area) => next.push({
           id: area.id,
           lat: Number(area.lat),
