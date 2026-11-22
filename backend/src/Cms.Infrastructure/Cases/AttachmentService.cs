@@ -13,7 +13,7 @@ namespace Cms.Infrastructure.Cases;
 
 public sealed class AttachmentService : IAttachmentService
 {
-    private const long MaxBytes = 5L * 1024 * 1024;
+    private const long MaxBytes = 1_000_000;
     private static readonly HashSet<string> StaffRoles =
         CasesRoles.Staff.Split(',', StringSplitOptions.RemoveEmptyEntries).ToHashSet();
 
@@ -55,7 +55,7 @@ public sealed class AttachmentService : IAttachmentService
         {
             throw new ValidationException(
                 "INVALID_ATTACHMENT_SIZE",
-                new Dictionary<string, string[]> { ["file"] = new[] { "File must be between 1 byte and 5 MB." } });
+                new Dictionary<string, string[]> { ["file"] = new[] { "File must be between 1 byte and 1 MB." } });
         }
 
         var bytes = buffer.ToArray();

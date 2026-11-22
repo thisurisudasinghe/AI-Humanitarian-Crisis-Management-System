@@ -72,24 +72,24 @@ Stop `Cms.Api` before rebuilding; the running process locks the output DLLs.
 
 ### Demo login troubleshooting
 
-If a demo login that previously worked starts returning `401`, check for stale
-local User Secrets before touching the code. `dotnet user-secrets` values
-override `appsettings.Development.json`, and an old `EmailProtection` or `Jwt`
-key breaks both the seeded email hashes and token validation. Clear the
-override and restart:
+In `Development`, `Cms.Api` generates ephemeral JWT/email-protection keys when no
+explicit keys are configured. The `DevelopmentDemoSeeder` upserts the demo users
+on every API startup using the current runtime keys, so restart the API after
+any key configuration change. Do not commit keys or add key-derived ciphertext
+to SQL seeds. `99_seed_users.sql` creates roles, organisation and settings only;
+the `Demo1234!` accounts are created by the API seeder.
+
+If a stale User Secret deliberately overrides a key, clear it and restart:
 
 ```powershell
 dotnet user-secrets clear --project backend/src/Cms.Api/Cms.Api.csproj
 ```
 
-The committed `appsettings.Development.json` demo keys are the source of truth
-for local development; do not re-add them to User Secrets.
-
 ## 3. Current coverage
 
-- Backend unit + integration tests: run `dotnet test` for the current count and
-  skip status. No fixed number is recorded here because modules are still being
-  integrated.
+- Backend unit + integration tests: `dotnet test backend/Cms.sln`. The exact
+  final count is recorded in `docs/FINAL_VERIFICATION.md` and in the final
+  integration evidence below; no test is intentionally skipped.
 - Frontend routes build statically; `npm.cmd run build` prints the current route
   list, including `/notifications`, `/donations`, `/kpis`, `/operations/ai`,
   `/operations/ai/chat` and `/operations/decisions`.
@@ -119,10 +119,10 @@ current readiness.
 |---|---|---|---|---|
 | 1 | Citizen registers and logs in | Dev 1 | Yes | Live login HTTP 200; `AuthFlowTests` |
 | 2 | Citizen submits a request | Dev 2 | Yes | Live `POST /api/v1/requests` HTTP 201 |
-| 3 | Coordinator verifies the request | Dev 2 | Not exercised in final run | Seeded request was already `Triaged`; workflow tests remain with Dev 2 |
+| 3 | Coordinator verifies the request | Dev 2 | Yes | Live verify/assign/triage `204`; request workflow tests |
 | 4 | AI classifies and scores with confidence and rationale | Dev 3 | Yes | Live `Classification` and `Priority` rows from the outbox |
 | 5 | Human approves, modifies or rejects the recommendation | Dev 3 | Yes | Live 403/201/409 decision checks and `Recommended -> Approved` |
-| 6 | Resource, shelter and/or volunteer allocation | Dev 4 | Partial | No-decision allocation denied (403); M4 allocation write has a transaction defect; workflow transitions and Dev3 close gate passed |
+| 6 | Resource, shelter and/or volunteer allocation | Dev 4 | Yes | Approved allocation `201`, idempotent replay, `409 INSUFFICIENT_STOCK`, shelter allocation `201`, volunteer task assign `200` |
 | 7 | Notification is sent to the citizen | Dev 3 channels / Dev 1 outbox | Yes | 12 InApp/Email notification rows verified; all `Sent` |
 | 8 | Case is completed and the audit trail is reviewable | Dev 2 + Dev 3 + Dev 1 | Yes for this scenario | Request `Closed`, history and audit rows verified; append-only triggers present |
 

@@ -14,20 +14,25 @@ public class KpiReportDto
 
     public DateTime GeneratedAt { get; set; }
 
+    /// <summary>Requests currently in an open state (zero is a real count).</summary>
     public int UnresolvedRequestCount { get; set; }
 
+    /// <summary>Mean time from submission to first verification, in hours.</summary>
     public double? AverageResponseTimeHours { get; set; }
 
+    /// <summary>Utilised stock as a percentage of total managed stock.</summary>
     public double? ResourceUtilisationPercent { get; set; }
 
     public int? ReservedResources { get; set; }
 
     public int? DispatchedResources { get; set; }
 
+    /// <summary>Occupancy as a percentage of approved shelter capacity.</summary>
     public double? ShelterOccupancyPercent { get; set; }
 
     public int? SheltersAtCapacity { get; set; }
 
+    /// <summary>Modified or rejected decisions as a percentage of all decisions.</summary>
     public double? AiOverrideRatePercent { get; set; }
 
     // -----------------------------------------------------------------------
@@ -89,21 +94,21 @@ public class KpiReportDto
     public IReadOnlyCollection<string> AvailableSections { get; set; } =
         Array.Empty<string>();
 
-    /// <summary>Sections still waiting on another module's published schema.</summary>
+    /// <summary>Sections that are not yet backed by live data (empty in this build).</summary>
     public IReadOnlyCollection<string> PendingSections { get; set; } =
         Array.Empty<string>();
 
-    /// <summary>Requests per area (FR-MAP-05, P2). Empty until cases/geo schemas are published.</summary>
+    /// <summary>Requests per operational area within the reporting period.</summary>
     public IReadOnlyCollection<KpiAreaBreakdownDto> RequestsByArea { get; set; } =
         Array.Empty<KpiAreaBreakdownDto>();
 
-    /// <summary>Shelters per area (FR-MAP-05, P2). Empty until shelter/geo schemas are published.</summary>
+    /// <summary>Distinct shelters allocated to requests in each operational area.</summary>
     public IReadOnlyCollection<KpiAreaBreakdownDto> SheltersByArea { get; set; } =
         Array.Empty<KpiAreaBreakdownDto>();
 
     /// <summary>
-    /// Indicates that at least one section is provisional until the owning module
-    /// publishes its final table and column names.
+    /// True when at least one section is provisional. All sections are live in
+    /// this build, so this is always false.
     /// </summary>
     public bool IsPlaceholder { get; set; } = true;
 }

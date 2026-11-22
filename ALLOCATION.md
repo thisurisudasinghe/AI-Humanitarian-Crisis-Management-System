@@ -2,9 +2,9 @@
 
 | Developer | Assigned Modules |
 |---|---|
-| Developer 1 (Team Leader) | M1 Identity & Access, M9 Notifications, M11 Reporting & KPIs, M12 Administration |
-| Developer 2 | M2 Crisis & Case Management, M8 Donor Management |
-| Developer 3 | M3 AI Decision Support, M4 Governance & Audit |
+| Developer 1 (Team Leader) | M1 Identity & Access, M8 Donor/Donation Management, M11 Reporting & KPIs, M12 Administration |
+| Developer 2 | M2 Crisis & Case Management |
+| Developer 3 | M3 AI Decision Support, M4 Governance & Audit, M9 Notifications |
 | Developer 4 | M5 Resource & Logistics, M6 Shelter Management, M7 Volunteer Management, M10 Mapping |
 
 ## Shared Architecture

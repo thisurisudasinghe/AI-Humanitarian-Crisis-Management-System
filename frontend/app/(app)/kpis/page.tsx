@@ -48,8 +48,7 @@ function AreaTable({ rows }: { rows: KpiAreaBreakdown[] }) {
   if (rows.length === 0) {
     return (
       <p className="metric__label">
-        No area breakdown yet. It appears once the owning module publishes its
-        schema.
+        No requests or shelter allocations in the selected period.
       </p>
     );
   }
@@ -252,11 +251,10 @@ export default function KpiPage() {
 
             {report?.isPlaceholder ? (
               <section className="notice">
-                Identity, donation and notification aggregates are live.
-                {report.pendingSections.length > 0
-                  ? ` Still provisional: ${report.pendingSections.join(", ")} — waiting on Members 2–4 to publish their table and column names.`
-                  : null}{" "}
-                No guessed SQL is used.
+                All KPI sections are computed from the canonical schema: identity,
+                donations, notifications, cases, resources, shelters and AI
+                governance. A dash means there is no value for the selected
+                period; zero is a measured value.
               </section>
             ) : null}
 

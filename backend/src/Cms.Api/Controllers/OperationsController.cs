@@ -95,7 +95,7 @@ public sealed class OperationsController(IOperationsService operations) : Contro
     // -----------------------------------------------------------------------
     // M6 shelters.
     // -----------------------------------------------------------------------
-    [HttpGet("shelters"), Authorize(Roles = "ShelterAdmin," + RoleNames.EmergencyCoordinator + "," + RoleNames.SystemAdmin)]
+    [HttpGet("shelters"), Authorize(Roles = RoleNames.ShelterAdmin + "," + RoleNames.EmergencyCoordinator + "," + RoleNames.SystemAdmin)]
     public async Task<IActionResult> Shelters(
         [FromQuery] bool? approved, [FromQuery] Guid? orgId,
         [FromQuery] int page = 1, [FromQuery] int pageSize = 50, CancellationToken ct = default) =>
@@ -104,18 +104,18 @@ public sealed class OperationsController(IOperationsService operations) : Contro
     [HttpGet("shelters/public"), AllowAnonymous, EnableRateLimiting("public")]
     public async Task<IActionResult> PublicShelters(CancellationToken ct) => Ok(await operations.GetPublicSheltersAsync(ct));
 
-    [HttpPost("shelters"), Authorize(Roles = "ShelterAdmin," + RoleNames.SystemAdmin)]
+    [HttpPost("shelters"), Authorize(Roles = RoleNames.ShelterAdmin + "," + RoleNames.SystemAdmin)]
     public async Task<IActionResult> CreateShelter(CreateShelterInput input, CancellationToken ct)
     {
         var row = await operations.CreateShelterAsync(input, ct);
         return Created($"/api/v1/shelters/{row.Id}", row);
     }
 
-    [HttpPatch("shelters/{id:guid}"), Authorize(Roles = "ShelterAdmin," + RoleNames.SystemAdmin)]
+    [HttpPatch("shelters/{id:guid}"), Authorize(Roles = RoleNames.ShelterAdmin + "," + RoleNames.SystemAdmin)]
     public async Task<IActionResult> UpdateShelter(Guid id, UpdateShelterInput input, CancellationToken ct) =>
         Ok(await operations.UpdateShelterAsync(id, input, ct));
 
-    [HttpPost("shelters/allocations"), Authorize(Roles = "ShelterAdmin," + RoleNames.EmergencyCoordinator)]
+    [HttpPost("shelters/allocations"), Authorize(Roles = RoleNames.ShelterAdmin + "," + RoleNames.EmergencyCoordinator)]
     public async Task<IActionResult> AllocateShelter(ShelterAllocateBody body, CancellationToken ct)
     {
         var row = await operations.AllocateShelterAsync(body.DecisionId, ct);
@@ -129,14 +129,14 @@ public sealed class OperationsController(IOperationsService operations) : Contro
     // -----------------------------------------------------------------------
     // M7 volunteers.
     // -----------------------------------------------------------------------
-    [HttpGet("volunteers"), Authorize(Roles = "VolunteerCoordinator," + RoleNames.EmergencyCoordinator + "," + RoleNames.SystemAdmin)]
+    [HttpGet("volunteers"), Authorize(Roles = RoleNames.VolunteerCoordinator + "," + RoleNames.EmergencyCoordinator + "," + RoleNames.SystemAdmin)]
     public async Task<IActionResult> Volunteers(CancellationToken ct) => Ok(await operations.GetVolunteersAsync(ct));
 
     [HttpPost("volunteers/profile"), Authorize(Roles = RoleNames.Volunteer)]
     public async Task<IActionResult> SaveVolunteerProfile(SaveVolunteerProfileInput input, CancellationToken ct) =>
         Ok(await operations.SaveVolunteerProfileAsync(input, ct));
 
-    [HttpPost("volunteers/{id:guid}/verify"), Authorize(Roles = "VolunteerCoordinator," + RoleNames.SystemAdmin)]
+    [HttpPost("volunteers/{id:guid}/verify"), Authorize(Roles = RoleNames.VolunteerCoordinator + "," + RoleNames.SystemAdmin)]
     public async Task<IActionResult> VerifyVolunteer(Guid id, VerificationBody body, CancellationToken ct) =>
         Ok(await operations.VerifyVolunteerAsync(id, body.Approved, body.Reason, ct));
 
@@ -152,19 +152,19 @@ public sealed class OperationsController(IOperationsService operations) : Contro
         [FromQuery] int page = 1, [FromQuery] int pageSize = 50, CancellationToken ct = default) =>
         Ok(await operations.GetMyTasksAsync(page, pageSize, ct));
 
-    [HttpGet("volunteer-tasks"), Authorize(Roles = "VolunteerCoordinator," + RoleNames.EmergencyCoordinator + "," + RoleNames.SystemAdmin)]
+    [HttpGet("volunteer-tasks"), Authorize(Roles = RoleNames.VolunteerCoordinator + "," + RoleNames.EmergencyCoordinator + "," + RoleNames.SystemAdmin)]
     public async Task<IActionResult> VolunteerTasks(
         [FromQuery] string? status, [FromQuery] int page = 1, [FromQuery] int pageSize = 50, CancellationToken ct = default) =>
         Ok(await operations.GetVolunteerTasksAsync(status, page, pageSize, ct));
 
-    [HttpPost("volunteer-tasks"), Authorize(Roles = "VolunteerCoordinator," + RoleNames.SystemAdmin)]
+    [HttpPost("volunteer-tasks"), Authorize(Roles = RoleNames.VolunteerCoordinator + "," + RoleNames.SystemAdmin)]
     public async Task<IActionResult> CreateVolunteerTask(CreateVolunteerTaskInput input, CancellationToken ct)
     {
         var row = await operations.CreateVolunteerTaskAsync(input, ct);
         return Created($"/api/v1/volunteer-tasks/{row.Id}", row);
     }
 
-    [HttpPost("volunteer-tasks/{id:guid}/assign"), Authorize(Roles = "VolunteerCoordinator," + RoleNames.SystemAdmin)]
+    [HttpPost("volunteer-tasks/{id:guid}/assign"), Authorize(Roles = RoleNames.VolunteerCoordinator + "," + RoleNames.SystemAdmin)]
     public async Task<IActionResult> AssignVolunteerTask(Guid id, [FromQuery] Guid volunteerId, CancellationToken ct) =>
         Ok(await operations.AssignVolunteerTaskAsync(id, volunteerId, ct));
 
@@ -207,11 +207,11 @@ public sealed class OperationsController(IOperationsService operations) : Contro
     public async Task<IActionResult> MatchResources(Guid requestId, CancellationToken ct) =>
         Ok(await operations.RankResourcesAsync(requestId, ct));
 
-    [HttpGet("recommendations/match/shelters/{requestId:guid}"), Authorize(Roles = "ShelterAdmin," + RoleNames.EmergencyCoordinator)]
+    [HttpGet("recommendations/match/shelters/{requestId:guid}"), Authorize(Roles = RoleNames.ShelterAdmin + "," + RoleNames.EmergencyCoordinator)]
     public async Task<IActionResult> MatchShelters(Guid requestId, CancellationToken ct) =>
         Ok(await operations.RankSheltersAsync(requestId, ct));
 
-    [HttpGet("recommendations/match/volunteers/{requestId:guid}"), Authorize(Roles = "VolunteerCoordinator," + RoleNames.EmergencyCoordinator)]
+    [HttpGet("recommendations/match/volunteers/{requestId:guid}"), Authorize(Roles = RoleNames.VolunteerCoordinator + "," + RoleNames.EmergencyCoordinator)]
     public async Task<IActionResult> MatchVolunteers(Guid requestId, CancellationToken ct) =>
         Ok(await operations.RankVolunteersAsync(requestId, ct));
 

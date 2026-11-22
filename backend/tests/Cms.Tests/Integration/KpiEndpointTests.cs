@@ -44,12 +44,15 @@ public sealed class KpiEndpointTests : IClassFixture<CmsWebApplicationFactory>
 
         var report = await GetReportAsync(admin, DateTime.UtcNow.AddHours(-2), DateTime.UtcNow.AddHours(2));
 
-        Assert.True(report.IsPlaceholder);
+        Assert.False(report.IsPlaceholder);
         Assert.Contains("identity", report.AvailableSections);
         Assert.Contains("donations", report.AvailableSections);
         Assert.Contains("notifications", report.AvailableSections);
-        Assert.Contains("cases", report.PendingSections);
-        Assert.DoesNotContain("notifications", report.PendingSections);
+        Assert.Contains("cases", report.AvailableSections);
+        Assert.Contains("resources", report.AvailableSections);
+        Assert.Contains("shelter", report.AvailableSections);
+        Assert.Contains("ai", report.AvailableSections);
+        Assert.Empty(report.PendingSections);
 
         Assert.True(report.TotalUserCount >= 4);
         Assert.True(report.ActiveUserCount >= 3);
@@ -101,7 +104,7 @@ public sealed class KpiEndpointTests : IClassFixture<CmsWebApplicationFactory>
     }
 
     [Fact]
-    public async Task Kpi_report_keeps_cross_module_sections_pending()
+    public async Task Kpi_report_exposes_live_cross_module_sections()
     {
         using var admin = await _factory.CreateAuthenticatedClientAsync(
             CmsWebApplicationFactory.AdminEmail);
@@ -111,20 +114,16 @@ public sealed class KpiEndpointTests : IClassFixture<CmsWebApplicationFactory>
             DateTime.UtcNow.AddHours(-1),
             DateTime.UtcNow.AddHours(1));
 
-        Assert.Null(report.AverageResponseTimeHours);
-        Assert.Null(report.ResourceUtilisationPercent);
-        Assert.Null(report.ReservedResources);
-        Assert.Null(report.DispatchedResources);
-        Assert.Null(report.ShelterOccupancyPercent);
-        Assert.Null(report.SheltersAtCapacity);
-        Assert.Null(report.AiOverrideRatePercent);
-        Assert.Equal(0, report.FailedNotifications);
-        Assert.Equal(0, report.DeadLetterCount);
-        Assert.Equal(0, report.TotalNotificationCount);
-        Assert.Equal(0, report.SentNotificationCount);
-        Assert.Equal(0, report.UnresolvedRequestCount);
-        Assert.Empty(report.RequestsByArea);
-        Assert.Empty(report.SheltersByArea);
+        Assert.False(report.IsPlaceholder);
+        Assert.Empty(report.PendingSections);
+        Assert.True(report.UnresolvedRequestCount >= 0);
+        Assert.True(report.TotalNotificationCount >= 0);
+        Assert.True(report.SentNotificationCount >= 0);
+        Assert.True(report.FailedNotifications >= 0);
+        Assert.True(report.DeadLetterCount >= 0);
+        Assert.True(report.SheltersAtCapacity is null or >= 0);
+        Assert.True(report.ReservedResources is null or >= 0);
+        Assert.True(report.DispatchedResources is null or >= 0);
     }
 
     [Fact]

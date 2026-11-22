@@ -9,6 +9,7 @@ import {
   RESOLVED_REQUEST_STATUSES,
   caseRequestErrorMessage,
   listMyCaseRequests,
+  submitRequestFeedback,
   type CaseRequestListItem
 } from "@/lib/crisis";
 
@@ -33,6 +34,10 @@ export default function MyReportsPage() {
   const [reports, setReports] = useState<CaseRequestListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [feedbackDrafts, setFeedbackDrafts] = useState<Record<string, string>>({});
+  const [feedbackBusy, setFeedbackBusy] = useState<Record<string, boolean>>({});
+  const [feedbackErrors, setFeedbackErrors] = useState<Record<string, string>>({});
+  const [feedbackSent, setFeedbackSent] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     let active = true;
@@ -79,6 +84,32 @@ export default function MyReportsPage() {
     }
     return reports;
   }, [reports, filter]);
+
+  async function onFeedbackSubmit(reportId: string) {
+    const comment = (feedbackDrafts[reportId] ?? "").trim();
+    if (comment.length < 2) {
+      setFeedbackErrors((current) => ({
+        ...current,
+        [reportId]: "Feedback must be at least 2 characters."
+      }));
+      return;
+    }
+
+    setFeedbackBusy((current) => ({ ...current, [reportId]: true }));
+    setFeedbackErrors((current) => ({ ...current, [reportId]: "" }));
+    try {
+      await submitRequestFeedback(reportId, comment);
+      setFeedbackSent((current) => ({ ...current, [reportId]: true }));
+      setFeedbackDrafts((current) => ({ ...current, [reportId]: "" }));
+    } catch (cause) {
+      setFeedbackErrors((current) => ({
+        ...current,
+        [reportId]: caseRequestErrorMessage(cause, "Feedback could not be submitted.")
+      }));
+    } finally {
+      setFeedbackBusy((current) => ({ ...current, [reportId]: false }));
+    }
+  }
 
   return (
     <>
@@ -160,6 +191,44 @@ export default function MyReportsPage() {
               <span className={`badge ${report.isOverdue ? "coral" : "green"}`}>
                 <i /> {report.isOverdue ? "Overdue" : "On track"}
               </span>
+              {RESOLVED_REQUEST_STATUSES.includes(report.status) ? (
+                <div style={{ gridColumn: "1 / -1", marginTop: 12 }}>
+                  {feedbackSent[report.id] ? (
+                    <p className="muted" role="status">Thank you. Your feedback was submitted.</p>
+                  ) : (
+                    <div style={{ display: "grid", gap: 8, maxWidth: 640 }}>
+                      <label>
+                        <span className="field-label">Feedback after assistance</span>
+                        <textarea
+                          className="field-input"
+                          value={feedbackDrafts[report.id] ?? ""}
+                          maxLength={2000}
+                          placeholder="Share what went well or what could be improved."
+                          onChange={(event) =>
+                            setFeedbackDrafts((current) => ({
+                              ...current,
+                              [report.id]: event.target.value
+                            }))
+                          }
+                        />
+                      </label>
+                      {feedbackErrors[report.id] ? (
+                        <p className="form-error" role="alert">{feedbackErrors[report.id]}</p>
+                      ) : null}
+                      <div>
+                        <button
+                          className="btn btn-outline"
+                          type="button"
+                          disabled={feedbackBusy[report.id]}
+                          onClick={() => void onFeedbackSubmit(report.id)}
+                        >
+                          {feedbackBusy[report.id] ? "Submitting…" : "Submit feedback"}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : null}
             </article>
           ))
         )}

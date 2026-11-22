@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useState } from "react";
 import { Brand } from "./Brand";
 import { Icon } from "./Icon";
@@ -10,13 +11,16 @@ import {
   uploadCrisisReportEvidence,
   type CrisisReportReceipt
 } from "@/lib/crisis";
+import type { MapPoint } from "@/components/map/MapPicker";
+
+const MapPicker = dynamic(() => import("@/components/map/MapPicker"), { ssr: false });
 
 const categories = [
-  ["Flooding", "map"],
-  ["Fire", "alert"],
-  ["Medical emergency", "heart"],
-  ["Displacement", "users"],
-  ["Food or water", "box"],
+  ["Food", "box"],
+  ["Medicine", "heart"],
+  ["Shelter", "home"],
+  ["Transport", "map"],
+  ["Accessibility", "users"],
   ["Other", "grid"]
 ] as const;
 
@@ -41,7 +45,7 @@ function coordinatesAreValid(latText: string, lngText: string): boolean {
 
 export function ReportFlow() {
   const [step, setStep] = useState(1);
-  const [category, setCategory] = useState<string>("Flooding");
+  const [category, setCategory] = useState<string>("Food");
   const [severity, setSeverity] = useState<string>("Urgent");
   const [description, setDescription] = useState("");
   const [location, setLocation] = useState("");
@@ -326,15 +330,26 @@ export function ReportFlow() {
                 </label>
               </div>
 
-              <div className="map-placeholder">
-                <div className="map-roads" />
-                <span className="map-pin">
-                  <Icon name="pin" />
-                </span>
-                <div className="map-overlay">
-                  Map preview only
-                  <small>Geolocation and map tiles are not connected in this build.</small>
-                </div>
+              <div className="dev4-operations report-map-picker">
+                <MapPicker
+                  height={320}
+                  value={
+                    coordinatesAreValid(lat, lng)
+                      ? {
+                          lat: Number(lat),
+                          lng: Number(lng),
+                          address: location || undefined
+                        }
+                      : undefined
+                  }
+                  onChange={(point: MapPoint) => {
+                    setLat(String(point.lat));
+                    setLng(String(point.lng));
+                    if (point.address?.trim()) {
+                      setLocation(point.address.trim());
+                    }
+                  }}
+                />
               </div>
 
               <label className="field-label">How urgent is the situation?</label>
@@ -356,12 +371,12 @@ export function ReportFlow() {
                 <Icon name="upload" />
                 <span>
                   <b>{evidenceFile?.name ?? "Add photos or documents"}</b>
-                  <small>Optional · JPG, PNG or PDF up to 5 MB</small>
+                  <small>Optional · JPG, PNG, WebP or PDF up to 1 MB</small>
                   <small>The selected file is uploaded after the report is created.</small>
                 </span>
                 <input
                   type="file"
-                  accept=".jpg,.jpeg,.png,.pdf"
+                  accept=".jpg,.jpeg,.png,.webp,.pdf"
                   onChange={(event) => setEvidenceFile(event.target.files?.[0] ?? null)}
                 />
               </label>

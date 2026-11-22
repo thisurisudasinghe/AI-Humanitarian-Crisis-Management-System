@@ -142,6 +142,7 @@ public sealed class DecisionService : Cms.Application.Interfaces.Governance.IDec
             new
             {
                 Recommendation = recommendationId,
+                Confidence = recommendation.Confidence,
                 Outcome = outcome.ToString(),
                 Type = recommendation.Type
             },
