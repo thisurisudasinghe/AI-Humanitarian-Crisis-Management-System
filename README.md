@@ -367,6 +367,7 @@ dotnet run --project backend/src/Cms.Api/Cms.Api.csproj
 # 4. In a second terminal, apply only synthetic demo data, then build/start the frontend.
 sqlcmd -S "(localdb)\mssqllocaldb" -d $db -I -b -i backend/db/90_seed_scenario.sql
 sqlcmd -S "(localdb)\mssqllocaldb" -d $db -I -b -i backend/db/91_seed_ops.sql
+& "C:\Program Files\nodejs\npm.cmd" --prefix frontend install  # fresh clone: install declared packages first
 $env:NEXT_PUBLIC_API_URL = "http://localhost:5210"   # baked in at build time
 & "C:\Program Files\nodejs\npm.cmd" --prefix frontend run build
 & "C:\Program Files\nodejs\npm.cmd" --prefix frontend run start
