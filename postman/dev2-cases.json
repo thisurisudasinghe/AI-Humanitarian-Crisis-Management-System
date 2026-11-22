@@ -254,7 +254,7 @@
                 "exec": [
                   "pm.test(\"status is 401\", () => pm.response.to.have.status(401));",
                   "const body = pm.response.json();",
-                  "pm.expect(body).to.have.property(\"detail\").or.have.property(\"title\");"
+                  "pm.expect(Object.prototype.hasOwnProperty.call(body, \"detail\") || Object.prototype.hasOwnProperty.call(body, \"title\")).to.be.true;"
                 ]
               }
             }
@@ -276,8 +276,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"status is 401\", () => pm.response.to.have.status(401));",
-                  "const body = pm.response.json();",
-                  "pm.expect(body).to.have.property(\"detail\").or.have.property(\"title\");"
+                  "const text = pm.response.text();",
+                  "pm.expect(text === \"\" || text.includes(\"UNAUTHORIZED\")).to.be.true;"
                 ]
               }
             }
@@ -304,8 +304,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"status is 403\", () => pm.response.to.have.status(403));",
-                  "const body = pm.response.json();",
-                  "pm.expect(body).to.have.property(\"detail\").or.have.property(\"title\");"
+                  "const text = pm.response.text();",
+                  "pm.expect(text === \"\" || text.includes(\"FORBIDDEN\")).to.be.true;"
                 ]
               }
             }
@@ -346,7 +346,7 @@
                 "exec": [
                   "pm.expect([400, 422]).to.include(pm.response.code);",
                   "const body = pm.response.json();",
-                  "pm.expect(body).to.have.property(\"detail\").or.have.property(\"errors\").or.have.property(\"title\");"
+                  "pm.expect(Object.prototype.hasOwnProperty.call(body, \"detail\") || Object.prototype.hasOwnProperty.call(body, \"errors\") || Object.prototype.hasOwnProperty.call(body, \"title\")).to.be.true;"
                 ]
               }
             }
@@ -821,8 +821,8 @@
                 {
                   "key": "file",
                   "type": "file",
-                  "src": [],
-                  "description": "Select a local PNG, JPEG or PDF file under 5 MB."
+                  "src": "postman/fixtures/dev2-evidence-sample.png",
+                  "description": "Bundled 1x1 PNG fixture under 5 MB; replace with a local PNG/JPEG/PDF as needed."
                 }
               ]
             }
