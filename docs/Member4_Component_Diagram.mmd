@@ -1,11 +1,73 @@
 flowchart LR
-  Web[Next.js Operations UI] --> API[ASP.NET Core API]
-  API --> Ops[Operations Controllers]
-  Ops --> App[Operations Contracts and Matchers]
-  App --> Domain[Resource / Shelter / Volunteer / Geo Domain]
-  App --> Infra[EF Core + Geo Adapter]
-  Infra --> DB[(SQL Server: res, shelter, vol, geo)]
-  Infra --> OSM[Nominatim Geocoding]
-  Infra --> OSRM[OSRM Routing]
-  Ops --> Governance[Member 3 Decision Records]
-  Ops --> Cases[Member 2 Request Status Service]
+  subgraph UI["Member 4 handoff web app (/web) - separate from active /frontend"]
+    OpsUI["Logistics, shelters, volunteer and map pages"]
+    MapCmp["MapPicker / MapView (Leaflet + OSM tiles)"]
+    OpsUI --> MapCmp
+  end
+
+  subgraph API["ASP.NET Core modular monolith - /api/v1"]
+    Ctrl["OperationsController (thin HTTP + roles)"]
+    Public["GET /shelters/public and /geo/* (AllowAnonymous, public rate limit)"]
+    Ctrl --> Svc["IOperationsService / OperationsService"]
+    Public --> Svc
+  end
+
+  subgraph App["Member 4 application boundary"]
+    Svc
+    Matchers["ResourceMatcher / ShelterRecommender / VolunteerMatcher (read-only ranking)"]
+    Contracts["OperationsContracts: DTOs, inputs, IOperationsService"]
+  end
+
+  subgraph Cross["Contracts owned by other members"]
+    Gate["IDecisionGate (Member 3)"]
+    Reader["IRequestReader (Member 2)"]
+    Status["IRequestStatusService (Member 2)"]
+    Outbox["IOutbox / NotificationSend (Member 1)"]
+    Audit["IAuditLogger + ICurrentUser (Member 1)"]
+  end
+
+  subgraph Infra["Member 4 infrastructure"]
+    EF["CmsDbContext + EF configurations"]
+    Geo["IGeoService / GeoService (IMemoryCache)"]
+    Adapters["Frozen* adapters to shared geo/matcher contracts"]
+  end
+
+  subgraph Data["SQL Server (plain scripts, no EF migrations)"]
+    Res["res: resource_types, inventories, allocations, dispatches, assistance_requests"]
+    Shelter["shelter: shelters, shelter_allocations"]
+    Vol["vol: volunteers, availability, tasks, activities"]
+    Cases["cases.requests (Member 2, read/status only)"]
+    AI["ai.decision_records (Member 3, read only)"]
+  end
+
+  subgraph External["External providers"]
+    Nominatim["Nominatim geocoding (1 req/s)"]
+    OSRM["OSRM routing"]
+    Fallback["Pure Haversine (approximate fallback)"]
+  end
+
+  OpsUI --> Ctrl
+  MapCmp --> Public
+  Ctrl --> Contracts
+  Svc --> Matchers
+  Svc --> Gate
+  Svc --> Reader
+  Svc --> Status
+  Svc --> Outbox
+  Svc --> Audit
+  Matchers --> Reader
+  Matchers --> Geo
+  Svc --> Geo
+  Svc --> EF
+  Geo --> Nominatim
+  Geo --> OSRM
+  Geo -. "on provider failure" .-> Fallback
+  Geo --> Cache["IMemoryCache: 24 h success, <=1 min failure"]
+  EF --> Res
+  EF --> Shelter
+  EF --> Vol
+  EF --> Cases
+  Svc --> AI
+  Geo --> Adapters
+  Matchers --> Adapters
+  Adapters --> Consumers["Member 3 recommendations / other shared-contract consumers"]

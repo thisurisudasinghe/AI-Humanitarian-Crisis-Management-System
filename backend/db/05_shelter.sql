@@ -1,26 +1,63 @@
--- Member 4 / M6 Shelters.
-IF SCHEMA_ID('shelter') IS NULL EXEC('CREATE SCHEMA shelter');
-IF OBJECT_ID('shelter.Shelters','U') IS NULL
-CREATE TABLE shelter.Shelters(
- Id UNIQUEIDENTIFIER NOT NULL PRIMARY KEY, Name NVARCHAR(160) NOT NULL, Capacity INT NOT NULL, Occupancy INT NOT NULL DEFAULT 0,
- Facilities NVARCHAR(MAX) NOT NULL DEFAULT '[]', AccessibilityFeatures NVARCHAR(MAX) NOT NULL DEFAULT '[]',
- Services NVARCHAR(MAX) NOT NULL DEFAULT '[]', Lat FLOAT NOT NULL, Lng FLOAT NOT NULL, OrgId UNIQUEIDENTIFIER NOT NULL,
- Approved BIT NOT NULL DEFAULT 0, CreatedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(), UpdatedAt DATETIME2 NULL,
- CONSTRAINT CK_Shelters_Capacity CHECK(Capacity>0), CONSTRAINT CK_Shelters_Occupancy CHECK(Occupancy>=0 AND Occupancy<=Capacity));
-IF OBJECT_ID('shelter.ShelterAllocations','U') IS NULL
-CREATE TABLE shelter.ShelterAllocations(
- Id UNIQUEIDENTIFIER NOT NULL PRIMARY KEY, RequestId UNIQUEIDENTIFIER NOT NULL, ShelterId UNIQUEIDENTIFIER NOT NULL,
- HouseholdSize INT NOT NULL, DecisionId UNIQUEIDENTIFIER NOT NULL,
- CreatedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(), UpdatedAt DATETIME2 NULL);
+-- ============================================================================
+-- 05_shelter.sql - Member 4 / M6 Shelters
+-- Run after 00_foundation.sql. Occupancy is written only by the guarded
+-- allocation UPDATE; the CHECK constraint is defence in depth.
+-- ============================================================================
+SET NOCOUNT ON;
+SET XACT_ABORT ON;
+GO
 
--- Member 4 integrity/index additions (safe to re-run).
-IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name='CK_ShelterAllocations_HouseholdSize')
- ALTER TABLE shelter.ShelterAllocations ADD CONSTRAINT CK_ShelterAllocations_HouseholdSize CHECK(HouseholdSize > 0);
-IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name='IX_Shelters_OrgId' AND object_id=OBJECT_ID('shelter.Shelters'))
- CREATE INDEX IX_Shelters_OrgId ON shelter.Shelters(OrgId);
-IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name='IX_Shelters_Approved' AND object_id=OBJECT_ID('shelter.Shelters'))
- CREATE INDEX IX_Shelters_Approved ON shelter.Shelters(Approved);
-IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name='IX_ShelterAllocations_ShelterId' AND object_id=OBJECT_ID('shelter.ShelterAllocations'))
- CREATE INDEX IX_ShelterAllocations_ShelterId ON shelter.ShelterAllocations(ShelterId);
-IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name='IX_ShelterAllocations_RequestId' AND object_id=OBJECT_ID('shelter.ShelterAllocations'))
- CREATE INDEX IX_ShelterAllocations_RequestId ON shelter.ShelterAllocations(RequestId);
+IF SCHEMA_ID(N'shelter') IS NULL EXEC(N'CREATE SCHEMA [shelter] AUTHORIZATION [dbo];');
+GO
+
+IF OBJECT_ID(N'[shelter].[shelters]', N'U') IS NULL
+BEGIN
+    CREATE TABLE [shelter].[shelters] (
+        [id] uniqueidentifier NOT NULL,
+        [name] nvarchar(160) NOT NULL,
+        [capacity] int NOT NULL,
+        [occupancy] int NOT NULL DEFAULT 0,
+        [facilities] nvarchar(max) NOT NULL DEFAULT N'[]',
+        [accessibility_features] nvarchar(max) NOT NULL DEFAULT N'[]',
+        [services] nvarchar(max) NOT NULL DEFAULT N'[]',
+        [lat] float NOT NULL,
+        [lng] float NOT NULL,
+        [org_id] uniqueidentifier NOT NULL,
+        [approved] bit NOT NULL DEFAULT 0,
+        [created_at] datetime2 NOT NULL DEFAULT SYSUTCDATETIME(),
+        [updated_at] datetime2 NULL,
+        CONSTRAINT [PK_shelter_shelters] PRIMARY KEY ([id]),
+        CONSTRAINT [CK_shelter_capacity] CHECK ([capacity] > 0),
+        CONSTRAINT [CK_shelter_occupancy] CHECK ([occupancy] >= 0 AND [occupancy] <= [capacity])
+    );
+END;
+GO
+
+IF OBJECT_ID(N'[shelter].[shelter_allocations]', N'U') IS NULL
+BEGIN
+    CREATE TABLE [shelter].[shelter_allocations] (
+        [id] uniqueidentifier NOT NULL,
+        [request_id] uniqueidentifier NOT NULL,
+        [shelter_id] uniqueidentifier NOT NULL,
+        [household_size] int NOT NULL,
+        [decision_id] uniqueidentifier NOT NULL,
+        [created_at] datetime2 NOT NULL DEFAULT SYSUTCDATETIME(),
+        [updated_at] datetime2 NULL,
+        CONSTRAINT [PK_shelter_allocations] PRIMARY KEY ([id]),
+        CONSTRAINT [CK_shelter_allocations_household_size] CHECK ([household_size] > 0)
+    );
+END;
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE [name] = N'IX_shelter_shelters_org' AND [object_id] = OBJECT_ID(N'[shelter].[shelters]'))
+    CREATE INDEX [IX_shelter_shelters_org] ON [shelter].[shelters] ([org_id]);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE [name] = N'IX_shelter_shelters_approved' AND [object_id] = OBJECT_ID(N'[shelter].[shelters]'))
+    CREATE INDEX [IX_shelter_shelters_approved] ON [shelter].[shelters] ([approved]);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE [name] = N'IX_shelter_allocations_shelter' AND [object_id] = OBJECT_ID(N'[shelter].[shelter_allocations]'))
+    CREATE INDEX [IX_shelter_allocations_shelter] ON [shelter].[shelter_allocations] ([shelter_id]);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE [name] = N'IX_shelter_allocations_request' AND [object_id] = OBJECT_ID(N'[shelter].[shelter_allocations]'))
+    CREATE INDEX [IX_shelter_allocations_request] ON [shelter].[shelter_allocations] ([request_id]);
+GO

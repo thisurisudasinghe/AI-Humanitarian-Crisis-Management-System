@@ -1,756 +1,754 @@
 {
-  "info": {
-    "name": "Member 4 - Operations APIs",
-    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "description": "Resource, shelter, volunteer and geo endpoints. Set baseUrl and bearerToken variables."
-  },
-  "variable": [
-    {
-      "key": "baseUrl",
-      "value": "https://localhost:7001"
+    "info": {
+        "name": "Member 4 - Operations APIs",
+        "description": "P1 endpoint coverage for the Member 4 operations slice (M5 resources, M6 shelters, M7 volunteers, M10 mapping). Set bearerToken to a JWT with the role named in each request description. decisionId must be an approved decision produced by Member 3; allocationId/dispatchId/taskId/transitionId are captured by tests or pasted after a create call. For POST /allocations keep the same idempotencyKey when retrying and generate a fresh one for a new allocation attempt.",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
     },
-    {
-      "key": "bearerToken",
-      "value": ""
+    "auth": {
+        "type": "bearer",
+        "bearer": [
+            { "key": "token", "value": "{{bearerToken}}", "type": "string" }
+        ]
     },
-    {
-      "key": "requestId",
-      "value": "00000000-0000-0000-0000-000000000000"
-    },
-    {
-      "key": "decisionId",
-      "value": "00000000-0000-0000-0000-000000000000"
-    }
-  ],
-  "item": [
-    {
-      "name": "Resources & inventory",
-      "item": [
-        {
-          "name": "List resource types",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/resources/types",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "resources",
-                "types"
-              ]
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
+    "variable": [
+        { "key": "baseUrl", "value": "https://localhost:7001" },
+        { "key": "bearerToken", "value": "" },
+        { "key": "requestId", "value": "1d000000-0000-0000-0000-000000000006" },
+        { "key": "decisionId", "value": "" },
+        { "key": "allocationId", "value": "" },
+        { "key": "dispatchId", "value": "" },
+        { "key": "shelterId", "value": "44000000-0000-0000-0000-000000000001" },
+        { "key": "volunteerId", "value": "45000000-0000-0000-0000-000000000001" },
+        { "key": "resourceTypeId", "value": "41000000-0000-0000-0000-000000000001" },
+        { "key": "orgId", "value": "0f000000-0000-0000-0000-000000000001" },
+        { "key": "idempotencyKey", "value": "" },
+        { "key": "inventoryId", "value": "" },
+        { "key": "taskId", "value": "" },
+        { "key": "assistanceRequestId", "value": "" },
+        { "key": "transitionId", "value": "" },
+        { "key": "availabilityStart", "value": "2026-11-23T08:00:00Z" },
+        { "key": "availabilityEnd", "value": "2026-11-23T17:00:00Z" }
+    ],
+    "item": [{
+            "name": "Resources and inventory",
+            "item": [{
+                    "name": "GET /resources",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": { "raw": "{{baseUrl}}/api/v1/resources", "host": ["{{baseUrl}}"], "path": ["api", "v1", "resources"] },
+                        "description": "Resource types (staff: LogisticsManager, EmergencyCoordinator or SystemAdmin). Alias of /resources/types."
+                    }
+                },
                 {
-                  "key": "token",
-                  "value": "{{bearerToken}}",
-                  "type": "string"
+                    "name": "GET /resources/types",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": { "raw": "{{baseUrl}}/api/v1/resources/types", "host": ["{{baseUrl}}"], "path": ["api", "v1", "resources", "types"] },
+                        "description": "Resource types; use resourceTypeId in other requests."
+                    }
+                },
+                {
+                    "name": "POST /resources/types",
+                    "event": [{
+                        "listen": "test",
+                        "script": {
+                            "type": "text/javascript",
+                            "exec": [
+                                "pm.test('created or duplicate conflict', () => pm.expect([201, 409]).to.include(pm.response.code));",
+                                "if (pm.response.code === 201) pm.collectionVariables.set('resourceTypeId', pm.response.json().id);",
+                                "pm.test('errors are ProblemDetails with code', () => { if (pm.response.code >= 400) pm.expect(pm.response.json()).to.have.property('code'); });"
+                            ]
+                        }
+                    }],
+                    "request": {
+                        "method": "POST",
+                        "header": [{ "key": "Content-Type", "value": "application/json" }],
+                        "body": { "mode": "raw", "raw": "{\"name\":\"Emergency food pack\",\"unit\":\"packs\",\"description\":\"Demo resource type\"}", "options": { "raw": { "language": "json" } } },
+                        "url": { "raw": "{{baseUrl}}/api/v1/resources/types", "host": ["{{baseUrl}}"], "path": ["api", "v1", "resources", "types"] },
+                        "description": "Create a resource type (LogisticsManager or SystemAdmin). Names are unique; a duplicate returns 409."
+                    }
+                },
+                {
+                    "name": "GET /inventories",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/inventories?orgId={{orgId}}&resourceTypeId={{resourceTypeId}}&lowStock=false&page=1&pageSize=50",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "v1", "inventories"],
+                            "query": [
+                                { "key": "orgId", "value": "{{orgId}}" },
+                                { "key": "resourceTypeId", "value": "{{resourceTypeId}}" },
+                                { "key": "areaId", "value": "", "disabled": true },
+                                { "key": "lowStock", "value": "false" },
+                                { "key": "page", "value": "1" },
+                                { "key": "pageSize", "value": "50" }
+                            ]
+                        },
+                        "description": "Stock buckets and lowStock flag (Available <= ReorderThreshold). Staff roles; non-privileged users are org-scoped."
+                    }
+                },
+                {
+                    "name": "POST /inventories",
+                    "event": [{
+                        "listen": "test",
+                        "script": {
+                            "type": "text/javascript",
+                            "exec": [
+                                "pm.test('inventory created', () => pm.expect(pm.response.code).to.eql(201));"
+                            ]
+                        }
+                    }],
+                    "request": {
+                        "method": "POST",
+                        "header": [{ "key": "Content-Type", "value": "application/json" }],
+                        "body": { "mode": "raw", "raw": "{\"resourceTypeId\":\"{{resourceTypeId}}\",\"orgId\":\"{{orgId}}\",\"quantity\":20,\"reorderThreshold\":3,\"expiryDate\":null,\"lat\":7.2088,\"lng\":79.8358,\"accessibilityCapable\":true}", "options": { "raw": { "language": "json" } } },
+                        "url": { "raw": "{{baseUrl}}/api/v1/inventories", "host": ["{{baseUrl}}"], "path": ["api", "v1", "inventories"] },
+                        "description": "Create stock (LogisticsManager or SystemAdmin). Available is initialised to Quantity; other buckets start at zero."
+                    }
+                },
+                {
+                    "name": "PATCH /inventories/{id}",
+                    "event": [{
+                        "listen": "test",
+                        "script": {
+                            "type": "text/javascript",
+                            "exec": [
+                                "pm.test('updated or guarded conflict', () => pm.expect([200, 409]).to.include(pm.response.code));",
+                                "pm.test('guard uses INVENTORY_BELOW_COMMITTED when applicable', () => { if (pm.response.code === 409) pm.expect(pm.response.json().code).to.eql('INVENTORY_BELOW_COMMITTED'); });"
+                            ]
+                        }
+                    }],
+                    "request": {
+                        "method": "PATCH",
+                        "header": [{ "key": "Content-Type", "value": "application/json" }],
+                        "body": { "mode": "raw", "raw": "{\"quantity\":20,\"reorderThreshold\":3,\"expiryDate\":null,\"lat\":7.2088,\"lng\":79.8358,\"accessibilityCapable\":true}", "options": { "raw": { "language": "json" } } },
+                        "url": { "raw": "{{baseUrl}}/api/v1/inventories/{{inventoryId}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "inventories", "{{inventoryId}}"] },
+                        "description": "Correct stock (LogisticsManager or SystemAdmin). Quantity cannot drop below Reserved + Allocated + Dispatched + Utilised. Set inventoryId in variables from a create/list response."
+                    }
                 }
-              ]
-            }
-          }
+            ]
         },
         {
-          "name": "Create resource type",
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/resources/types",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "resources",
-                "types"
-              ]
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
+            "name": "Allocation and dispatch (decision gate + stock guard)",
+            "item": [{
+                    "name": "GET /allocations",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/allocations?requestId={{requestId}}&status=Allocated&page=1&pageSize=50",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "v1", "allocations"],
+                            "query": [
+                                { "key": "requestId", "value": "{{requestId}}" },
+                                { "key": "status", "value": "Allocated" },
+                                { "key": "page", "value": "1" },
+                                { "key": "pageSize", "value": "50" }
+                            ]
+                        },
+                        "description": "List allocations; staff roles, org-scoped for non-privileged callers."
+                    }
+                },
                 {
-                  "key": "token",
-                  "value": "{{bearerToken}}",
-                  "type": "string"
+                    "name": "POST /allocations (Idempotency-Key required)",
+                    "event": [{
+                            "listen": "prerequest",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "if (!pm.collectionVariables.get('idempotencyKey')) pm.collectionVariables.set('idempotencyKey', pm.variables.replaceIn('{{$guid}}'));"
+                                ]
+                            }
+                        },
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('created (201) or replayed (200)', () => pm.expect([200, 201]).to.include(pm.response.code));",
+                                    "if (pm.response.code === 201) { pm.collectionVariables.set('allocationId', pm.response.json().id); pm.collectionVariables.set('decisionId', pm.response.json().decisionId); }",
+                                    "pm.test('409 is INSUFFICIENT_STOCK', () => { if (pm.response.code === 409) pm.expect(pm.response.json().code).to.eql('INSUFFICIENT_STOCK'); });",
+                                    "pm.test('403 is a decision gate failure with ProblemDetails code', () => { if (pm.response.code === 403) pm.expect(pm.response.json()).to.have.property('code'); });"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            { "key": "Content-Type", "value": "application/json" },
+                            { "key": "Idempotency-Key", "value": "{{idempotencyKey}}" }
+                        ],
+                        "body": { "mode": "raw", "raw": "{\"decisionId\":\"{{decisionId}}\"}", "options": { "raw": { "language": "json" } } },
+                        "url": { "raw": "{{baseUrl}}/api/v1/allocations", "host": ["{{baseUrl}}"], "path": ["api", "v1", "allocations"] },
+                        "description": "LogisticsManager or EmergencyCoordinator. Body contains decisionId ONLY. The service re-reads inventoryId and quantity from the approved decision's FinalPayloadJson. Header Idempotency-Key is mandatory (<=256 chars). Missing header -> 400 IDEMPOTENCY_KEY_REQUIRED; rejected/mismatched decision -> 403; zero guarded rows -> 409 INSUFFICIENT_STOCK. Retry with the SAME key and a new key for a new attempt."
+                    }
+                },
+                {
+                    "name": "POST /allocations (negative: missing Idempotency-Key)",
+                    "event": [{
+                        "listen": "test",
+                        "script": {
+                            "type": "text/javascript",
+                            "exec": [
+                                "pm.test('missing key is 400 IDEMPOTENCY_KEY_REQUIRED', () => { pm.expect(pm.response.code).to.eql(400); pm.expect(pm.response.json().code).to.eql('IDEMPOTENCY_KEY_REQUIRED'); });"
+                            ]
+                        }
+                    }],
+                    "request": {
+                        "method": "POST",
+                        "header": [{ "key": "Content-Type", "value": "application/json" }],
+                        "body": { "mode": "raw", "raw": "{\"decisionId\":\"{{decisionId}}\"}", "options": { "raw": { "language": "json" } } },
+                        "url": { "raw": "{{baseUrl}}/api/v1/allocations", "host": ["{{baseUrl}}"], "path": ["api", "v1", "allocations"] },
+                        "description": "Negative check: deliberately omit the Idempotency-Key header. Expect 400 with ProblemDetails code IDEMPOTENCY_KEY_REQUIRED."
+                    }
+                },
+                {
+                    "name": "GET /dispatches",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/dispatches?allocationId={{allocationId}}&page=1&pageSize=50",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "v1", "dispatches"],
+                            "query": [
+                                { "key": "allocationId", "value": "{{allocationId}}" },
+                                { "key": "page", "value": "1" },
+                                { "key": "pageSize", "value": "50" }
+                            ]
+                        },
+                        "description": "List dispatches staff, org-scoped. ConfirmedAt and ConfirmedBy are populated after delivery confirmation."
+                    }
+                },
+                {
+                    "name": "POST /dispatches",
+                    "event": [{
+                        "listen": "test",
+                        "script": {
+                            "type": "text/javascript",
+                            "exec": [
+                                "pm.test('dispatch accepted/replayed', () => pm.expect([200, 409]).to.include(pm.response.code));",
+                                "if (pm.response.code === 200) pm.collectionVariables.set('dispatchId', pm.response.json().id);",
+                                "pm.test('409 is INVALID_TRANSITION or bucket mismatch', () => { if (pm.response.code === 409) pm.expect(['INVALID_TRANSITION','INVENTORY_BUCKET_MISMATCH']).to.include(pm.response.json().code); });"
+                            ]
+                        }
+                    }],
+                    "request": {
+                        "method": "POST",
+                        "header": [{ "key": "Content-Type", "value": "application/json" }],
+                        "body": { "mode": "raw", "raw": "{\"decisionId\":\"{{decisionId}}\",\"allocationId\":\"{{allocationId}}\"}", "options": { "raw": { "language": "json" } } },
+                        "url": { "raw": "{{baseUrl}}/api/v1/dispatches", "host": ["{{baseUrl}}"], "path": ["api", "v1", "dispatches"] },
+                        "description": "LogisticsManager. Decision is re-verified; stock moves Allocated -> Dispatched only. Repeat with the same decision returns the existing dispatch (200)."
+                    }
+                },
+                {
+                    "name": "POST /dispatches/{allocationId}",
+                    "request": {
+                        "method": "POST",
+                        "header": [{ "key": "Content-Type", "value": "application/json" }],
+                        "body": { "mode": "raw", "raw": "{\"decisionId\":\"{{decisionId}}\"}", "options": { "raw": { "language": "json" } } },
+                        "url": { "raw": "{{baseUrl}}/api/v1/dispatches/{{allocationId}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "dispatches", "{{allocationId}}"] },
+                        "description": "LogisticsManager. Path variant; body contains decisionId only."
+                    }
+                },
+                {
+                    "name": "POST /dispatches/confirm",
+                    "event": [{
+                        "listen": "test",
+                        "script": {
+                            "type": "text/javascript",
+                            "exec": [
+                                "pm.test('confirmation accepted or replayed', () => pm.expect([200, 409]).to.include(pm.response.code));",
+                                "if (pm.response.code === 409) pm.test('guard code is exposed', () => pm.expect(pm.response.json()).to.have.property('code'));"
+                            ]
+                        }
+                    }],
+                    "request": {
+                        "method": "POST",
+                        "header": [{ "key": "Content-Type", "value": "application/json" }],
+                        "body": { "mode": "raw", "raw": "{\"decisionId\":\"{{decisionId}}\",\"dispatchId\":\"{{dispatchId}}\"}", "options": { "raw": { "language": "json" } } },
+                        "url": { "raw": "{{baseUrl}}/api/v1/dispatches/confirm", "host": ["{{baseUrl}}"], "path": ["api", "v1", "dispatches", "confirm"] },
+                        "description": "LogisticsManager. Records ConfirmedAt/ConfirmedBy, moves Dispatched -> Utilised and transitions the request to Fulfilled. Repeat returns unchanged state."
+                    }
+                },
+                {
+                    "name": "POST /dispatches/{dispatchId}/confirm",
+                    "request": {
+                        "method": "POST",
+                        "header": [{ "key": "Content-Type", "value": "application/json" }],
+                        "body": { "mode": "raw", "raw": "{\"decisionId\":\"{{decisionId}}\"}", "options": { "raw": { "language": "json" } } },
+                        "url": { "raw": "{{baseUrl}}/api/v1/dispatches/{{dispatchId}}/confirm", "host": ["{{baseUrl}}"], "path": ["api", "v1", "dispatches", "{{dispatchId}}", "confirm"] },
+                        "description": "LogisticsManager. Path variant of delivery confirmation; body contains decisionId only."
+                    }
                 }
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Emergency food pack\",\n  \"unit\": \"packs\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
+            ]
         },
         {
-          "name": "List inventories",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/inventories",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "inventories"
-              ]
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
+            "name": "Shelters",
+            "item": [{
+                    "name": "GET /shelters",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/shelters?approved=true&orgId={{orgId}}&page=1&pageSize=50",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "v1", "shelters"],
+                            "query": [
+                                { "key": "approved", "value": "true" },
+                                { "key": "orgId", "value": "{{orgId}}" },
+                                { "key": "page", "value": "1" },
+                                { "key": "pageSize", "value": "50" }
+                            ]
+                        },
+                        "description": "ShelterAdmin, EmergencyCoordinator or SystemAdmin. Includes Capacity, Occupancy, FreePlaces, facilities/accessibility/services and coordinates."
+                    }
+                },
                 {
-                  "key": "token",
-                  "value": "{{bearerToken}}",
-                  "type": "string"
+                    "name": "GET /shelters/public",
+                    "event": [{
+                        "listen": "test",
+                        "script": {
+                            "type": "text/javascript",
+                            "exec": [
+                                "pm.test('anonymous public list succeeds', () => pm.expect(pm.response.code).to.eql(200));",
+                                "pm.test('only approved shelters, no org PII', () => { const rows = pm.response.json(); rows.forEach(r => { pm.expect(r.approved).to.eql(true); pm.expect(r.orgId).to.eql('00000000-0000-0000-0000-000000000000'); }); });"
+                            ]
+                        }
+                    }],
+                    "request": {
+                        "auth": { "type": "noauth" },
+                        "method": "GET",
+                        "header": [],
+                        "url": { "raw": "{{baseUrl}}/api/v1/shelters/public", "host": ["{{baseUrl}}"], "path": ["api", "v1", "shelters", "public"] },
+                        "description": "Anonymous, rate-limited public list of approved shelters. OrgId is deliberately projected as Guid.Empty; no contact details."
+                    }
+                },
+                {
+                    "name": "POST /shelters",
+                    "request": {
+                        "method": "POST",
+                        "header": [{ "key": "Content-Type", "value": "application/json" }],
+                        "body": { "mode": "raw", "raw": "{\"name\":\"Demo Shelter\",\"capacity\":50,\"occupancy\":0,\"facilities\":\"[\\\"Water\\\"]\",\"accessibilityFeatures\":\"[\\\"Wheelchair access\\\"]\",\"services\":\"[\\\"Food\\\"]\",\"lat\":7.2088,\"lng\":79.8358,\"orgId\":\"{{orgId}}\"}", "options": { "raw": { "language": "json" } } },
+                        "url": { "raw": "{{baseUrl}}/api/v1/shelters", "host": ["{{baseUrl}}"], "path": ["api", "v1", "shelters"] },
+                        "description": "ShelterAdmin or SystemAdmin. Occupancy is always stored as 0; approval is a separate action. Facility/service strings are JSON arrays encoded as strings."
+                    }
+                },
+                {
+                    "name": "PATCH /shelters/{id}",
+                    "event": [{
+                        "listen": "test",
+                        "script": {
+                            "type": "text/javascript",
+                            "exec": [
+                                "pm.test('updated or capacity guard conflict', () => pm.expect([200, 409]).to.include(pm.response.code));",
+                                "pm.test('guard code SHELTER_CAPACITY_BELOW_OCCUPANCY', () => { if (pm.response.code === 409) pm.expect(pm.response.json().code).to.eql('SHELTER_CAPACITY_BELOW_OCCUPANCY'); });"
+                            ]
+                        }
+                    }],
+                    "request": {
+                        "method": "PATCH",
+                        "header": [{ "key": "Content-Type", "value": "application/json" }],
+                        "body": { "mode": "raw", "raw": "{\"name\":\"Demo Shelter\",\"capacity\":120,\"facilities\":\"[\\\"Water\\\"]\",\"accessibilityFeatures\":\"[\\\"Wheelchair access\\\"]\",\"services\":\"[\\\"Food\\\"]\",\"lat\":7.2088,\"lng\":79.8358}", "options": { "raw": { "language": "json" } } },
+                        "url": { "raw": "{{baseUrl}}/api/v1/shelters/{{shelterId}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "shelters", "{{shelterId}}"] },
+                        "description": "ShelterAdmin or SystemAdmin. Capacity below current Occupancy returns 409 SHELTER_CAPACITY_BELOW_OCCUPANCY."
+                    }
+                },
+                {
+                    "name": "POST /shelters/{id}/approve",
+                    "request": {
+                        "method": "POST",
+                        "header": [],
+                        "url": { "raw": "{{baseUrl}}/api/v1/shelters/{{shelterId}}/approve", "host": ["{{baseUrl}}"], "path": ["api", "v1", "shelters", "{{shelterId}}", "approve"] },
+                        "description": "EmergencyCoordinator or SystemAdmin. Only approved shelters appear in /shelters/public and in shelter matching."
+                    }
+                },
+                {
+                    "name": "POST /shelters/allocations",
+                    "event": [{
+                        "listen": "test",
+                        "script": {
+                            "type": "text/javascript",
+                            "exec": [
+                                "pm.test('shelter allocation created or full', () => pm.expect([201, 409]).to.include(pm.response.code));",
+                                "pm.test('409 is SHELTER_FULL', () => { if (pm.response.code === 409) pm.expect(pm.response.json().code).to.eql('SHELTER_FULL'); });",
+                                "pm.test('403 is a decision gate failure', () => { if (pm.response.code === 403) pm.expect(pm.response.json()).to.have.property('code'); });"
+                            ]
+                        }
+                    }],
+                    "request": {
+                        "method": "POST",
+                        "header": [{ "key": "Content-Type", "value": "application/json" }],
+                        "body": { "mode": "raw", "raw": "{\"decisionId\":\"{{decisionId}}\"}", "options": { "raw": { "language": "json" } } },
+                        "url": { "raw": "{{baseUrl}}/api/v1/shelters/allocations", "host": ["{{baseUrl}}"], "path": ["api", "v1", "shelters", "allocations"] },
+                        "description": "ShelterAdmin or EmergencyCoordinator. The approved ShelterMatch decision's FinalPayloadJson is the authority for shelterId/requestId/householdSize; client values are ignored. Conditional occupancy UPDATE + insert run in one transaction; a full shelter returns 409 SHELTER_FULL."
+                    }
                 }
-              ]
-            }
-          }
+            ]
         },
         {
-          "name": "Create inventory",
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/inventories",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "inventories"
-              ]
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
+            "name": "Volunteers and tasks",
+            "item": [{
+                    "name": "GET /volunteers",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": { "raw": "{{baseUrl}}/api/v1/volunteers", "host": ["{{baseUrl}}"], "path": ["api", "v1", "volunteers"] },
+                        "description": "VolunteerCoordinator, EmergencyCoordinator or SystemAdmin. Shows verification status and active flag."
+                    }
+                },
                 {
-                  "key": "token",
-                  "value": "{{bearerToken}}",
-                  "type": "string"
+                    "name": "POST /volunteers/profile",
+                    "request": {
+                        "method": "POST",
+                        "header": [{ "key": "Content-Type", "value": "application/json" }],
+                        "body": { "mode": "raw", "raw": "{\"skillsJson\":\"[\\\"First aid\\\",\\\"Driving\\\"]\",\"languagesJson\":\"[\\\"English\\\"]\",\"lat\":7.2088,\"lng\":79.8358,\"active\":true}", "options": { "raw": { "language": "json" } } },
+                        "url": { "raw": "{{baseUrl}}/api/v1/volunteers/profile", "host": ["{{baseUrl}}"], "path": ["api", "v1", "volunteers", "profile"] },
+                        "description": "Volunteer role, self-service. One profile per current user (unique user_id); first save creates a Pending profile. Skills/languages are JSON arrays encoded as strings."
+                    }
+                },
+                {
+                    "name": "POST /volunteers/{id}/verify",
+                    "event": [{
+                        "listen": "test",
+                        "script": {
+                            "type": "text/javascript",
+                            "exec": [
+                                "pm.test('verified, rejected or guarded conflict', () => pm.expect([200, 409]).to.include(pm.response.code));",
+                                "if (pm.response.code === 409) pm.test('rejected profile guard', () => pm.expect(pm.response.json().code).to.eql('VOLUNTEER_REJECTED'));"
+                            ]
+                        }
+                    }],
+                    "request": {
+                        "method": "POST",
+                        "header": [{ "key": "Content-Type", "value": "application/json" }],
+                        "body": { "mode": "raw", "raw": "{\"approved\":true,\"reason\":\"Documents checked\"}", "options": { "raw": { "language": "json" } } },
+                        "url": { "raw": "{{baseUrl}}/api/v1/volunteers/{{volunteerId}}/verify", "host": ["{{baseUrl}}"], "path": ["api", "v1", "volunteers", "{{volunteerId}}", "verify"] },
+                        "description": "VolunteerCoordinator or SystemAdmin. Reason is required; only Verified + active volunteers can be assigned or matched."
+                    }
+                },
+                {
+                    "name": "POST /volunteers/availability",
+                    "request": {
+                        "method": "POST",
+                        "header": [{ "key": "Content-Type", "value": "application/json" }],
+                        "body": { "mode": "raw", "raw": "{\"startsAt\":\"{{availabilityStart}}\",\"endsAt\":\"{{availabilityEnd}}\"}", "options": { "raw": { "language": "json" } } },
+                        "url": { "raw": "{{baseUrl}}/api/v1/volunteers/availability", "host": ["{{baseUrl}}"], "path": ["api", "v1", "volunteers", "availability"] },
+                        "description": "Volunteer role, self-service. End must be after start and start cannot be in the past. Update availabilityStart/availabilityEnd variables for the demo date."
+                    }
+                },
+                {
+                    "name": "GET /volunteer-tasks/mine",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/volunteer-tasks/mine?page=1&pageSize=50",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "v1", "volunteer-tasks", "mine"],
+                            "query": [{ "key": "page", "value": "1" }, { "key": "pageSize", "value": "50" }]
+                        },
+                        "description": "Volunteer role. Tasks assigned to the current user's volunteer profile."
+                    }
+                },
+                {
+                    "name": "GET /volunteer-tasks",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/volunteer-tasks?status=Open&page=1&pageSize=50",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "v1", "volunteer-tasks"],
+                            "query": [{ "key": "status", "value": "Open" }, { "key": "page", "value": "1" }, { "key": "pageSize", "value": "50" }]
+                        },
+                        "description": "VolunteerCoordinator or EmergencyCoordinator. Filter by Open/Assigned/Accepted/Declined/Completed."
+                    }
+                },
+                {
+                    "name": "POST /volunteer-tasks",
+                    "event": [{
+                        "listen": "test",
+                        "script": {
+                            "type": "text/javascript",
+                            "exec": [
+                                "pm.test('task created', () => pm.expect(pm.response.code).to.eql(201));",
+                                "pm.collectionVariables.set('taskId', pm.response.json().id);"
+                            ]
+                        }
+                    }],
+                    "request": {
+                        "method": "POST",
+                        "header": [{ "key": "Content-Type", "value": "application/json" }],
+                        "body": { "mode": "raw", "raw": "{\"requestId\":null,\"title\":\"Food distribution\",\"requiredSkillsJson\":\"[\\\"First aid\\\"]\",\"lat\":7.2088,\"lng\":79.8358,\"scheduledAt\":\"2026-11-23T09:00:00Z\"}", "options": { "raw": { "language": "json" } } },
+                        "url": { "raw": "{{baseUrl}}/api/v1/volunteer-tasks", "host": ["{{baseUrl}}"], "path": ["api", "v1", "volunteer-tasks"] },
+                        "description": "VolunteerCoordinator or SystemAdmin. New tasks start Open; requiredSkillsJson is a JSON array encoded as a string."
+                    }
+                },
+                {
+                    "name": "POST /volunteer-tasks/{id}/assign?volunteerId=",
+                    "event": [{
+                        "listen": "test",
+                        "script": {
+                            "type": "text/javascript",
+                            "exec": [
+                                "pm.test('assigned or guarded', () => pm.expect([200, 403, 409]).to.include(pm.response.code));",
+                                "pm.test('guard code exposed', () => { if (pm.response.code >= 400) pm.expect(pm.response.json()).to.have.property('code'); });",
+                                "pm.test('unverified volunteer is 403 VOLUNTEER_NOT_ASSIGNABLE', () => { if (pm.response.code === 403) pm.expect(pm.response.json().code).to.eql('VOLUNTEER_NOT_ASSIGNABLE'); });"
+                            ]
+                        }
+                    }],
+                    "request": {
+                        "method": "POST",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/volunteer-tasks/{{taskId}}/assign?volunteerId={{volunteerId}}",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "v1", "volunteer-tasks", "{{taskId}}", "assign"],
+                            "query": [{ "key": "volunteerId", "value": "{{volunteerId}}" }]
+                        },
+                        "description": "VolunteerCoordinator or SystemAdmin. Requires Open task + Verified, active volunteer with a current availability window; otherwise 403 VOLUNTEER_NOT_ASSIGNABLE or 409 VOLUNTEER_NOT_AVAILABLE."
+                    }
+                },
+                {
+                    "name": "POST /volunteer-tasks/{id}/respond",
+                    "event": [{
+                        "listen": "test",
+                        "script": {
+                            "type": "text/javascript",
+                            "exec": [
+                                "pm.test('response accepted or guarded', () => pm.expect([200, 403]).to.include(pm.response.code));",
+                                "pm.test('TaskResponse guard code', () => { if (pm.response.code === 403) pm.expect(pm.response.json().code).to.eql('TASK_NOT_ASSIGNED'); });"
+                            ]
+                        }
+                    }],
+                    "request": {
+                        "method": "POST",
+                        "header": [{ "key": "Content-Type", "value": "application/json" }],
+                        "body": { "mode": "raw", "raw": "{\"accept\":true,\"reason\":null}", "options": { "raw": { "language": "json" } } },
+                        "url": { "raw": "{{baseUrl}}/api/v1/volunteer-tasks/{{taskId}}/respond", "host": ["{{baseUrl}}"], "path": ["api", "v1", "volunteer-tasks", "{{taskId}}", "respond"] },
+                        "description": "Volunteer role, self-service. Accept moves Assigned -> Accepted; accept=false returns the task to Open and clears the assignee."
+                    }
+                },
+                {
+                    "name": "POST /volunteer-tasks/{id}/complete",
+                    "request": {
+                        "method": "POST",
+                        "header": [],
+                        "url": { "raw": "{{baseUrl}}/api/v1/volunteer-tasks/{{taskId}}/complete", "host": ["{{baseUrl}}"], "path": ["api", "v1", "volunteer-tasks", "{{taskId}}", "complete"] },
+                        "description": "Volunteer role. Only an accepted task assigned to the current volunteer can be completed; writes an activity record and audit/notification."
+                    }
                 }
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"resourceTypeId\": \"00000000-0000-0000-0000-000000000000\",\n  \"orgId\": \"00000000-0000-0000-0000-000000000000\",\n  \"quantity\": 20,\n  \"reorderThreshold\": 3,\n  \"lat\": 7.2,\n  \"lng\": 79.8\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
+            ]
         },
         {
-          "name": "Create assistance request",
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/assistance-requests",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "assistance-requests"
-              ]
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
+            "name": "Assistance and shortage",
+            "item": [{
+                    "name": "POST /assistance-requests",
+                    "event": [{
+                        "listen": "test",
+                        "script": {
+                            "type": "text/javascript",
+                            "exec": [
+                                "pm.test('assistance request created', () => pm.expect(pm.response.code).to.eql(201));",
+                                "pm.collectionVariables.set('assistanceRequestId', pm.response.json().id);"
+                            ]
+                        }
+                    }],
+                    "request": {
+                        "method": "POST",
+                        "header": [{ "key": "Content-Type", "value": "application/json" }],
+                        "body": { "mode": "raw", "raw": "{\"fromOrgId\":\"{{orgId}}\",\"toOrgId\":null,\"resourceTypeId\":\"{{resourceTypeId}}\",\"quantity\":5,\"reason\":\"Shelter needs more food packs\",\"shelterId\":\"{{shelterId}}\"}", "options": { "raw": { "language": "json" } } },
+                        "url": { "raw": "{{baseUrl}}/api/v1/assistance-requests", "host": ["{{baseUrl}}"], "path": ["api", "v1", "assistance-requests"] },
+                        "description": "LogisticsManager, ShelterAdmin or PartnerOfficer. ShelterId links the P1 'need more resources' flow. Status starts Pending; a notification is queued via the outbox."
+                    }
+                },
                 {
-                  "key": "token",
-                  "value": "{{bearerToken}}",
-                  "type": "string"
+                    "name": "GET /assistance-requests",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/assistance-requests?direction=out&status=Pending&page=1&pageSize=50",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "v1", "assistance-requests"],
+                            "query": [
+                                { "key": "direction", "value": "out" },
+                                { "key": "status", "value": "Pending" },
+                                { "key": "page", "value": "1" },
+                                { "key": "pageSize", "value": "50" }
+                            ]
+                        },
+                        "description": "Org-scoped list for LogisticsManager, ShelterAdmin or PartnerOfficer. direction=in|out; omit to see both."
+                    }
+                },
+                {
+                    "name": "POST /assistance-requests/{id}/respond",
+                    "event": [{
+                        "listen": "test",
+                        "script": {
+                            "type": "text/javascript",
+                            "exec": [
+                                "pm.test('response accepted or guarded', () => pm.expect([200, 403, 409]).to.include(pm.response.code));",
+                                "pm.test('target-org / state guard code exposed', () => { if (pm.response.code >= 400) pm.expect(pm.response.json()).to.have.property('code'); });"
+                            ]
+                        }
+                    }],
+                    "request": {
+                        "method": "POST",
+                        "header": [{ "key": "Content-Type", "value": "application/json" }],
+                        "body": { "mode": "raw", "raw": "{\"accept\":true,\"reason\":\"We can supply these packs\"}", "options": { "raw": { "language": "json" } } },
+                        "url": { "raw": "{{baseUrl}}/api/v1/assistance-requests/{{assistanceRequestId}}/respond", "host": ["{{baseUrl}}"], "path": ["api", "v1", "assistance-requests", "{{assistanceRequestId}}", "respond"] },
+                        "description": "PartnerOfficer, LogisticsManager or SystemAdmin. Only Pending requests; only the target organisation (ToOrgId) may respond. Wrong org -> 403 ASSISTANCE_TARGET_ORG_REQUIRED, other states -> 409 INVALID_TRANSITION."
+                    }
+                },
+                {
+                    "name": "GET /shortages/proposal",
+                    "event": [{
+                        "listen": "test",
+                        "script": {
+                            "type": "text/javascript",
+                            "exec": [
+                                "pm.test('proposal returned', () => pm.expect(pm.response.code).to.eql(200));",
+                                "pm.test('proposal is explicit about no side effects and human approval', () => { const body = pm.response.json(); pm.expect(body.hasSideEffects).to.eql(false); pm.expect(body.humanApprovalRequired).to.eql(true); });"
+                            ]
+                        }
+                    }],
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/shortages/proposal?resourceTypeId={{resourceTypeId}}",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "v1", "shortages", "proposal"],
+                            "query": [{ "key": "resourceTypeId", "value": "{{resourceTypeId}}" }]
+                        },
+                        "description": "LogisticsManager, EmergencyCoordinator or SystemAdmin. Read-only ranking of competing open requests; 5 seeded packs against the 3 urgent Food requests (R6-R8). No stock, allocation or status change."
+                    }
                 }
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"fromOrgId\": \"00000000-0000-0000-0000-000000000000\",\n  \"toOrgId\": \"00000000-0000-0000-0000-000000000000\",\n  \"resourceTypeId\": \"41000000-0000-0000-0000-000000000001\",\n  \"quantity\": 5,\n  \"reason\": \"Shelter stock shortage\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
+            ]
+        },
+        {
+            "name": "Matching and recovery",
+            "item": [{
+                    "name": "GET /recommendations/match/resources/{requestId}",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": { "raw": "{{baseUrl}}/api/v1/recommendations/match/resources/{{requestId}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "recommendations", "match", "resources", "{{requestId}}"] },
+                        "description": "LogisticsManager or EmergencyCoordinator. Read-only ranked inventories with score 0..1, rationale, partial labels and IsApproximate when geo fell back."
+                    }
+                },
+                {
+                    "name": "GET /recommendations/match/shelters/{requestId}",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": { "raw": "{{baseUrl}}/api/v1/recommendations/match/shelters/{{requestId}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "recommendations", "match", "shelters", "{{requestId}}"] },
+                        "description": "ShelterAdmin or EmergencyCoordinator. Approved, non-full shelters only; rationale states free places and distance."
+                    }
+                },
+                {
+                    "name": "GET /recommendations/match/volunteers/{requestId}",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": { "raw": "{{baseUrl}}/api/v1/recommendations/match/volunteers/{{requestId}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "recommendations", "match", "volunteers", "{{requestId}}"] },
+                        "description": "VolunteerCoordinator or EmergencyCoordinator. Only Verified, active volunteers with a current availability window; deterministic and read-only."
+                    }
+                },
+                {
+                    "name": "GET /operations/status-transitions",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": { "raw": "{{baseUrl}}/api/v1/operations/status-transitions", "host": ["{{baseUrl}}"], "path": ["api", "v1", "operations", "status-transitions"] },
+                        "description": "Staff roles. Lists allocations/dispatches whose request status transition did not complete after the stock transaction was committed."
+                    }
+                },
+                {
+                    "name": "POST /operations/status-transitions/{id}/retry",
+                    "event": [{
+                        "listen": "test",
+                        "script": {
+                            "type": "text/javascript",
+                            "exec": [
+                                "pm.test('retry succeeded or id not found', () => pm.expect([200, 404]).to.include(pm.response.code));"
+                            ]
+                        }
+                    }],
+                    "request": {
+                        "method": "POST",
+                        "header": [],
+                        "url": { "raw": "{{baseUrl}}/api/v1/operations/status-transitions/{{transitionId}}/retry", "host": ["{{baseUrl}}"], "path": ["api", "v1", "operations", "status-transitions", "{{transitionId}}", "retry"] },
+                        "description": "Staff roles. Retries ONLY the Phase 3 request-status transition for an allocation or dispatch id; no stock is touched. Set transitionId from the pending list."
+                    }
                 }
-              }
-            }
-          }
+            ]
+        },
+        {
+            "name": "Mapping (anonymous proxy endpoints)",
+            "item": [{
+                    "name": "GET /geo/geocode",
+                    "event": [{
+                        "listen": "test",
+                        "script": {
+                            "type": "text/javascript",
+                            "exec": [
+                                "pm.test('geocode succeeds or fails soft', () => pm.expect([200, 404]).to.include(pm.response.code));",
+                                "pm.test('soft failure uses GEOCODE_NOT_FOUND', () => { if (pm.response.code === 404) pm.expect(pm.response.json().code).to.eql('GEOCODE_NOT_FOUND'); });"
+                            ]
+                        }
+                    }],
+                    "request": {
+                        "auth": { "type": "noauth" },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/geo/geocode?address=Negombo%2C%20Sri%20Lanka",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "v1", "geo", "geocode"],
+                            "query": [{ "key": "address", "value": "Negombo, Sri Lanka" }]
+                        },
+                        "description": "Anonymous. Nominatim proxy: success cached 24h, failure cached <=1min and returned as 404 GEOCODE_NOT_FOUND (never a 5xx)."
+                    }
+                },
+                {
+                    "name": "GET /geo/distance",
+                    "event": [{
+                        "listen": "test",
+                        "script": {
+                            "type": "text/javascript",
+                            "exec": [
+                                "pm.test('distance returned', () => pm.expect(pm.response.code).to.eql(200));",
+                                "pm.test('fallback marks approximate with no minutes', () => { const b = pm.response.json(); if (b.isApproximate) pm.expect(b.minutes).to.eql(null); });"
+                            ]
+                        }
+                    }],
+                    "request": {
+                        "auth": { "type": "noauth" },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/geo/distance?fromLat=7.2088&fromLng=79.8358&toLat=6.9271&toLng=79.8612",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "v1", "geo", "distance"],
+                            "query": [
+                                { "key": "fromLat", "value": "7.2088" },
+                                { "key": "fromLng", "value": "79.8358" },
+                                { "key": "toLat", "value": "6.9271" },
+                                { "key": "toLng", "value": "79.8612" }
+                            ]
+                        },
+                        "description": "Anonymous. OSRM route distance/minutes, with Haversine fallback (IsApproximate=true, Minutes=null) when routing fails."
+                    }
+                }
+            ]
         }
-      ]
-    },
-    {
-      "name": "Allocation & dispatch",
-      "item": [
-        {
-          "name": "List allocations",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/allocations",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "allocations"
-              ]
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{bearerToken}}",
-                  "type": "string"
-                }
-              ]
-            }
-          }
-        },
-        {
-          "name": "Allocate from approved decision",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Idempotency-Key",
-                "value": "{{$guid}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/allocations",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "allocations"
-              ]
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{bearerToken}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"decisionId\": \"{{decisionId}}\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        },
-        {
-          "name": "Dispatch allocation",
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/dispatches/00000000-0000-0000-0000-000000000000",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "dispatches",
-                "00000000-0000-0000-0000-000000000000"
-              ]
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{bearerToken}}",
-                  "type": "string"
-                }
-              ]
-            }
-          }
-        },
-        {
-          "name": "Confirm delivery",
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/dispatches/00000000-0000-0000-0000-000000000000/confirm",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "dispatches",
-                "00000000-0000-0000-0000-000000000000",
-                "confirm"
-              ]
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{bearerToken}}",
-                  "type": "string"
-                }
-              ]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "Shelters",
-      "item": [
-        {
-          "name": "List shelters",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/shelters",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "shelters"
-              ]
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{bearerToken}}",
-                  "type": "string"
-                }
-              ]
-            }
-          }
-        },
-        {
-          "name": "Public approved shelters",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/shelters/public",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "shelters",
-                "public"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Create shelter",
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/shelters",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "shelters"
-              ]
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{bearerToken}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Demo Shelter\",\n  \"capacity\": 50,\n  \"occupancy\": 0,\n  \"facilities\": \"[]\",\n  \"accessibilityFeatures\": \"[]\",\n  \"services\": \"[]\",\n  \"lat\": 7.2,\n  \"lng\": 79.8,\n  \"orgId\": \"00000000-0000-0000-0000-000000000000\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        },
-        {
-          "name": "Approve shelter",
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/shelters/00000000-0000-0000-0000-000000000000/approve",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "shelters",
-                "00000000-0000-0000-0000-000000000000",
-                "approve"
-              ]
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{bearerToken}}",
-                  "type": "string"
-                }
-              ]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "Volunteers",
-      "item": [
-        {
-          "name": "List volunteers",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/volunteers",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "volunteers"
-              ]
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{bearerToken}}",
-                  "type": "string"
-                }
-              ]
-            }
-          }
-        },
-        {
-          "name": "My tasks",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/volunteer-tasks/mine",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "volunteer-tasks",
-                "mine"
-              ]
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{bearerToken}}",
-                  "type": "string"
-                }
-              ]
-            }
-          }
-        },
-        {
-          "name": "Create task",
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/volunteer-tasks",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "volunteer-tasks"
-              ]
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{bearerToken}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"title\": \"Food distribution\",\n  \"requiredSkillsJson\": \"[\\\\\\\"Food distribution\\\\\\\"]\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        },
-        {
-          "name": "Add availability",
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/volunteers/availability",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "volunteers",
-                "availability"
-              ]
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{bearerToken}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"startsAt\": \"2026-11-20T08:00:00Z\",\n  \"endsAt\": \"2026-11-20T17:00:00Z\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "Matching & mapping",
-      "item": [
-        {
-          "name": "Resource matches",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/recommendations/match/resources/{{requestId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "recommendations",
-                "match",
-                "resources",
-                "{{requestId}}"
-              ]
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{bearerToken}}",
-                  "type": "string"
-                }
-              ]
-            }
-          }
-        },
-        {
-          "name": "Shelter matches",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/recommendations/match/shelters/{{requestId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "recommendations",
-                "match",
-                "shelters",
-                "{{requestId}}"
-              ]
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{bearerToken}}",
-                  "type": "string"
-                }
-              ]
-            }
-          }
-        },
-        {
-          "name": "Volunteer matches",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/recommendations/match/volunteers/{{requestId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "recommendations",
-                "match",
-                "volunteers",
-                "{{requestId}}"
-              ]
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{bearerToken}}",
-                  "type": "string"
-                }
-              ]
-            }
-          }
-        },
-        {
-          "name": "Geocode",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/geo/geocode?address=Negombo%2C%20Sri%20Lanka",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "geo",
-                "geocode?address=Negombo%2C%20Sri%20Lanka"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Distance",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/geo/distance?fromLat=7.2088&fromLng=79.8358&toLat=6.9271&toLng=79.8612",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "geo",
-                "distance?fromLat=7.2088&fromLng=79.8358&toLat=6.9271&toLng=79.8612"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Shortage proposal",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/shortages/proposal?resourceTypeId=41000000-0000-0000-0000-000000000001",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "shortages",
-                "proposal?resourceTypeId=41000000-0000-0000-0000-000000000001"
-              ]
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{bearerToken}}",
-                  "type": "string"
-                }
-              ]
-            }
-          }
-        }
-      ]
-    }
-  ]
+    ]
 }
