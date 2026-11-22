@@ -52,6 +52,37 @@ export function Icon({
     upload: <path d="M12 16V4m-5 5 5-5 5 5M5 20h14" />,
     eye: (
       <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Zm10 3a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
+    ),
+    info: (
+      <>
+        <circle cx="12" cy="12" r="9" />
+        <path d="M12 11v5m0-8v.1" />
+      </>
+    ),
+    layers: (
+      <>
+        <path d="m12 3 9 5-9 5-9-5 9-5Z" />
+        <path d="m3 12 9 5 9-5M3 16l9 5 9-5" />
+      </>
+    ),
+    route: (
+      <>
+        <circle cx="6" cy="18" r="3" />
+        <path d="M6 15V9a4 4 0 0 1 4-4h5" />
+        <circle cx="18" cy="5" r="3" />
+      </>
+    ),
+    mail: (
+      <>
+        <rect x="3" y="5" width="18" height="14" rx="2" />
+        <path d="m3 7 9 6 9-6" />
+      </>
+    ),
+    "help-circle": (
+      <>
+        <circle cx="12" cy="12" r="9" />
+        <path d="M9.6 9.2a2.6 2.6 0 0 1 5 .9c0 1.7-2.6 2-2.6 4m0 3v.1" />
+      </>
     )
   };
 
