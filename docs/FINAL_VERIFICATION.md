@@ -53,5 +53,5 @@ This pass focused on final professionalization, coursework compliance mapping, c
 
 ## Final Commit / PR
 
-- Final commit: `PENDING_COMMIT`
+- Final commit: `d8ffbfda33383a1a5837cd95312cf13a7b1c0d53` (code/docs pass); see git log for final handover-doc update commit
 - PR: `PENDING_PR`
