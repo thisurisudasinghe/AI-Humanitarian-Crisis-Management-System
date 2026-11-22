@@ -4,6 +4,7 @@ using System.Text.RegularExpressions;
 using Cms.Application.Common;
 using Cms.Application.Contracts;
 using Cms.Application.DTOs;
+using Cms.Application.DTOs.Notifications;
 using Cms.Application.Interfaces;
 using Cms.Application.Operations;
 using Cms.Domain.Cases;
@@ -911,8 +912,81 @@ public sealed class OperationsService(
 
     private async Task EnqueueNotificationAsync(Guid entityId, object payload, CancellationToken ct)
     {
-        await outbox.EnqueueAsync(OutboxEventTypes.NotificationSend, entityId, payload,
+        // The Notification.Send contract requires a recipient and template key.
+        // Normalise the Member 4 activity payloads here so the registered handler
+        // can deliver them instead of retrying and dead-lettering malformed events.
+        var json = JsonSerializer.Serialize(payload, payload.GetType());
+        var raw = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json)
+                  ?? new Dictionary<string, JsonElement>();
+        var values = new Dictionary<string, JsonElement>(raw, StringComparer.OrdinalIgnoreCase);
+
+        var recipient = ReadGuid(values, "RecipientUserId", "UserId", "userId");
+        var requestId = ReadGuid(values, "RequestId", "requestId");
+        var assistanceRequestId = ReadGuid(values, "AssistanceRequestId", "assistanceRequestId");
+
+        if (recipient is null && (requestId is not null || assistanceRequestId is not null))
+        {
+            var ownerId = requestId ?? assistanceRequestId!.Value;
+            recipient = await db.Requests.AsNoTracking()
+                .Where(row => row.Id == ownerId)
+                .Select(row => (Guid?)row.RequesterUserId)
+                .FirstOrDefaultAsync(ct);
+        }
+
+        if (recipient is null)
+        {
+            await AuditAsync("Notification.Skipped", "Outbox", entityId,
+                new { Reason = "No recipient could be resolved for the Notification.Send event." }, ct);
+            return;
+        }
+
+        var action = ReadString(values, "Action", "action");
+        var templateKey = ReadString(values, "TemplateKey", "templateKey")
+                          ?? (string.IsNullOrWhiteSpace(action) ? "Operations.Notification" : $"Operations.{action}");
+        var data = values.ToDictionary(
+            pair => pair.Key,
+            pair => pair.Value.ValueKind == JsonValueKind.String
+                ? pair.Value.GetString() ?? string.Empty
+                : pair.Value.GetRawText(),
+            StringComparer.OrdinalIgnoreCase);
+
+        var notification = new NotificationPayloadDto
+        {
+            RecipientUserId = recipient.Value,
+            TemplateKey = templateKey,
+            RequestId = requestId,
+            Data = data
+        };
+
+        await outbox.EnqueueAsync(OutboxEventTypes.NotificationSend, entityId, notification,
             OutboxEventTypes.BuildIdempotencyKey(OutboxEventTypes.NotificationSend, entityId, 1), ct);
+    }
+
+    private static string? ReadString(
+        IReadOnlyDictionary<string, JsonElement> values,
+        params string[] names)
+    {
+        foreach (var name in names)
+        {
+            if (!values.TryGetValue(name, out var element))
+            {
+                continue;
+            }
+
+            return element.ValueKind == JsonValueKind.String
+                ? element.GetString()
+                : element.GetRawText();
+        }
+
+        return null;
+    }
+
+    private static Guid? ReadGuid(
+        IReadOnlyDictionary<string, JsonElement> values,
+        params string[] names)
+    {
+        var text = ReadString(values, names);
+        return Guid.TryParse(text, out var id) && id != Guid.Empty ? id : null;
     }
 
     private async Task FailAsync(string action, string entityType, Guid entityId, Exception exception, CancellationToken ct)

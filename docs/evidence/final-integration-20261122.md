@@ -1,6 +1,6 @@
 # Final Integration Evidence — 2026-11-22
 
-Branch: `feat/public-ui-polish`  
+Branch: `feat/public-ui-polish` (merged into `develop` as PR #28); final outbox fix verified on `fix/outbox-notification-recipients`.
 Environment: isolated LocalDB database `CmsDb_IntegrationTest`; API on `http://127.0.0.1:5211`; frontend on `http://127.0.0.1:3101` (built with `NEXT_PUBLIC_API_URL` pointing to 5211). The shared `CmsDb` was not modified.
 
 ## Environment / safety
@@ -44,5 +44,20 @@ Environment: isolated LocalDB database `CmsDb_IntegrationTest`; API on `http://1
 
 - Fixed stale `docs/TESTING.md` SQL command list: it omitted `01_cases.sql`, `04_res.sql`, `05_shelter.sql`, `06_vol.sql`, and the pre-API seed ordering — the likely cause of the incomplete default `CmsDb` that produced `Invalid object name 'cases.requests'`.
 - No application source code changes were required; the previously documented M4 allocation transaction defect did not reproduce in this build.
-- Live citizen inbox delivery and outbox-driven duplicate detection remain unverified in this session because the outbox processor was disabled by configuration as required; both are covered by targeted xUnit tests and persisted outbox rows.
 - External geocoding failed with HTTP 403 from Nominatim; the API handled it without a 500.
+
+## Outbox → in-app inbox (live, processor enabled)
+
+Verified after merging PR #28, on the isolated `CmsDb_IntegrationTest` only:
+
+- API started from the final build with `Outbox__ProcessorEnabled=true`, a 1-second poll, `Smtp__Host=''` (so `LogNotificationSender` records mail without sending it) and `Cors__AllowedOrigins__0=http://127.0.0.1:3101`. No real email/SMS was sent.
+- All 14 pending outbox rows were dispatched: 11 `Processed`, 8 in-app + 8 email notification rows `Sent`, 16 `Notification.Delivered` audit rows, 0 dead letters.
+- **Confirmed defect fixed:** Member 4's `OperationsService.EnqueueNotificationAsync` wrote `Notification.Send` payloads without the contract-required `RecipientUserId` and `TemplateKey`. Three events (allocation, shelter allocation, task assignment) failed with `has no recipient` and eventually dead-lettered. The helper now normalises those activity payloads into `NotificationPayloadDto`, resolves the recipient from `userId` or the request's `RequesterUserId`, derives a template key from `action`, and audits a skip when no recipient can be found. A regression test was added.
+- Fresh allocation after the fix: `POST /recommendations/match` → 200, human decision → 201, `POST /allocations` → 201. Outbox row `36dabbb…` payload contained `recipientUserId` and `templateKey: Operations.allocated`; status `Processed`. Citizen `GET /api/v1/notifications` returned one `Sent` in-app row (`ac6cce93…`, template `Operations.allocated`, linked request id) and the corresponding log-email row; two `Notification.Delivered` audit rows reference that outbox id.
+- **Deduplication/idempotency:** `UX_notifications_outbox_channel` is a unique filtered index. Replaying the same outbox event (status reset to `Pending` in the disposable DB) produced no extra notification or audit rows: 2 → 2 and 2 → 2, outbox returned to `Processed`. `OutboxService` also skips duplicate `UX_outbox_idempotency_key` values, verified earlier by the allocation replay (same id returned).
+- Volunteer assignment notifications require a volunteer profile whose `UserId` exists in `identity.users`. The seeded synthetic volunteer uses a placeholder id with no account, so that particular event cannot resolve a recipient; the handler now audits `Notification.Skipped` rather than failing the event. Use a volunteer linked to a real demo account for that part of the demo.
+
+## Geocoding / mapping limitation
+
+- Direct request to `https://nominatim.openstreetmap.org/search` with the application's compliant User-Agent `CMS-Humanitarian/1.0 (cms-team@example.org)` returned HTTP `403` with an empty body. This is provider-side; no code change was made and no restriction was bypassed.
+- `GET /api/v1/geo/geocode?address=Colombo` maps the failure to `404 GEOCODE_NOT_FOUND` (no 500). `GET /api/v1/geo/distance` and OSRM routing returned `200`; resource/shelter matching and the operations map remain usable with stored coordinates and Haversine fallback.

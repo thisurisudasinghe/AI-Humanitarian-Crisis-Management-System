@@ -1,5 +1,6 @@
 using Cms.Application.Common;
 using Cms.Application.Contracts;
+using Cms.Application.DTOs.Notifications;
 using Cms.Application.Operations;
 using Cms.Domain.Entities.Cases;
 using Cms.Domain.Entities.Operations;
@@ -40,6 +41,26 @@ public class OperationsServiceTests
             It.IsAny<object>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
         h.Status.Verify(s => s.TransitionAsync(OpsIds.Request, RequestStatus.Allocated,
             It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Allocate_EnqueuesContractCompliantNotificationForRequestOwner()
+    {
+        var h = SeedAllocationScenario(available: 10, quantity: 4);
+        object? enqueued = null;
+        h.Outbox.Setup(o => o.EnqueueAsync(
+                OutboxEventTypes.NotificationSend, It.IsAny<Guid>(), It.IsAny<object>(),
+                It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Callback<string, Guid, object, string, CancellationToken>((_, _, payload, _, _) => enqueued = payload)
+            .Returns(Task.CompletedTask);
+
+        await h.Service.AllocateAsync(OpsIds.Decision, Key, CancellationToken.None);
+
+        var notification = Assert.IsType<NotificationPayloadDto>(enqueued);
+        Assert.Equal(OpsIds.User, notification.RecipientUserId);
+        Assert.False(string.IsNullOrWhiteSpace(notification.TemplateKey));
+        Assert.Equal(OpsIds.Request, notification.RequestId);
+        Assert.Equal("allocated", notification.Data["action"]);
     }
 
     [Fact]
