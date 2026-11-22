@@ -135,6 +135,13 @@ if (isDevelopment)
     builder.Services.AddHostedService<DevelopmentDemoSeeder>();
 }
 
+// Development-only demo users. This keeps the documented demo accounts usable
+// with the developer's own keys (user-secrets or ephemeral process keys).
+if (isDevelopment)
+{
+    builder.Services.AddHostedService<DevelopmentDemoSeeder>();
+}
+
 var allowedOrigins = builder.Configuration
     .GetSection("Cors:AllowedOrigins")
     .Get<string[]>()

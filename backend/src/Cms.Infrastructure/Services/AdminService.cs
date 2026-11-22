@@ -247,14 +247,15 @@ public sealed class AdminService : IAdminService
             user.Status = request.Status.Value;
         }
 
-        if (request.Status == UserStatus.Inactive &&
+        if (request.Status.HasValue &&
+            request.Status.Value != UserStatus.Active &&
             previousStatus == UserStatus.Active &&
             await IsSystemAdminAsync(id, cancellationToken))
         {
             if (_currentUser.UserId == id)
             {
                 throw new ValidationException(
-                    "You cannot deactivate your own System Administrator account.",
+                    "You cannot deactivate or suspend your own System Administrator account.",
                     code: "ADMIN_SELF_LOCKOUT");
             }
 
