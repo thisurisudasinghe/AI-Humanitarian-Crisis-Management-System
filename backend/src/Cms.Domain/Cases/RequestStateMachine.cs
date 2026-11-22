@@ -21,14 +21,21 @@ public static class RequestStateMachine
             [RequestStatus.InProgress] = Only(RequestStatus.Fulfilled),
             [RequestStatus.Fulfilled] = Only(RequestStatus.Closed),
             [RequestStatus.Closed] = Only(RequestStatus.Reopened),
-            [RequestStatus.Reopened] = Only(),
+            [RequestStatus.Reopened] = Only(
+                RequestStatus.Triaged, RequestStatus.Escalated, RequestStatus.OnHold),
+            [RequestStatus.Escalated] = Only(
+                RequestStatus.Triaged, RequestStatus.Escalated, RequestStatus.OnHold),
+            [RequestStatus.OnHold] = Only(
+                RequestStatus.Triaged, RequestStatus.Escalated, RequestStatus.OnHold),
             [RequestStatus.Rejected] = Only(),
             [RequestStatus.Merged] = Only()
         };
 
     // "Any open state" means every state that is not terminal. Escalated,
-    // OnHold and Reopened remain live cases, so they can also take the frozen
-    // side-path transitions to Escalated or OnHold.
+    // OnHold and Reopened remain live cases, so they keep the frozen side-path
+    // transitions to Escalated or OnHold. NFR-REL-05: the explicit entries above
+    // add the conservative recovery path back to Triaged for a partially
+    // completed workflow; no other forward transition is unlocked from them.
     private static readonly IReadOnlySet<RequestStatus> OpenStates =
         Enum.GetValues<RequestStatus>().Where(status => !IsTerminal(status)).ToHashSet();
 

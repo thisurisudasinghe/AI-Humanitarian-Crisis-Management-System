@@ -209,6 +209,18 @@ export interface NotificationInbox {
   totalCount: number;
 }
 
+export interface PartnerShare {
+  id: string;
+  requestId: string;
+  organisationId: string;
+  sharedByUserId?: string;
+  sharedAt: string;
+  revokedAt?: string | null;
+  status?: RequestStatus | null;
+  category?: Category | null;
+  urgency?: Urgency | null;
+}
+
 export interface ResourceType {
   id: string;
   name: string;
@@ -325,6 +337,18 @@ export const casesApi = {
     api<Recommendation[]>(`/recommendations${queryString({ targetId })}`),
 
   notifications: () => api<NotificationInbox>("/notifications"),
+
+  // FR-COORD-06 / FR-PTN-01. Staff may filter by request; a PartnerOfficer is
+  // scoped to active shares for the organisation in their token by the API.
+  partnerShares: (requestId?: string) =>
+    api<PartnerShare[]>(`/partner-shares${queryString({ requestId })}`),
+  shareWithPartner: (payload: { requestId: string; organisationId: string }) =>
+    api<PartnerShare>("/partner-shares", {
+      method: "POST",
+      body: JSON.stringify(payload)
+    }),
+  revokePartnerShare: (shareId: string) =>
+    api<void>(`/partner-shares/${shareId}`, { method: "DELETE" }),
 
   uploadAttachment: async (requestId: string, file: File): Promise<void> => {
     const body = new FormData();
