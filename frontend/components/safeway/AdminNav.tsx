@@ -2,23 +2,23 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useT } from "@/lib/i18n";
 
-const sections = [
-  { href: "/admin/users", label: "Users" },
-  { href: "/admin/organisations", label: "Organisations" },
-  { href: "/admin/config", label: "Configuration" },
-  { href: "/admin/announcements", label: "Announcements" },
-  { href: "/admin/audit", label: "Audit trail" },
-  { href: "/admin/notifications", label: "Failed notifications" },
-  { href: "/admin/outbox", label: "Outbox dead letters" }
-];
-
-/** Cross-navigation for the SystemAdmin section. */
 export function AdminNav() {
   const pathname = usePathname();
+  const t = useT();
+  const sections = [
+    { href: "/admin/users", label: t("common.adminUsers") },
+    { href: "/admin/organisations", label: t("common.adminOrgs") },
+    { href: "/admin/config", label: t("common.adminConfig") },
+    { href: "/admin/announcements", label: t("common.adminAnnouncements") },
+    { href: "/admin/audit", label: t("common.adminAudit") },
+    { href: "/admin/notifications", label: t("common.adminFailedNotifications") },
+    { href: "/admin/outbox", label: t("common.adminOutbox") }
+  ];
 
   return (
-    <nav className="admin-tabs" aria-label="Administration sections">
+    <nav className="admin-tabs" aria-label={t("common.adminSectionsAria")}>
       {sections.map((section) => (
         <Link
           key={section.href}

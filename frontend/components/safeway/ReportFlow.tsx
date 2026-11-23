@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useI18n, useT } from "@/lib/i18n";
 import { Brand } from "./Brand";
 import { Icon } from "./Icon";
 import {
@@ -16,15 +17,19 @@ import type { MapPoint } from "@/components/map/MapPicker";
 const MapPicker = dynamic(() => import("@/components/map/MapPicker"), { ssr: false });
 
 const categories = [
-  ["Food", "box"],
-  ["Medicine", "heart"],
-  ["Shelter", "home"],
-  ["Transport", "map"],
-  ["Accessibility", "users"],
-  ["Other", "grid"]
+  ["Food", "box", "catFood"],
+  ["Medicine", "heart", "catMedicine"],
+  ["Shelter", "home", "catShelter"],
+  ["Transport", "map", "catTransport"],
+  ["Accessibility", "users", "catAccessibility"],
+  ["Other", "grid", "catOther"]
 ] as const;
 
-const severities = ["Needs attention", "Urgent", "Immediate danger"] as const;
+const severities = [
+  ["Needs attention", "sevLow"],
+  ["Urgent", "sevHigh"],
+  ["Immediate danger", "sevCritical"]
+] as const;
 
 function coordinatesAreValid(latText: string, lngText: string): boolean {
   if (!latText.trim() || !lngText.trim()) {
@@ -44,6 +49,8 @@ function coordinatesAreValid(latText: string, lngText: string): boolean {
 }
 
 export function ReportFlow() {
+  const t = useT();
+  const { locale } = useI18n();
   const [step, setStep] = useState(1);
   const [category, setCategory] = useState<string>("Food");
   const [severity, setSeverity] = useState<string>("Urgent");
@@ -56,21 +63,26 @@ export function ReportFlow() {
   const [busy, setBusy] = useState(false);
   const [receipt, setReceipt] = useState<CrisisReportReceipt | null>(null);
 
+  useEffect(() => {
+    document.title = `${t("report.title")} — SAFEWAY`;
+    document.querySelector('meta[name="description"]')?.setAttribute("content", t("report.subtitle"));
+  }, [locale, t]);
+
   function goToStep(next: number) {
     setFormError(null);
 
     if (next > 1 && description.trim().length < 10) {
-      setFormError("Add a short description of the situation before continuing.");
+      setFormError(t("report.errDesc"));
       return;
     }
 
     if (next > 2 && location.trim().length < 3) {
-      setFormError("Add a location so response teams know where help is needed.");
+      setFormError(t("report.errLocation"));
       return;
     }
 
     if (next > 2 && !coordinatesAreValid(lat, lng)) {
-      setFormError("Enter valid latitude (-90 to 90) and longitude (-180 to 180) before continuing.");
+      setFormError(t("report.errCoords"));
       return;
     }
 
@@ -81,7 +93,7 @@ export function ReportFlow() {
     setFormError(null);
 
     if (!coordinatesAreValid(lat, lng)) {
-      setFormError("Enter valid latitude (-90 to 90) and longitude (-180 to 180) before submitting.");
+      setFormError(t("report.errCoordsSubmit"));
       return;
     }
 
@@ -118,11 +130,11 @@ export function ReportFlow() {
           ...submitted,
           evidenceAttached: false,
           evidenceFileName: evidenceFile.name,
-          evidenceError: caseRequestErrorMessage(caught, "Evidence could not be uploaded.")
+          evidenceError: caseRequestErrorMessage(caught, t("report.errEvidenceFallback"), t)
         });
       }
     } catch (caught) {
-      setFormError(caseRequestErrorMessage(caught, "Your report could not be submitted."));
+      setFormError(caseRequestErrorMessage(caught, t("report.errSubmitFallback"), t));
     } finally {
       setBusy(false);
     }
@@ -131,64 +143,60 @@ export function ReportFlow() {
   if (receipt) {
     return (
       <div className="form-shell">
-        <SimpleHeader />
         <main className="success-page">
           <div className="success-check">
             <Icon name="check" size={42} />
           </div>
           <div className="eyebrow dark">
-            <span /> Report submitted
+            <span /> {t("report.title")}
           </div>
-          <h1>Your report has been received.</h1>
+          <h1>{t("report.submittedTitle")}</h1>
           <p>
-            The report was submitted to the crisis and case service and is linked to your
-            signed-in account. You can follow its status from your reports page.
+            {t("report.submittedCopy")}
           </p>
           <div className="reference-box">
-            <span>Reference</span>
+            <span>{t("report.reference")}</span>
             <strong>{receipt.reference}</strong>
           </div>
           {receipt.evidenceAttached ? (
             <p className="muted">
-              Evidence file attached: {receipt.evidenceFileName ?? "uploaded file"}.
+              {t("report.evidenceAttached", { file: receipt.evidenceFileName ?? "uploaded file" })}
             </p>
           ) : null}
           {receipt.evidenceError ? (
             <div className="form-error" role="alert">
-              <strong>The report was submitted, but its evidence was not attached.</strong>{" "}
-              {receipt.evidenceError} Keep the file and your reference above for a later upload.
+              <strong>{t("report.evidenceErrorTitle")}</strong>{" "}{receipt.evidenceError} {t("report.evidenceErrorCopy")}
             </div>
           ) : null}
           <p className="muted">
-            Submitted reports are not edited here. Create a separate update through your reports page
-            instead of submitting a duplicate.
+            {t("report.noEdit")}
           </p>
           <div className="next-steps">
-            <b>What happens next?</b>
+            <b>{t("report.nextSteps")}</b>
             <div>
               <span>1</span>
               <p>
-                <strong>Review</strong>Your report is checked and prioritized.
+                <strong>{t("report.stepReview")}</strong> {t("report.stepReviewCopy")}
               </p>
             </div>
             <div>
               <span>2</span>
               <p>
-                <strong>Response</strong>A response team coordinates the next action.
+                <strong>{t("report.stepResponse")}</strong> {t("report.stepResponseCopy")}
               </p>
             </div>
             <div>
               <span>3</span>
               <p>
-                <strong>Updates</strong>You can follow progress from your dashboard.
+                <strong>{t("report.stepUpdates")}</strong> {t("report.stepUpdatesCopy")}
               </p>
             </div>
           </div>
           <Link className="btn btn-primary" href="/dashboard">
-            View my reports <Icon name="arrow" />
+            {t("report.viewMyReports")} <Icon name="arrow" />
           </Link>
           <Link className="text-btn" href="/">
-            Return to homepage
+            {t("report.returnHome")}
           </Link>
         </main>
       </div>
@@ -197,26 +205,21 @@ export function ReportFlow() {
 
   return (
     <div className="form-shell">
-      <SimpleHeader />
       <main className="report-layout">
         <aside className="form-aside">
-          <button
-            className="back-link"
-            type="button"
-            onClick={() => (step > 1 ? setStep(step - 1) : undefined)}
-          >
-            ← Back
-          </button>
-          <div className="eyebrow">
-            <span /> Crisis report
+          <Brand light />
+          <div>
+            <div className="eyebrow">
+              <span /> {t("report.sidebarEyebrow")}
+            </div>
+            <h1>{t("report.sidebarTitle")}</h1>
+            <p>{t("report.sidebarCopy")}</p>
           </div>
-          <h1>Help us understand what&apos;s happening.</h1>
-          <p>Share only what you safely can. You can review everything before submitting.</p>
           <div className="step-list">
-            {["What happened", "Location & needs", "Review"].map((label, index) => (
+            {[t("report.step1"), t("report.step2"), t("report.step3")].map((label, index) => (
               <div
                 className={`${step === index + 1 ? "active" : ""} ${step > index + 1 ? "done" : ""}`}
-                key={label}
+                key={index}
               >
                 <span>{step > index + 1 ? <Icon name="check" size={15} /> : index + 1}</span>
                 <b>{label}</b>
@@ -226,14 +229,15 @@ export function ReportFlow() {
           <div className="safety-note">
             <Icon name="phone" />
             <p>
-              <b>In immediate danger?</b>Contact your local emergency services first.
+              <b>{t("report.dangerTitle")}</b>{t("report.dangerCopy")}
             </p>
           </div>
         </aside>
 
         <section className="form-panel">
+          <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"center",flexWrap:"wrap"}}><Link className="back-link report-back-link" href="/">{t("common.backToHome")}</Link></div>
           <div className="mobile-progress">
-            Step {step} of 3{" "}
+            {t("report.stepOf", { step: String(step), total: "3" })}{" "}
             <span>
               <i style={{ width: `${step * 33.3}%` }} />
             </span>
@@ -244,14 +248,14 @@ export function ReportFlow() {
               <div className="form-heading">
                 <span>01</span>
                 <div>
-                  <h2>What happened?</h2>
-                  <p>Choose the option that best describes the situation.</p>
+                  <h2>{t("report.step1Heading")}</h2>
+                  <p>{t("report.step1Copy")}</p>
                 </div>
               </div>
 
-              <label className="field-label">Crisis category</label>
+              <label className="field-label">{t("report.categoryLabel")}</label>
               <div className="category-grid">
-                {categories.map(([item, icon]) => (
+                {categories.map(([item, icon, labelKey]) => (
                   <button
                     className={category === item ? "selected" : ""}
                     type="button"
@@ -259,14 +263,14 @@ export function ReportFlow() {
                     key={item}
                   >
                     <Icon name={icon} />
-                    <span>{item}</span>
+                    <span>{t(`report.${labelKey}`)}</span>
                     {category === item ? <Icon name="check" size={16} /> : null}
                   </button>
                 ))}
               </div>
 
               <label className="field-label" htmlFor="description">
-                Briefly describe the situation
+                {t("report.descLabel")}
               </label>
               <textarea
                 id="description"
@@ -274,11 +278,11 @@ export function ReportFlow() {
                 maxLength={1000}
                 value={description}
                 onChange={(event) => setDescription(event.target.value)}
-                placeholder="Tell us what you can see, who may need help, and any immediate risks..."
+                placeholder={t("report.descPlaceholder")}
               />
               <div className="char-count">{description.length} / 1,000</div>
               <button className="btn btn-primary form-next" type="button" onClick={() => goToStep(2)}>
-                Continue <Icon name="arrow" />
+                {t("report.continue")} <Icon name="arrow" />
               </button>
             </>
           ) : null}
@@ -288,30 +292,30 @@ export function ReportFlow() {
               <div className="form-heading">
                 <span>02</span>
                 <div>
-                  <h2>Where is help needed?</h2>
-                  <p>Add a location and tell us how urgent the situation feels.</p>
+                  <h2>{t("report.step2Heading")}</h2>
+                  <p>{t("report.step2Copy")}</p>
                 </div>
               </div>
 
               <label className="field-label" htmlFor="location">
-                Location
+                {t("report.locationLabel")}
               </label>
               <div className="input-icon">
                 <Icon name="pin" />
                 <input
                   id="location"
                   value={location}
-                  placeholder="Street, neighbourhood or landmark"
+                  placeholder={t("report.locationPlaceholder")}
                   onChange={(event) => setLocation(event.target.value)}
                 />
               </div>
               <p className="muted">
-                This free-text location is saved with the request. Both coordinates are required so response teams can locate it.
+                {t("report.locationNote")}
               </p>
 
               <div className="two-fields">
                 <label>
-                  <span className="field-label">Latitude (required)</span>
+                  <span className="field-label">{t("report.latLabel")}</span>
                   <input
                     inputMode="decimal"
                     value={lat}
@@ -320,7 +324,7 @@ export function ReportFlow() {
                   />
                 </label>
                 <label>
-                  <span className="field-label">Longitude (required)</span>
+                  <span className="field-label">{t("report.lngLabel")}</span>
                   <input
                     inputMode="decimal"
                     value={lng}
@@ -352,9 +356,9 @@ export function ReportFlow() {
                 />
               </div>
 
-              <label className="field-label">How urgent is the situation?</label>
+              <label className="field-label">{t("report.urgencyLabel")}</label>
               <div className="severity-row">
-                {severities.map((item) => (
+                {severities.map(([item, labelKey]) => (
                   <button
                     className={severity === item ? "selected" : ""}
                     type="button"
@@ -362,7 +366,7 @@ export function ReportFlow() {
                     key={item}
                   >
                     <i />
-                    {item}
+                    {t(`report.${labelKey}`)}
                   </button>
                 ))}
               </div>
@@ -370,9 +374,9 @@ export function ReportFlow() {
               <label className="upload-box">
                 <Icon name="upload" />
                 <span>
-                  <b>{evidenceFile?.name ?? "Add photos or documents"}</b>
-                  <small>Optional · JPG, PNG, WebP or PDF up to 1 MB</small>
-                  <small>The selected file is uploaded after the report is created.</small>
+                  <b>{evidenceFile?.name ?? t("report.evidenceAdd")}</b>
+                  <small>{t("report.evidenceHint")}</small>
+                  <small>{t("report.evidenceUpload")}</small>
                 </span>
                 <input
                   type="file"
@@ -382,7 +386,7 @@ export function ReportFlow() {
               </label>
 
               <button className="btn btn-primary form-next" type="button" onClick={() => goToStep(3)}>
-                Continue <Icon name="arrow" />
+                {t("report.continue")} <Icon name="arrow" />
               </button>
             </>
           ) : null}
@@ -392,35 +396,32 @@ export function ReportFlow() {
               <div className="form-heading">
                 <span>03</span>
                 <div>
-                  <h2>Review and submit</h2>
-                  <p>
-                    This report is linked to your signed-in account. Contact details and consent are
-                    not collected here because the case API does not accept them.
-                  </p>
+                  <h2>{t("report.step3Heading")}</h2>
+                  <p>{t("report.step3Copy")}</p>
                 </div>
               </div>
 
               <div className="review-card">
-                <b>Report summary</b>
+                <b>{t("report.summary")}</b>
                 <div>
-                  <span>Category</span>
-                  <strong>{category}</strong>
+                  <span>{t("report.fieldCategory")}</span>
+                  <strong>{t(`report.${categories.find(([v]) => v === category)?.[2] ?? "catOther"}`)}</strong>
                 </div>
                 <div>
-                  <span>Location</span>
+                  <span>{t("report.fieldLocation")}</span>
                   <strong>{location || "—"}</strong>
                 </div>
                 <div>
-                  <span>Coordinates</span>
-                  <strong>{lat && lng ? `${lat}, ${lng}` : "Not provided"}</strong>
+                  <span>{t("report.fieldCoordinates")}</span>
+                  <strong>{lat && lng ? `${lat}, ${lng}` : t("report.notProvided")}</strong>
                 </div>
                 <div>
-                  <span>Urgency</span>
-                  <strong>{severity}</strong>
+                  <span>{t("report.fieldUrgency")}</span>
+                  <strong>{t(`report.${severities.find(([v]) => v === severity)?.[1] ?? "sevHigh"}`)}</strong>
                 </div>
                 <div>
-                  <span>Evidence</span>
-                  <strong>{evidenceFile?.name ?? "None selected"}</strong>
+                  <span>{t("report.fieldEvidence")}</span>
+                  <strong>{evidenceFile?.name ?? t("report.noneSelected")}</strong>
                 </div>
               </div>
 
@@ -436,7 +437,7 @@ export function ReportFlow() {
                 onClick={() => void onSubmit()}
                 disabled={busy}
               >
-                {busy ? "Submitting report…" : "Submit report"} <Icon name="arrow" />
+                {busy ? t("report.submitting") : t("report.submit")} <Icon name="arrow" />
               </button>
             </>
           ) : null}
@@ -452,12 +453,4 @@ export function ReportFlow() {
   );
 }
 
-function SimpleHeader() {
-  return (
-    <header className="simple-header">
-      <Brand />
-      <span>Need assistance?</span>
-      <Link href="/find-assistance">Find help</Link>
-    </header>
-  );
-}
+

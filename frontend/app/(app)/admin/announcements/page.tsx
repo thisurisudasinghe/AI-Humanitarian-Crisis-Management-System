@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { localizedErrorMessage } from "@/lib/i18n/errors";
 import {
   Badge,
   Button,
@@ -15,8 +16,9 @@ import {
 import { AuthGuard } from "@/components/AuthGuard";
 import { AdminNav } from "@/components/safeway/AdminNav";
 import { formatDate, type CmsPagedResult } from "@/lib/admin";
-import { errorMessage } from "@/lib/api";
+
 import { useAuth } from "@/lib/auth";
+import { useT } from "@/lib/i18n";
 import {
   AnnouncementChannels,
   approveAnnouncement,
@@ -29,6 +31,7 @@ import {
 import { AllRoles, RoleNames, StaffRoles } from "@/lib/roles";
 
 type Notice = { message: string; tone: "error" | "success" } | null;
+type Translator = ReturnType<typeof useT>;
 
 const AnnouncementApproverRoles = [RoleNames.EmergencyCoordinator];
 
@@ -51,11 +54,11 @@ function isGuid(value: string): boolean {
   return guidPattern.test(value.trim());
 }
 
-function audienceSummary(announcement: AnnouncementDto): string {
+function audienceSummary(announcement: AnnouncementDto, t: Translator): string {
   const parts: string[] = [];
 
   if (announcement.audience.allActiveUsers) {
-    parts.push("All active users");
+    parts.push(t("admin.announcements.audienceAllActiveUsers"));
   }
 
   if (announcement.audience.roles.length > 0) {
@@ -63,14 +66,18 @@ function audienceSummary(announcement: AnnouncementDto): string {
   }
 
   if (announcement.audience.userIds.length > 0) {
-    parts.push(`${announcement.audience.userIds.length} named user(s)`);
+    parts.push(t("admin.announcements.audienceNamedUsers", {
+      count: announcement.audience.userIds.length
+    }));
   }
 
   if (announcement.audience.areaIds.length > 0) {
-    parts.push(`${announcement.audience.areaIds.length} area(s)`);
+    parts.push(t("admin.announcements.audienceAreas", {
+      count: announcement.audience.areaIds.length
+    }));
   }
 
-  return parts.length > 0 ? parts.join(" · ") : "No audience selected";
+  return parts.length > 0 ? parts.join(" · ") : t("admin.announcements.audienceNone");
 }
 
 function StatusBadge({ status }: { status: string }) {
@@ -85,6 +92,7 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 export default function AnnouncementsPage() {
+  const t = useT();
   const { can } = useAuth();
   const canApprove = can(AnnouncementApproverRoles);
   const [page, setPage] = useState(1);
@@ -110,7 +118,7 @@ export default function AnnouncementsPage() {
       setResult(list);
       setPending(queue.items.filter((item) => item.status === "PendingApproval"));
     } catch (error) {
-      setNotice({ message: errorMessage(error), tone: "error" });
+      setNotice({ message: localizedErrorMessage(error, t), tone: "error" });
     } finally {
       setLoading(false);
     }
@@ -124,7 +132,7 @@ export default function AnnouncementsPage() {
     event.preventDefault();
 
     if (!form.title.trim() || !form.message.trim()) {
-      setNotice({ message: "Title and message are required.", tone: "error" });
+      setNotice({ message: t("admin.announcements.validationRequiredFields"), tone: "error" });
       return;
     }
 
@@ -140,7 +148,7 @@ export default function AnnouncementsPage() {
 
     if (userIds.some((id) => !isGuid(id)) || areaIds.some((id) => !isGuid(id))) {
       setNotice({
-        message: "Every recipient user and area ID must be a valid GUID.",
+        message: t("admin.announcements.validationInvalidGuid"),
         tone: "error"
       });
       return;
@@ -153,7 +161,7 @@ export default function AnnouncementsPage() {
       areaIds.length === 0
     ) {
       setNotice({
-        message: "Select at least one audience: all active users, roles, areas or user IDs.",
+        message: t("admin.announcements.validationAudienceRequired"),
         tone: "error"
       });
       return;
@@ -178,12 +186,12 @@ export default function AnnouncementsPage() {
       setForm(emptyForm);
       setPage(1);
       setNotice({
-        message: `${created.title} queued for approval.`,
+        message: t("admin.announcements.created", { title: created.title }),
         tone: "success"
       });
       await load();
     } catch (error) {
-      setNotice({ message: errorMessage(error), tone: "error" });
+      setNotice({ message: localizedErrorMessage(error, t), tone: "error" });
     } finally {
       setSaving(false);
     }
@@ -202,12 +210,15 @@ export default function AnnouncementsPage() {
       setApproveTarget(null);
       setApproveNote("");
       setNotice({
-        message: `${updated.title} approved for ${updated.recipientCount} recipient(s).`,
+        message: t("admin.announcements.approved", {
+          title: updated.title,
+          count: updated.recipientCount
+        }),
         tone: "success"
       });
       await load();
     } catch (error) {
-      setNotice({ message: errorMessage(error), tone: "error" });
+      setNotice({ message: localizedErrorMessage(error, t), tone: "error" });
     } finally {
       setSaving(false);
     }
@@ -219,7 +230,7 @@ export default function AnnouncementsPage() {
     }
 
     if (!rejectReason.trim()) {
-      setNotice({ message: "A rejection reason is required.", tone: "error" });
+      setNotice({ message: t("admin.announcements.validationRejectionReason"), tone: "error" });
       return;
     }
 
@@ -230,10 +241,10 @@ export default function AnnouncementsPage() {
       const updated = await rejectAnnouncement(rejectTarget.id, rejectReason);
       setRejectTarget(null);
       setRejectReason("");
-      setNotice({ message: `${updated.title} rejected.`, tone: "success" });
+      setNotice({ message: t("admin.announcements.rejected", { title: updated.title }), tone: "success" });
       await load();
     } catch (error) {
-      setNotice({ message: errorMessage(error), tone: "error" });
+      setNotice({ message: localizedErrorMessage(error, t), tone: "error" });
     } finally {
       setSaving(false);
     }
@@ -242,7 +253,7 @@ export default function AnnouncementsPage() {
   const columns: Column<AnnouncementDto>[] = [
     {
       key: "title",
-      header: "Announcement",
+      header: t("admin.announcements.colAnnouncement"),
       render: (item) => (
         <div>
           <strong>{item.title}</strong>
@@ -250,34 +261,34 @@ export default function AnnouncementsPage() {
         </div>
       )
     },
-    { key: "status", header: "Status", render: (item) => <StatusBadge status={item.status} /> },
+    { key: "status", header: t("admin.announcements.colStatus"), render: (item) => <StatusBadge status={item.status} /> },
     {
       key: "channel",
-      header: "Channel",
+      header: t("admin.announcements.colChannel"),
       render: (item) => <Badge>{item.channel}</Badge>
     },
     {
       key: "audience",
-      header: "Audience",
-      render: (item) => audienceSummary(item)
+      header: t("admin.announcements.colAudience"),
+      render: (item) => audienceSummary(item, t)
     },
     {
       key: "recipients",
-      header: "Recipients",
+      header: t("admin.announcements.colRecipients"),
       render: (item) => item.recipientCount || "—"
     },
     {
       key: "created",
-      header: "Created",
+      header: t("admin.announcements.colCreated"),
       render: (item) => formatDate(item.createdAt)
     },
     {
       key: "decision",
-      header: "Approval",
+      header: t("admin.announcements.colApproval"),
       render: (item) => (
         <div>
           {item.status === "PendingApproval" ? (
-            <span className="metric__label">Awaiting review</span>
+            <span className="metric__label">{t("admin.announcements.awaitingReview")}</span>
           ) : (
             <>
               <div className="metric__label">{item.approvedByUserId ?? "—"}</div>
@@ -297,14 +308,11 @@ export default function AnnouncementsPage() {
       <div className="page">
         <header className="page__header">
           <div>
-            <h1>Announcements</h1>
-            <p>
-              Compose emergency announcements, then let an authorized coordinator approve or
-              reject them before delivery is queued.
-            </p>
+            <h1>{t("admin.announcements.title")}</h1>
+            <p>{t("admin.announcements.subtitle")}</p>
           </div>
           <Button variant="secondary" onClick={() => void load()} disabled={loading}>
-            Refresh
+            {t("admin.announcements.refresh")}
           </Button>
         </header>
 
@@ -318,20 +326,20 @@ export default function AnnouncementsPage() {
 
         <section className="card">
           <div style={{ marginBottom: 16 }}>
-            <h3>Create announcement</h3>
-            <p className="metric__label">New announcements always start in PendingApproval</p>
+            <h3>{t("admin.announcements.createTitle")}</h3>
+            <p className="metric__label">{t("admin.announcements.createHint")}</p>
           </div>
 
           <form onSubmit={submitCreate}>
             <div className="filters">
               <Input
-                label="Title"
+                label={t("admin.announcements.fieldTitle")}
                 value={form.title}
                 onChange={(event) => setForm({ ...form, title: event.target.value })}
                 required
               />
               <Select
-                label="Channel"
+                label={t("admin.announcements.fieldChannel")}
                 value={form.channel}
                 onChange={(event) =>
                   setForm({ ...form, channel: event.target.value as AnnouncementChannel })
@@ -346,7 +354,7 @@ export default function AnnouncementsPage() {
             </div>
 
             <label className="field" style={{ marginTop: 16 }}>
-              <span className="field__label">Message</span>
+              <span className="field__label">{t("admin.announcements.fieldMessage")}</span>
               <textarea
                 className="input"
                 rows={3}
@@ -358,7 +366,7 @@ export default function AnnouncementsPage() {
 
             <div className="filters">
               <label className="field">
-                <span className="field__label">Audience roles</span>
+                <span className="field__label">{t("admin.announcements.fieldAudienceRoles")}</span>
                 <select
                   className="input"
                   multiple
@@ -377,38 +385,36 @@ export default function AnnouncementsPage() {
                     </option>
                   ))}
                 </select>
-                <span className="field__hint">Hold Ctrl/Cmd to select multiple roles.</span>
+                <span className="field__hint">{t("admin.announcements.hintMultiSelectRoles")}</span>
               </label>
 
               <label className="field">
-                <span className="field__label">Recipient user IDs</span>
+                <span className="field__label">{t("admin.announcements.fieldRecipientUserIds")}</span>
                 <textarea
                   className="input"
                   rows={6}
-                  placeholder="Guid, comma or new-line separated"
+                  placeholder={t("admin.announcements.placeholderGuidList")}
                   value={form.userIds}
                   onChange={(event) => setForm({ ...form, userIds: event.target.value })}
                 />
-                <span className="field__hint">Optional. Each entry must be a valid GUID.</span>
+                <span className="field__hint">{t("admin.announcements.hintRecipientIds")}</span>
               </label>
 
               <label className="field">
-                <span className="field__label">Area IDs</span>
+                <span className="field__label">{t("admin.announcements.fieldAreaIds")}</span>
                 <textarea
                   className="input"
                   rows={6}
-                  placeholder="Guid, comma or new-line separated"
+                  placeholder={t("admin.announcements.placeholderGuidList")}
                   value={form.areaIds}
                   onChange={(event) => setForm({ ...form, areaIds: event.target.value })}
                 />
-                <span className="field__hint">
-                  Optional. Active requesters with a request in any selected area.
-                </span>
+                <span className="field__hint">{t("admin.announcements.hintAreaIds")}</span>
               </label>
 
               <div>
                 <label className="field">
-                  <span className="field__label">Broadcast</span>
+                  <span className="field__label">{t("admin.announcements.fieldBroadcast")}</span>
                   <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
                     <input
                       type="checkbox"
@@ -417,12 +423,12 @@ export default function AnnouncementsPage() {
                         setForm({ ...form, allActiveUsers: event.target.checked })
                       }
                     />
-                    All active users
+                    {t("admin.announcements.audienceAllActiveUsers")}
                   </label>
                 </label>
                 <Input
-                  label="Idempotency key (optional)"
-                  placeholder="Prevents duplicate creates on retry"
+                  label={t("admin.announcements.fieldIdempotencyKey")}
+                  placeholder={t("admin.announcements.placeholderIdempotencyKey")}
                   value={form.idempotencyKey}
                   onChange={(event) =>
                     setForm({ ...form, idempotencyKey: event.target.value })
@@ -433,7 +439,7 @@ export default function AnnouncementsPage() {
 
             <div className="actions">
               <Button type="submit" disabled={saving}>
-                {saving ? "Queuing…" : "Queue for approval"}
+                {saving ? t("admin.announcements.submitQueuing") : t("admin.announcements.submitQueue")}
               </Button>
             </div>
           </form>
@@ -441,28 +447,28 @@ export default function AnnouncementsPage() {
 
         <section className="card">
           <div style={{ marginBottom: 16 }}>
-            <h3>Pending approval queue</h3>
+            <h3>{t("admin.announcements.pendingTitle")}</h3>
             <p className="metric__label">
               {canApprove
-                ? "Approve to queue delivery, or reject with a reason."
-                : "Only Emergency Coordinators can approve or reject."}
+                ? t("admin.announcements.pendingHintApprover")
+                : t("admin.announcements.pendingHintViewer")}
             </p>
           </div>
 
           {loading ? (
             <Skeleton rows={3} />
           ) : pending.length === 0 ? (
-            <div className="empty-state">No announcements are awaiting approval.</div>
+            <div className="empty-state">{t("admin.announcements.pendingEmpty")}</div>
           ) : (
             <div className="table-wrap">
               <table className="table">
                 <thead>
                   <tr>
-                    <th scope="col">Title</th>
-                    <th scope="col">Audience</th>
-                    <th scope="col">Channel</th>
-                    <th scope="col">Created</th>
-                    <th scope="col">Actions</th>
+                    <th scope="col">{t("admin.announcements.fieldTitle")}</th>
+                    <th scope="col">{t("admin.announcements.colAudience")}</th>
+                    <th scope="col">{t("admin.announcements.colChannel")}</th>
+                    <th scope="col">{t("admin.announcements.colCreated")}</th>
+                    <th scope="col">{t("admin.announcements.colActions")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -472,7 +478,7 @@ export default function AnnouncementsPage() {
                         <strong>{item.title}</strong>
                         <div className="metric__label">{item.message}</div>
                       </td>
-                      <td>{audienceSummary(item)}</td>
+                      <td>{audienceSummary(item, t)}</td>
                       <td>
                         <Badge>{item.channel}</Badge>
                       </td>
@@ -486,7 +492,7 @@ export default function AnnouncementsPage() {
                                 setApproveNote("");
                               }}
                             >
-                              Approve
+                              {t("admin.announcements.approve")}
                             </Button>
                             <Button
                               variant="danger"
@@ -495,11 +501,11 @@ export default function AnnouncementsPage() {
                                 setRejectReason("");
                               }}
                             >
-                              Reject
+                              {t("admin.announcements.reject")}
                             </Button>
                           </div>
                         ) : (
-                          <span className="metric__label">Awaiting an approver</span>
+                          <span className="metric__label">{t("admin.announcements.awaitingApprover")}</span>
                         )}
                       </td>
                     </tr>
@@ -512,8 +518,8 @@ export default function AnnouncementsPage() {
 
         <section className="card">
           <div style={{ marginBottom: 16 }}>
-            <h3>All announcements</h3>
-            <p className="metric__label">Latest first, including status and delivery outcome</p>
+            <h3>{t("admin.announcements.allTitle")}</h3>
+            <p className="metric__label">{t("admin.announcements.allHint")}</p>
           </div>
 
           {loading ? (
@@ -526,20 +532,21 @@ export default function AnnouncementsPage() {
               pageSize={result?.pageSize ?? pageSize}
               totalCount={result?.total ?? 0}
               onPageChange={setPage}
-              emptyMessage="No announcements have been created."
+              emptyMessage={t("admin.announcements.allEmpty")}
             />
           )}
         </section>
       </div>
 
       {approveTarget ? (
-        <Modal title="Approve announcement" onClose={() => setApproveTarget(null)}>
+        <Modal title={t("admin.announcements.approveModalTitle")} onClose={() => setApproveTarget(null)}>
           <p>
-            Approving <strong>{approveTarget.title}</strong> queues delivery to the selected
-            audience. This cannot be undone.
+            {t("admin.announcements.approveModalBodyStart")}{" "}
+            <strong>{approveTarget.title}</strong>{" "}
+            {t("admin.announcements.approveModalBodyEnd")}
           </p>
           <label className="field">
-            <span className="field__label">Note (optional)</span>
+            <span className="field__label">{t("admin.announcements.noteLabel")}</span>
             <textarea
               className="input"
               rows={3}
@@ -549,23 +556,24 @@ export default function AnnouncementsPage() {
           </label>
           <div className="actions">
             <Button onClick={() => void submitApproval()} disabled={saving}>
-              {saving ? "Approving…" : "Approve & queue delivery"}
+              {saving ? t("admin.announcements.approving") : t("admin.announcements.approveAndQueue")}
             </Button>
             <Button variant="secondary" onClick={() => setApproveTarget(null)}>
-              Cancel
+              {t("admin.announcements.cancel")}
             </Button>
           </div>
         </Modal>
       ) : null}
 
       {rejectTarget ? (
-        <Modal title="Reject announcement" onClose={() => setRejectTarget(null)}>
+        <Modal title={t("admin.announcements.rejectModalTitle")} onClose={() => setRejectTarget(null)}>
           <p>
-            Reject <strong>{rejectTarget.title}</strong>? The reason is recorded in the audit
-            trail.
+            {t("admin.announcements.rejectModalBodyStart")}{" "}
+            <strong>{rejectTarget.title}</strong>
+            {t("admin.announcements.rejectModalBodyEnd")}
           </p>
           <label className="field">
-            <span className="field__label">Reason (required)</span>
+            <span className="field__label">{t("admin.announcements.reasonLabel")}</span>
             <textarea
               className="input"
               rows={3}
@@ -575,10 +583,10 @@ export default function AnnouncementsPage() {
           </label>
           <div className="actions">
             <Button variant="danger" onClick={() => void submitRejection()} disabled={saving}>
-              {saving ? "Rejecting…" : "Reject announcement"}
+              {saving ? t("admin.announcements.rejecting") : t("admin.announcements.rejectAnnouncement")}
             </Button>
             <Button variant="secondary" onClick={() => setRejectTarget(null)}>
-              Cancel
+              {t("admin.announcements.cancel")}
             </Button>
           </div>
         </Modal>

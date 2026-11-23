@@ -322,9 +322,13 @@ export function listUnresolvedCaseRequests(
 }
 
 /** User-facing message for the shared ApiError produced by `lib/api.ts`. */
-export function caseRequestErrorMessage(cause: unknown, fallback: string): string {
+export function caseRequestErrorMessage(
+  cause: unknown,
+  fallback: string,
+  t?: (key: string) => string
+): string {
   if (cause instanceof ApiError && cause.status === 401) {
-    return "Sign in as a citizen to submit and track reports.";
+    return t ? t("apiErrors.unauthorized") : "Sign in as a citizen to submit and track reports.";
   }
   return cause instanceof Error ? cause.message : fallback;
 }

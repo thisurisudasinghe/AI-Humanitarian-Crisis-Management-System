@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { localizedErrorMessage } from "@/lib/i18n/errors";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { AuthGuard } from "@/components/AuthGuard";
 import { Icon } from "@/components/safeway/Icon";
@@ -14,7 +15,7 @@ import {
   type Column
 } from "@/components/ui";
 import { formatDate } from "@/lib/admin";
-import { errorMessage } from "@/lib/api";
+
 import {
   DecisionOutcomes,
   getDecisionReviews,
@@ -22,6 +23,7 @@ import {
 } from "@/lib/decisions";
 import type { CmsPagedResult } from "@/lib/admin";
 import { StaffRoles } from "@/lib/roles";
+import { useT } from "@/lib/i18n";
 
 type Notice = { message: string; tone: "error" | "success" } | null;
 
@@ -68,6 +70,7 @@ function JsonSnippet({ value, label }: { value?: string | null; label: string })
 }
 
 export default function DecisionsReviewPage() {
+  const t = useT();
   const [crisisInput, setCrisisInput] = useState("");
   const [crisisId, setCrisisId] = useState("");
   const [fromInput, setFromInput] = useState("");
@@ -99,7 +102,7 @@ export default function DecisionsReviewPage() {
         })
       );
     } catch (error) {
-      setNotice({ message: errorMessage(error), tone: "error" });
+      setNotice({ message: localizedErrorMessage(error, t), tone: "error" });
     } finally {
       setLoading(false);
     }
@@ -113,7 +116,7 @@ export default function DecisionsReviewPage() {
     event.preventDefault();
 
     if (crisisInput.trim() && !isGuid(crisisInput)) {
-      setNotice({ message: "Crisis ID must be a valid GUID.", tone: "error" });
+      setNotice({ message: t("operations.decisions.errCrisisId"), tone: "error" });
       return;
     }
 
@@ -123,7 +126,7 @@ export default function DecisionsReviewPage() {
     const nextOutcome = outcomeInput;
 
     if (nextFrom && nextTo && nextFrom > nextTo) {
-      setNotice({ message: "The start date must be before the end date.", tone: "error" });
+      setNotice({ message: t("operations.decisions.errDateRange"), tone: "error" });
       return;
     }
 
@@ -172,7 +175,7 @@ export default function DecisionsReviewPage() {
   const columns: Column<ReviewEntryDto>[] = [
     {
       key: "recommendation",
-      header: "Recommendation",
+      header: t("operations.decisions.colRecommendation"),
       render: (entry) => (
         <div>
           <strong>{entry.type}</strong>
@@ -180,59 +183,59 @@ export default function DecisionsReviewPage() {
             <code>{entry.recommendationId}</code>
           </div>
           <div className="metric__label">
-            Target <code>{entry.targetId}</code>
+            {t("operations.shared.target")} <code>{entry.targetId}</code>
           </div>
         </div>
       )
     },
     {
       key: "ai",
-      header: "AI output",
+      header: t("operations.decisions.colAiOutput"),
       render: (entry) => (
         <div>
-          <Badge>{confidencePercent(entry.confidence)}% confidence</Badge>
+          <Badge>{t("operations.decisions.confidence", { value: confidencePercent(entry.confidence) })}</Badge>
           <p className="metric__label">{entry.rationale}</p>
-          <small>Source: {entry.source}</small>
-          <JsonSnippet value={entry.payloadJson} label="AI payload" />
+          <small>{t("operations.shared.source", { source: entry.source })}</small>
+          <JsonSnippet value={entry.payloadJson} label={t("operations.decisions.aiPayload")} />
         </div>
       )
     },
     {
       key: "outcome",
-      header: "Human outcome",
+      header: t("operations.decisions.colHumanOutcome"),
       render: (entry) => (
         <div className="actions">
           {entry.outcome ? (
             <Badge>{entry.outcome}</Badge>
           ) : (
-            <Badge>Awaiting decision</Badge>
+            <Badge>{t("operations.decisions.awaitingDecision")}</Badge>
           )}
           <span className={`badge ${entry.isOverride ? "badge--danger" : "badge--muted"}`}>
-            {entry.isOverride ? "Override" : "No override"}
+            {entry.isOverride ? t("operations.decisions.override") : t("operations.decisions.noOverride")}
           </span>
         </div>
       )
     },
     {
       key: "finalRequestStatus",
-      header: "Final request status",
+      header: t("operations.decisions.colFinalStatus"),
       render: (entry) => (
         <span>{entry.finalRequestStatus ?? "—"}</span>
       )
     },
     {
       key: "reason",
-      header: "Reason & final payload",
+      header: t("operations.decisions.colReasonPayload"),
       render: (entry) => (
         <div>
           <span>{entry.reason ?? "—"}</span>
-          <JsonSnippet value={entry.finalPayloadJson} label="Final payload" />
+          <JsonSnippet value={entry.finalPayloadJson} label={t("operations.decisions.finalPayload")} />
         </div>
       )
     },
     {
       key: "decider",
-      header: "Decider / time",
+      header: t("operations.decisions.colDecider"),
       render: (entry) => (
         <div>
           {entry.decidedBy ? <code>{entry.decidedBy}</code> : <span>—</span>}
@@ -246,16 +249,15 @@ export default function DecisionsReviewPage() {
     <AuthGuard allowedRoles={StaffRoles}>
       <div className="ops-title">
         <div>
-          <p>POST-INCIDENT REVIEW</p>
-          <h1>AI output vs human decisions</h1>
+          <p>{t("operations.decisions.eyebrow")}</p>
+          <h1>{t("operations.decisions.title")}</h1>
           <span>
-            Append-only review of every recommendation, the officer outcome and the final request
-            status recorded against it.
+            {t("operations.decisions.subtitle")}
           </span>
         </div>
         <div>
           <Link className="btn btn-outline" href="/operations/ai">
-            <Icon name="brain" /> Recommendation queue
+            <Icon name="brain" /> {t("operations.shared.recommendationQueue")}
           </Link>
         </div>
       </div>
@@ -269,41 +271,41 @@ export default function DecisionsReviewPage() {
       <section className="ops-card">
         <div className="card-heading">
           <div>
-            <h3>Decision history</h3>
-            <p>From the post-incident review feed</p>
+            <h3>{t("operations.shared.decisionHistory")}</h3>
+            <p>{t("operations.decisions.historySubtitle")}</p>
           </div>
           <Button variant="secondary" onClick={() => void load()} disabled={loading}>
-            Refresh
+            {t("operations.shared.refresh")}
           </Button>
         </div>
 
         <form className="filters" onSubmit={applyFilter} style={{ padding: 20 }}>
           <Input
-            label="Crisis ID (optional)"
-            placeholder="Guid"
+            label={t("operations.decisions.crisisIdLabel")}
+            placeholder={t("operations.shared.guid")}
             value={crisisInput}
             onChange={(event) => setCrisisInput(event.target.value)}
           />
           <Input
-            label="From date (optional)"
+            label={t("operations.decisions.fromDate")}
             type="date"
             value={fromInput}
             onChange={(event) => setFromInput(event.target.value)}
           />
           <Input
-            label="To date (optional)"
+            label={t("operations.decisions.toDate")}
             type="date"
             value={toInput}
             onChange={(event) => setToInput(event.target.value)}
           />
           <label className="field">
-            <span className="field__label">Outcome (optional)</span>
+            <span className="field__label">{t("operations.decisions.outcomeLabel")}</span>
             <select
               className="input"
               value={outcomeInput}
               onChange={(event) => setOutcomeInput(event.target.value)}
             >
-              <option value="">Any outcome</option>
+              <option value="">{t("operations.decisions.anyOutcome")}</option>
               {DecisionOutcomes.map((outcome) => (
                 <option key={outcome} value={outcome}>
                   {outcome}
@@ -312,7 +314,7 @@ export default function DecisionsReviewPage() {
             </select>
           </label>
           <Button type="submit" disabled={loading}>
-            Apply filters
+            {t("operations.shared.applyFilters")}
           </Button>
         </form>
 
@@ -327,7 +329,7 @@ export default function DecisionsReviewPage() {
               pageSize={result?.pageSize ?? pageSize}
               totalCount={result?.total ?? 0}
               onPageChange={setPage}
-              emptyMessage="No decisions recorded for this filter."
+              emptyMessage={t("operations.decisions.empty")}
             />
           )}
         </div>

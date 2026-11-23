@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { formatDate as formatDateForLocale, resolveLocale } from "@/lib/i18n/core";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { AuthGuard } from "@/components/AuthGuard";
 import { Icon } from "@/components/safeway/Icon";
 import { EmptyPanel } from "@/components/safeway/IntegrationNotice";
+import { useT } from "@/lib/i18n";
 import { StaffRoles } from "@/lib/roles";
 import {
   caseRequestErrorMessage,
@@ -20,7 +22,8 @@ import {
 } from "@/lib/crisis";
 
 function formatDate(value: string): string {
-  return new Date(value).toLocaleString();
+  const resolved = typeof document === "undefined" ? "en" : resolveLocale(document.documentElement.lang);
+  return formatDateForLocale(value, resolved);
 }
 
 function totalByStatus(summary?: CrisisSummaryRecord): number {
@@ -29,6 +32,7 @@ function totalByStatus(summary?: CrisisSummaryRecord): number {
 }
 
 export default function CrisisDetailPage() {
+  const t = useT();
   const params = useParams<{ id: string }>();
   const id = typeof params?.id === "string" ? params.id : "";
 
@@ -41,7 +45,7 @@ export default function CrisisDetailPage() {
 
   useEffect(() => {
     if (!id) {
-      setError("No crisis reference was supplied.");
+      setError(t("operations.crisisDetail.noReference"));
       setLoading(false);
       return;
     }
@@ -74,7 +78,7 @@ export default function CrisisDetailPage() {
         }
       } catch (cause) {
         if (active) {
-          setError(caseRequestErrorMessage(cause, "The crisis record could not be loaded."));
+          setError(caseRequestErrorMessage(cause, t("operations.crisisDetail.loadError"), t));
         }
       } finally {
         if (active) setLoading(false);
@@ -95,31 +99,31 @@ export default function CrisisDetailPage() {
   return (
     <AuthGuard allowedRoles={StaffRoles}>
       <Link className="back-link ops-back" href="/operations/crises">
-        ← Back to active crises
+        {t("operations.crisisDetail.back")}
       </Link>
 
       <div className="case-header">
         <div>
           <div className="case-kicker">
             <span className={`badge ${crisis?.status === "Active" ? "green" : "amber"}`}>
-              <i /> {loading ? "LOADING" : (crisis?.status ?? "NOT FOUND")}
+              <i /> {loading ? t("operations.crisisDetail.loadingBadge") : (crisis?.status ?? t("operations.crisisDetail.notFound"))}
             </span>
             <span>{crisis?.id ?? id}</span>
           </div>
-          <h1>{crisis?.name ?? "Crisis record"}</h1>
+          <h1>{crisis?.name ?? t("operations.crisisDetail.fallbackTitle")}</h1>
           <p>
             <Icon name="pin" size={16} />{" "}
             {crisis
-              ? `${crisis.type} · started ${formatDate(crisis.startedAt)}`
-              : "Crisis details are not available in the case service."}
+              ? `${crisis.type} · ${t("operations.crisisDetail.started", { date: formatDate(crisis.startedAt) })}`
+              : t("operations.crisisDetail.detailsUnavailable")}
           </p>
         </div>
         <div>
           <button className="btn btn-outline" type="button" disabled>
-            More actions
+            {t("operations.crisisDetail.moreActions")}
           </button>
           <button className="btn btn-primary" type="button" disabled>
-            Assign response team
+            {t("operations.crisisDetail.assignTeam")}
           </button>
         </div>
       </div>
@@ -132,19 +136,19 @@ export default function CrisisDetailPage() {
 
       <div className="case-tabs">
         <button className="active" type="button">
-          Overview
+          {t("operations.crisisDetail.tabOverview")}
         </button>
         <button type="button" disabled>
-          Reports <i>{total || "—"}</i>
+          {t("operations.crisisDetail.tabReports")} <i>{total || "—"}</i>
         </button>
         <button type="button" disabled>
-          Response
+          {t("operations.crisisDetail.tabResponse")}
         </button>
         <button type="button" disabled>
-          Resources
+          {t("operations.crisisDetail.tabResources")}
         </button>
         <button type="button" disabled>
-          Decision history
+          {t("operations.shared.decisionHistory")}
         </button>
       </div>
 
@@ -153,20 +157,20 @@ export default function CrisisDetailPage() {
           <section className="ops-card situation-card">
             <div className="card-heading">
               <div>
-                <h3>Situation overview</h3>
-                <p>Verified information from submitted reports</p>
+                <h3>{t("operations.crisisDetail.situationTitle")}</h3>
+                <p>{t("operations.crisisDetail.situationSubtitle")}</p>
               </div>
               <span className={`badge ${summary?.overdueTotal ? "coral" : "green"}`}>
-                <i /> {summary?.overdueTotal ? "OVERDUE REPORTS" : "ON TRACK"}
+                <i /> {summary?.overdueTotal ? t("operations.crisisDetail.overdueBadge") : t("operations.crisisDetail.onTrackBadge")}
               </span>
             </div>
             <div className="situation-stats">
               {[
-                ["AFFECTED AREAS", loading ? "—" : areas.length],
-                ["PEOPLE AT RISK", "Not captured"],
-                ["REPORTS", loading ? "—" : total],
+                [t("operations.crisisDetail.affectedAreas"), loading ? "—" : areas.length],
+                [t("operations.crisisDetail.peopleAtRisk"), t("operations.crisisDetail.notCaptured")],
+                [t("operations.crisisDetail.reports"), loading ? "—" : total],
                 [
-                  "FIRST REPORTED",
+                  t("operations.crisisDetail.firstReported"),
                   crisis ? formatDate(crisis.startedAt) : "—"
                 ]
               ].map(([label, value]) => (
@@ -189,18 +193,18 @@ export default function CrisisDetailPage() {
                 <Icon name="brain" />
               </span>
               <div>
-                <i>AI DECISION SUPPORT</i>
-                <h3>Risk &amp; priority recommendation</h3>
+                <i>{t("operations.shared.aiDecisionSupport")}</i>
+                <h3>{t("operations.crisisDetail.riskRecommendation")}</h3>
               </div>
               <small>
-                <Icon name="shield" size={13} /> Requires human review
+                <Icon name="shield" size={13} /> {t("operations.shared.requiresHumanReview")}
               </small>
             </div>
             <div className="recommendation">
               <div className="rec-score">
-                <span>RECOMMENDED PRIORITY</span>
+                <span>{t("operations.crisisDetail.recommendedPriority")}</span>
                 <b>—</b>
-                <em>No recommendation on this page</em>
+                <em>{t("operations.crisisDetail.noRecommendation")}</em>
               </div>
               <div className="confidence-ring">
                 <span>
@@ -209,36 +213,36 @@ export default function CrisisDetailPage() {
               </div>
             </div>
             <div className="reasoning">
-              <b>Supporting signals</b>
+              <b>{t("operations.shared.supportingSignals")}</b>
               <ul>
-                <li>Recommendations are owned by Dev 3 and are not connected to this case view.</li>
+                <li>{t("operations.crisisDetail.recommendationNotice")}</li>
               </ul>
             </div>
             <div className="review-actions">
               <button className="btn btn-outline" type="button" disabled>
-                Request more information
+                {t("operations.crisisDetail.requestInfo")}
               </button>
               <button className="btn btn-primary" type="button" disabled>
-                <Icon name="check" /> Approve recommendation
+                <Icon name="check" /> {t("operations.crisisDetail.approve")}
               </button>
             </div>
             <p className="metric__label" style={{ padding: "0 22px 20px" }}>
-              Human approval remains mandatory once AI suggestions are available.
+              {t("operations.crisisDetail.humanApprovalNote")}
             </p>
           </section>
 
           <section className="ops-card" style={{ marginTop: 16 }}>
             <div className="card-heading">
               <div>
-                <h3>Submitted reports</h3>
-                <p>Requests linked to this crisis in the case service</p>
+                <h3>{t("operations.crisisDetail.submittedReports")}</h3>
+                <p>{t("operations.crisisDetail.reportsSubtitle")}</p>
               </div>
             </div>
             {loading ? (
-              <EmptyPanel title="Loading reports">Reading requests for this crisis.</EmptyPanel>
+              <EmptyPanel title={t("operations.crisisDetail.loadingReports")}>{t("operations.crisisDetail.loadingReportsBody")}</EmptyPanel>
             ) : requests.length === 0 ? (
-              <EmptyPanel title="No linked reports">
-                No case requests have been submitted against this crisis yet.
+              <EmptyPanel title={t("operations.crisisDetail.noLinkedReports")}>
+                {t("operations.crisisDetail.noLinkedBody")}
               </EmptyPanel>
             ) : (
               <div className="reports-detail-list">
@@ -249,7 +253,7 @@ export default function CrisisDetailPage() {
                     </span>
                     <div className="report-detail-main">
                       <span>
-                        <b>{request.category} report</b>
+                        <b>{request.category} {t("operations.crisisDetail.reportSuffix")}</b>
                       </span>
                       <p>{request.description}</p>
                       <small>{formatDate(request.submittedAt)}</small>
@@ -257,7 +261,7 @@ export default function CrisisDetailPage() {
                     <span className="badge green">
                       <i /> {request.status}
                     </span>
-                    <span>{request.isOverdue ? "Overdue" : "On track"}</span>
+                    <span>{request.isOverdue ? t("operations.crisisDetail.overdue") : t("operations.crisisDetail.onTrack")}</span>
                   </article>
                 ))}
               </div>
@@ -269,13 +273,13 @@ export default function CrisisDetailPage() {
           <section className="ops-card">
             <div className="card-heading">
               <div>
-                <h3>Response status</h3>
-                <p>Current coordination progress</p>
+                <h3>{t("operations.crisisDetail.responseStatus")}</h3>
+                <p>{t("operations.crisisDetail.responseSubtitle")}</p>
               </div>
             </div>
             <div className="response-progress">
               <span>
-                <b>{loading ? "—" : (summary?.openTotal ?? 0)}</b> open
+                <b>{loading ? "—" : (summary?.openTotal ?? 0)}</b> {t("operations.crisisDetail.openSuffix")}
               </span>
               <em>
                 <i
@@ -287,14 +291,14 @@ export default function CrisisDetailPage() {
             </div>
             <div className="timeline">
               {statusEntries.length === 0 ? (
-                <EmptyPanel title="No status history">Case status counts will appear here.</EmptyPanel>
+                <EmptyPanel title={t("operations.crisisDetail.noStatusHistory")}>{t("operations.crisisDetail.noStatusBody")}</EmptyPanel>
               ) : (
                 statusEntries.slice(0, 6).map(([label, count], index) => (
                   <div className={index === 0 ? "active" : ""} key={label}>
                     <i />
                     <span>
                       <b>{label}</b>
-                      <small>{count} requests</small>
+                      <small>{t("operations.crisisDetail.requestCount", { count })}</small>
                     </span>
                   </div>
                 ))
@@ -305,21 +309,21 @@ export default function CrisisDetailPage() {
           <section className="ops-card assigned-card">
             <div className="card-heading">
               <div>
-                <h3>Assigned team</h3>
+                <h3>{t("operations.crisisDetail.assignedTeam")}</h3>
               </div>
             </div>
-            <EmptyPanel title="No team in case data">
-              The request list does not include an assigned team field.
+            <EmptyPanel title={t("operations.crisisDetail.noTeam")}>
+              {t("operations.crisisDetail.noTeamBody")}
             </EmptyPanel>
           </section>
 
           <section className="ops-card audit-note">
             <Icon name="shield" />
             <div>
-              <b>Governance &amp; audit</b>
-              <p>All recommendations, approvals and response actions are recorded.</p>
+              <b>{t("operations.crisisDetail.governance")}</b>
+              <p>{t("operations.crisisDetail.governanceBody")}</p>
               <Link href="/admin/audit">
-                View audit log <Icon name="arrow" size={14} />
+                {t("operations.shared.viewAuditLog")} <Icon name="arrow" size={14} />
               </Link>
             </div>
           </section>

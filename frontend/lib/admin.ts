@@ -1,3 +1,10 @@
+import {
+  formatDate as formatDateForLocale,
+  formatNumber as formatNumberForLocale,
+  resolveLocale,
+  type Locale
+} from "./i18n/core";
+
 export interface PagedResult<T> {
   items: T[];
   page: number;
@@ -141,15 +148,14 @@ export const ConfigKeys = [
   "SuspiciousDonationAmount"
 ] as const;
 
-export function formatDate(value?: string | null): string {
-  if (!value) {
-    return "—";
-  }
-
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+export function formatDate(value?: string | null, locale?: Locale): string {
+  const resolved = locale ?? (typeof document === "undefined" ? "en" : resolveLocale(document.documentElement.lang));
+  return formatDateForLocale(value, resolved);
 }
 
 export function formatMetric(value?: number | null, suffix = ""): string {
-  return value === null || value === undefined ? "—" : `${value}${suffix}`;
+  if (value === null || value === undefined) return "—";
+  const resolved = typeof document === "undefined" ? "en" : resolveLocale(document.documentElement.lang);
+  const formatted = formatNumberForLocale(value, resolved);
+  return suffix ? `${formatted}${suffix}` : formatted;
 }

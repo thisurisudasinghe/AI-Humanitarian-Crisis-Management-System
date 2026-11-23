@@ -5,11 +5,17 @@
 // Additional optional props (focus, currentLocation, controls) are additive and
 // existing callers such as report/shelter/resource forms remain unchanged.
 import dynamic from "next/dynamic";
+import { useT } from "@/lib/i18n";
 import type { MapViewProps } from "./MapViewInner";
+
+function MapLoading() {
+  const t = useT();
+  return <div className="map map-loading">{t("shared.mapLoading")}</div>;
+}
 
 const MapViewInner = dynamic(() => import("./MapViewInner"), {
   ssr: false,
-  loading: () => <div className="map map-loading">Loading map…</div>,
+  loading: MapLoading,
 });
 
 export type {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { localizedErrorMessage } from "@/lib/i18n/errors";
 import {
   Button,
   ConfirmDialog,
@@ -15,12 +16,13 @@ import {
 } from "@/components/ui";
 import { AuthGuard } from "@/components/AuthGuard";
 import { AdminNav } from "@/components/safeway/AdminNav";
-import { api, apiJson, errorMessage } from "@/lib/api";
+import { api, apiJson } from "@/lib/api";
 import {
   OrganisationTypes,
   type OrganisationDto,
   type PagedResult
 } from "@/lib/admin";
+import { useT } from "@/lib/i18n";
 import { RoleNames } from "@/lib/roles";
 import { useDebouncedValue } from "@/lib/useDebouncedValue";
 
@@ -45,6 +47,7 @@ const emptyForm: FormState = {
 };
 
 export default function OrganisationsPage() {
+  const t = useT();
   const [search, setSearch] = useState("");
   const [active, setActive] = useState("all");
   const [page, setPage] = useState(1);
@@ -87,7 +90,7 @@ export default function OrganisationsPage() {
       })
       .catch((caught: unknown) => {
         if (!cancelled) {
-          setNotice({ message: errorMessage(caught), tone: "error" });
+          setNotice({ message: localizedErrorMessage(caught, t), tone: "error" });
         }
       })
       .finally(() => {
@@ -149,16 +152,16 @@ export default function OrganisationsPage() {
           "PATCH",
           body
         );
-        setNotice({ message: "Organisation updated.", tone: "success" });
+        setNotice({ message: t("admin.organisations.updated"), tone: "success" });
       } else {
         await apiJson<OrganisationDto>("/api/v1/organisations", "POST", body);
-        setNotice({ message: "Organisation created.", tone: "success" });
+        setNotice({ message: t("admin.organisations.created"), tone: "success" });
       }
 
       setModalOpen(false);
       await refresh();
     } catch (caught) {
-      setNotice({ message: errorMessage(caught), tone: "error" });
+      setNotice({ message: localizedErrorMessage(caught, t), tone: "error" });
     } finally {
       setSaving(false);
     }
@@ -176,37 +179,37 @@ export default function OrganisationsPage() {
       );
       setNotice({
         message: organisation.isActive
-          ? "Organisation deactivated."
-          : "Organisation activated.",
+          ? t("admin.organisations.deactivated")
+          : t("admin.organisations.activated"),
         tone: "success"
       });
       await refresh();
     } catch (caught) {
-      setNotice({ message: errorMessage(caught), tone: "error" });
+      setNotice({ message: localizedErrorMessage(caught, t), tone: "error" });
     }
   }
 
   const columns: Column<OrganisationDto>[] = [
     {
       key: "name",
-      header: "Name",
+      header: t("admin.organisations.colName"),
       render: (organisation) => (
         <div>
           <strong>{organisation.name}</strong>
           <div className="metric__label">
-            {organisation.registrationNumber ?? "No registration number"}
+            {organisation.registrationNumber ?? t("admin.organisations.noRegistrationNumber")}
           </div>
         </div>
       )
     },
     {
       key: "type",
-      header: "Type",
+      header: t("admin.organisations.colType"),
       render: (organisation) => organisation.organisationType
     },
     {
       key: "contact",
-      header: "Contact",
+      header: t("admin.organisations.colContact"),
       render: (organisation) => (
         <div>
           <div>{organisation.contactEmail ?? "—"}</div>
@@ -216,22 +219,24 @@ export default function OrganisationsPage() {
     },
     {
       key: "status",
-      header: "Status",
+      header: t("admin.organisations.colStatus"),
       render: (organisation) => <StatusBadge active={organisation.isActive} />
     },
     {
       key: "actions",
-      header: "Actions",
+      header: t("admin.organisations.colActions"),
       render: (organisation) => (
         <div className="actions">
           <Button variant="secondary" onClick={() => openEdit(organisation)}>
-            Edit
+            {t("admin.organisations.edit")}
           </Button>
           <Button
             variant="secondary"
             onClick={() => setStatusTarget(organisation)}
           >
-            {organisation.isActive ? "Deactivate" : "Activate"}
+            {organisation.isActive
+              ? t("admin.organisations.deactivate")
+              : t("admin.organisations.activate")}
           </Button>
         </div>
       )
@@ -243,10 +248,10 @@ export default function OrganisationsPage() {
       <div className="page">
         <header className="page__header">
           <div>
-            <h1>Organisations</h1>
-            <p>Manage partner agencies and lead organisations.</p>
+            <h1>{t("admin.organisations.title")}</h1>
+            <p>{t("admin.organisations.subtitle")}</p>
           </div>
-          <Button onClick={openCreate}>Create organisation</Button>
+          <Button onClick={openCreate}>{t("admin.organisations.create")}</Button>
         </header>
 
         <AdminNav />
@@ -254,8 +259,8 @@ export default function OrganisationsPage() {
         <section className="card">
           <div className="filters">
             <Input
-              label="Search"
-              placeholder="Organisation name"
+              label={t("admin.organisations.fieldSearch")}
+              placeholder={t("admin.organisations.placeholderSearch")}
               value={search}
               onChange={(event) => {
                 setSearch(event.target.value);
@@ -263,16 +268,16 @@ export default function OrganisationsPage() {
               }}
             />
             <Select
-              label="Status"
+              label={t("admin.organisations.fieldStatus")}
               value={active}
               onChange={(event) => {
                 setActive(event.target.value);
                 setPage(1);
               }}
             >
-              <option value="all">All statuses</option>
-              <option value="true">Active</option>
-              <option value="false">Inactive</option>
+              <option value="all">{t("admin.organisations.allStatuses")}</option>
+              <option value="true">{t("admin.organisations.active")}</option>
+              <option value="false">{t("admin.organisations.inactive")}</option>
             </Select>
           </div>
         </section>
@@ -288,7 +293,7 @@ export default function OrganisationsPage() {
               pageSize={result?.pageSize ?? 20}
               totalCount={result?.totalCount ?? 0}
               onPageChange={setPage}
-              emptyMessage="No organisations match the current filters."
+              emptyMessage={t("admin.organisations.empty")}
             />
           )}
         </section>
@@ -296,17 +301,19 @@ export default function OrganisationsPage() {
 
       {modalOpen ? (
         <Modal
-          title={editing ? "Edit organisation" : "Create organisation"}
+          title={editing
+            ? t("admin.organisations.modalEditTitle")
+            : t("admin.organisations.modalCreateTitle")}
           onClose={() => setModalOpen(false)}
         >
           <Input
-            label="Name"
+            label={t("admin.organisations.fieldName")}
             value={form.name}
             onChange={(event) => setForm({ ...form, name: event.target.value })}
             required
           />
           <Select
-            label="Type"
+            label={t("admin.organisations.fieldType")}
             value={form.organisationType}
             onChange={(event) =>
               setForm({ ...form, organisationType: event.target.value })
@@ -319,14 +326,14 @@ export default function OrganisationsPage() {
             ))}
           </Select>
           <Input
-            label="Registration number"
+            label={t("admin.organisations.fieldRegistrationNumber")}
             value={form.registrationNumber}
             onChange={(event) =>
               setForm({ ...form, registrationNumber: event.target.value })
             }
           />
           <Input
-            label="Contact email"
+            label={t("admin.organisations.fieldContactEmail")}
             type="email"
             value={form.contactEmail}
             onChange={(event) =>
@@ -334,23 +341,23 @@ export default function OrganisationsPage() {
             }
           />
           <Input
-            label="Contact phone"
+            label={t("admin.organisations.fieldContactPhone")}
             value={form.contactPhone}
             onChange={(event) =>
               setForm({ ...form, contactPhone: event.target.value })
             }
           />
           <Input
-            label="Address"
+            label={t("admin.organisations.fieldAddress")}
             value={form.address}
             onChange={(event) => setForm({ ...form, address: event.target.value })}
           />
           <div className="actions">
             <Button onClick={() => void save()} disabled={saving}>
-              {saving ? "Saving…" : "Save"}
+              {saving ? t("admin.organisations.saving") : t("admin.organisations.save")}
             </Button>
             <Button variant="secondary" onClick={() => setModalOpen(false)}>
-              Cancel
+              {t("admin.organisations.cancel")}
             </Button>
           </div>
         </Modal>
@@ -360,15 +367,17 @@ export default function OrganisationsPage() {
         <ConfirmDialog
           title={
             statusTarget.isActive
-              ? "Deactivate organisation"
-              : "Activate organisation"
+              ? t("admin.organisations.confirmDeactivateTitle")
+              : t("admin.organisations.confirmActivateTitle")
           }
           message={
             statusTarget.isActive
-              ? `Deactivate ${statusTarget.name}? Linked accounts keep their data but the organisation is marked inactive.`
-              : `Activate ${statusTarget.name}? The organisation becomes selectable again.`
+              ? t("admin.organisations.confirmDeactivateMessage", { name: statusTarget.name })
+              : t("admin.organisations.confirmActivateMessage", { name: statusTarget.name })
           }
-          confirmLabel={statusTarget.isActive ? "Deactivate" : "Activate"}
+          confirmLabel={statusTarget.isActive
+            ? t("admin.organisations.deactivate")
+            : t("admin.organisations.activate")}
           onConfirm={() => void toggleStatus(statusTarget)}
           onCancel={() => setStatusTarget(null)}
         />

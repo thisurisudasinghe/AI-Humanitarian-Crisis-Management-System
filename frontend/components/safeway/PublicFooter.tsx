@@ -1,36 +1,39 @@
+"use client";
+
 import Link from "next/link";
+import { useT } from "@/lib/i18n";
+import { publicContact } from "@/lib/publicContact";
+import { Icon } from "./Icon";
 import { PublicBrand } from "./PublicBrand";
 
 export function PublicFooter() {
+  const t = useT();
   return (
     <footer className="public-footer">
       <div className="public-footer__main">
         <div className="public-footer__brand">
           <PublicBrand light />
-          <p>
-            SAFEWAY connects people requesting assistance with authorized humanitarian response and
-            coordination services.
-          </p>
+          <p>{t("nav.footerTagline")}</p>
         </div>
 
-        <nav aria-label="Footer explore links">
-          <b>Explore</b>
-          <Link href="/about">About SAFEWAY</Link>
-          <Link href="/services">Services</Link>
-          <Link href="/how-it-works">How it works</Link>
+        <nav className="public-footer__links" aria-label={t("nav.footerLinksAria")}>
+          <Link href="/about">{t("nav.about")}</Link>
+          <Link href="/services">{t("nav.services")}</Link>
+          <Link href="/contact">{t("nav.contact")}</Link>
         </nav>
 
-        <nav aria-label="Footer help links">
-          <b>Get help</b>
-          <Link href="/report">Report a crisis</Link>
-          <Link href="/find-assistance">Find assistance</Link>
-          <Link href="/contact">Contact</Link>
-        </nav>
+        <address className="public-footer__contact">
+          {publicContact.channels.map((channel) => (
+            <a key={channel.id} href={channel.href}>
+              <Icon name={channel.icon} size={15} />
+              <span>{channel.displayValue}</span>
+            </a>
+          ))}
+        </address>
       </div>
 
       <div className="public-footer__bottom">
-        <span>© 2026 SAFEWAY. Prototype experience.</span>
-        <Link href="/contact">Contact support</Link>
+        <span>{t("nav.footerCopyright")}</span>
       </div>
     </footer>
   );

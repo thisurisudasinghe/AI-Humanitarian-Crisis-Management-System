@@ -14,7 +14,8 @@ import {
   TileLayer,
   useMap
 } from "react-leaflet";
-import { MAP_MARKER_TYPES, markerColor, markerLabel } from "./mapTypes";
+import { useT } from "@/lib/i18n";
+import { MAP_MARKER_TYPES, markerColor, markerLabelKey } from "./mapTypes";
 import styles from "./MapView.module.css";
 
 export interface MapMarker {
@@ -128,6 +129,7 @@ export default function MapViewInner({
   onMarkerSelect,
   showLegend = true
 }: MapViewProps) {
+  const t = useT();
   const valid = markers.filter(isPoint);
   const regular = valid.filter((marker) => marker.type !== "current-location");
   const centre: [number, number] = valid.length
@@ -172,13 +174,13 @@ export default function MapViewInner({
                   }}
                 >
                   <Popup>
-                    <strong>Your current location</strong>
+                    <strong>{t(markerLabelKey("current-location"))}</strong>
                     <br />
                     {currentLocation!.accuracy != null
-                      ? `GPS accuracy: about ${Math.round(currentLocation!.accuracy)} m`
-                      : "GPS accuracy unavailable"}
+                      ? t("map.gpsAccuracy", { accuracy: Math.round(currentLocation!.accuracy) })
+                      : t("map.gpsAccuracyUnavailable")}
                     <br />
-                    <small>Browser-only unless you explicitly use it when creating an area.</small>
+                    <small>{t("map.browserOnly")}</small>
                   </Popup>
                 </CircleMarker>
               </>
@@ -192,22 +194,22 @@ export default function MapViewInner({
                 eventHandlers={{ click: () => onMarkerSelect?.(marker) }}
               >
                 <Popup>
-                  <strong>{marker.label ?? marker.name ?? "Location"}</strong>
+                  <strong>{marker.label ?? marker.name ?? t("map.location")}</strong>
                   <br />
-                  <span>{marker.description ?? markerLabel(marker.type)}</span>
+                  <span>{marker.description ?? t(markerLabelKey(marker.type))}</span>
                 </Popup>
               </Marker>
             ))}
           </MapContainer>
 
-          <div className={styles.controls} role="group" aria-label="Map controls">
+          <div className={styles.controls} role="group" aria-label={t("map.controls")}>
             <button
               type="button"
               onClick={onFitAll}
               disabled={valid.length === 0}
-              title="Fit all available markers"
+              title={t("map.fitAllTitle")}
             >
-              Fit all
+              {t("map.fitAll")}
             </button>
             <button
               type="button"
@@ -215,17 +217,17 @@ export default function MapViewInner({
               disabled={!canLocate}
               title={
                 canLocate
-                  ? "Centre the map on the latest detected position"
-                  : "Location has not been detected yet"
+                  ? t("map.myLocationTitle")
+                  : t("map.myLocationDisabledTitle")
               }
             >
-              My Location
+              {t("map.myLocation")}
             </button>
           </div>
 
           {showLegend && (
-            <div className={styles.legend} aria-label="Map legend">
-              <p className={styles.legendTitle}>Map legend</p>
+            <div className={styles.legend} aria-label={t("map.legend")}>
+              <p className={styles.legendTitle}>{t("map.legend")}</p>
               <ul className={styles.legendList}>
                 {Object.entries(MAP_MARKER_TYPES)
                   .filter(([key]) => key !== "location")
@@ -236,7 +238,7 @@ export default function MapViewInner({
                         style={{ background: value.color }}
                         aria-hidden="true"
                       />
-                      <span>{value.label}</span>
+                      <span>{t(markerLabelKey(key))}</span>
                     </li>
                   ))}
               </ul>
@@ -246,10 +248,10 @@ export default function MapViewInner({
       </div>
 
       {/* Accessible fallback list: always rendered, not hidden behind the tiles. */}
-      <section className={`panel map-fallback ${styles.fallback}`} aria-label="Map locations list">
-        <h2>Locations ({valid.length})</h2>
+      <section className={`panel map-fallback ${styles.fallback}`} aria-label={t("map.mapList")}>
+        <h2>{t("map.locations", { count: String(valid.length) })}</h2>
         {valid.length === 0 ? (
-          <p className="muted">No locations match the current filters.</p>
+          <p className="muted">{t("map.noFilterLocations")}</p>
         ) : (
           <ul>
             {valid.map((marker) => (
@@ -259,7 +261,7 @@ export default function MapViewInner({
                   className={`${styles.listButton} ${selectedId === marker.id ? styles.selected : ""}`}
                   onClick={() => onMarkerSelect?.(marker)}
                 >
-                  <strong>{marker.label ?? marker.name ?? "Location"}</strong> — {markerLabel(marker.type)}
+                  <strong>{marker.label ?? marker.name ?? t("map.location")}</strong> — {t(markerLabelKey(marker.type))}
                   {marker.description ? ` — ${marker.description}` : ""}
                   <span className="muted"> ({marker.lat.toFixed(4)}, {marker.lng.toFixed(4)})</span>
                 </button>

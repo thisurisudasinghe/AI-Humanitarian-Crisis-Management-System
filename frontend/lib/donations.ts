@@ -1,4 +1,5 @@
 import type { PagedResult } from "./admin";
+import { formatNumber as formatNumberForLocale, resolveLocale } from "./i18n/core";
 
 export type { PagedResult };
 
@@ -145,10 +146,11 @@ export function formatMoney(value: number | null | undefined, currency: string):
     return "—";
   }
 
-  const amount = new Intl.NumberFormat(undefined, {
+  const locale = typeof document === "undefined" ? "en" : resolveLocale(document.documentElement.lang);
+  const amount = formatNumberForLocale(value, locale, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
-  }).format(value);
+  });
 
   return `${amount} ${currency}`;
 }

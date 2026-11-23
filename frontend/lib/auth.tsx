@@ -27,6 +27,7 @@ import { enrollPublicRole } from "@/lib/portal";
 interface RegisterInput {
   fullName: string;
   email: string;
+  phoneNumber: string;
   password: string;
   accountPurpose?: PublicPurpose;
 }

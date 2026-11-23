@@ -36,11 +36,11 @@ export const GlobalChatSuggestions = [
  * Sends one FAQ question. `suggestions` is optional on older responses, so it
  * is normalised to an array here rather than assuming the planned shape.
  */
-export async function sendChatMessage(message: string): Promise<ChatResponseDto> {
+export async function sendChatMessage(message: string, locale?: string): Promise<ChatResponseDto> {
   const response = await apiJson<Partial<ChatResponseDto> | null>(
     "/api/v1/ai/chat",
     "POST",
-    { message }
+    { message, locale }
   );
 
   if (typeof response?.answer !== "string" || !response.answer.trim()) {

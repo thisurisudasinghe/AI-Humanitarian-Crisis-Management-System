@@ -1,24 +1,48 @@
+"use client";
+
+import { useT } from "@/lib/i18n";
 import { Icon } from "./Icon";
 
 const nodes = [
-  { key: "report", icon: "alert", label: "Crisis Reporting", detail: "Share urgent needs" },
+  {
+    key: "report",
+    icon: "alert",
+    labelKey: "shell.networkNodeReportingLabel",
+    detailKey: "shell.networkNodeReportingDetail"
+  },
   {
     key: "coordination",
     icon: "brain",
-    label: "AI Coordination",
-    detail: "Human-reviewed support"
+    labelKey: "shell.networkNodeCoordinationLabel",
+    detailKey: "shell.networkNodeCoordinationDetail"
   },
-  { key: "shelters", icon: "home", label: "Shelters", detail: "Safe spaces" },
-  { key: "resources", icon: "box", label: "Resources", detail: "Supplies and logistics" },
-  { key: "volunteers", icon: "users", label: "Volunteers", detail: "People ready to help" }
+  {
+    key: "shelters",
+    icon: "home",
+    labelKey: "shell.networkNodeSheltersLabel",
+    detailKey: "shell.networkNodeSheltersDetail"
+  },
+  {
+    key: "resources",
+    icon: "box",
+    labelKey: "shell.networkNodeResourcesLabel",
+    detailKey: "shell.networkNodeResourcesDetail"
+  },
+  {
+    key: "volunteers",
+    icon: "users",
+    labelKey: "shell.networkNodeVolunteersLabel",
+    detailKey: "shell.networkNodeVolunteersDetail"
+  }
 ] as const;
 
 export function NetworkArtwork() {
+  const t = useT();
   return (
     <div
       className="public-network"
       role="img"
-      aria-label="SAFEWAY connects crisis reporting, AI coordination, shelters, resources and volunteers through one coordinated response network."
+      aria-label={t("shell.networkAria")}
     >
       <svg
         className="public-network__canvas"
@@ -50,7 +74,7 @@ export function NetworkArtwork() {
           <Icon name="heart" size={28} />
         </span>
         <b>SAFEWAY</b>
-        <small>Connected response</small>
+        <small>{t("shell.networkConnectedResponse")}</small>
       </div>
 
       <ul className="public-network__nodes">
@@ -60,8 +84,8 @@ export function NetworkArtwork() {
               <Icon name={node.icon} size={18} />
             </span>
             <span className="public-network__node-copy">
-              <b>{node.label}</b>
-              <small>{node.detail}</small>
+              <b>{t(node.labelKey)}</b>
+              <small>{t(node.detailKey)}</small>
             </span>
           </li>
         ))}

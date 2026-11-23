@@ -5,6 +5,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+type Translator = (key: string, vars?: Record<string, string | number>) => string;
+
 export type LocationStatus =
   | "idle"
   | "detecting"
@@ -30,7 +32,7 @@ const POSITION_OPTIONS: PositionOptions = {
   maximumAge: 30000
 };
 
-function describeError(error: GeolocationPositionError): {
+function describeError(error: GeolocationPositionError, t: Translator): {
   status: LocationStatus;
   message: string;
 } {
@@ -38,25 +40,22 @@ function describeError(error: GeolocationPositionError): {
     case error.PERMISSION_DENIED:
       return {
         status: "denied",
-        message:
-          "Location permission was denied. Enter a location manually below, or change this site's permission and retry."
+        message: t("operations.map.geoPermissionDenied")
       };
     case error.POSITION_UNAVAILABLE:
       return {
         status: "unavailable",
-        message:
-          "Your location is currently unavailable. Check device location services, then retry or enter coordinates manually."
+        message: t("operations.map.geoUnavailable")
       };
     case error.TIMEOUT:
       return {
         status: "timeout",
-        message:
-          "Location detection timed out. Retry, move to a clearer signal area, or enter coordinates manually."
+        message: t("operations.map.geoTimeout")
       };
     default:
       return {
         status: "unavailable",
-        message: "Your browser could not determine a location. Manual coordinates remain available."
+        message: t("operations.map.geoUnknown")
       };
   }
 }
@@ -72,12 +71,10 @@ function toTrackedLocation(position: GeolocationPosition): TrackedLocation {
   };
 }
 
-export function useUserLocation(active: boolean) {
+export function useUserLocation(active: boolean, t: Translator) {
   const [status, setStatus] = useState<LocationStatus>("idle");
   const [location, setLocation] = useState<TrackedLocation | null>(null);
-  const [message, setMessage] = useState(
-    "Location permission is used only to show your position on this map."
-  );
+  const [message, setMessage] = useState(t("operations.map.geoIntro"));
   const [visible, setVisible] = useState(true);
 
   const mountedRef = useRef(true);
@@ -98,6 +95,10 @@ export function useUserLocation(active: boolean) {
     return () => document.removeEventListener("visibilitychange", update);
   }, []);
 
+  useEffect(() => {
+    if (status === "idle") setMessage(t("operations.map.geoIntro"));
+  }, [status, t]);
+
   const stopWatching = useCallback(() => {
     if (watchIdRef.current !== null && typeof navigator !== "undefined" && navigator.geolocation) {
       navigator.geolocation.clearWatch(watchIdRef.current);
@@ -114,18 +115,18 @@ export function useUserLocation(active: boolean) {
         if (!mountedRef.current) return;
         setLocation(toTrackedLocation(position));
         setStatus("detected");
-        setMessage("Live location updates are active while this page is open.");
+        setMessage(t("operations.map.geoLiveActive"));
       },
       (error) => {
         if (!mountedRef.current) return;
-        const mapped = describeError(error);
+        const mapped = describeError(error, t);
         setStatus(mapped.status);
         setMessage(mapped.message);
         stopWatching();
       },
       POSITION_OPTIONS
     );
-  }, [stopWatching]);
+  }, [stopWatching, t]);
 
   const begin = useCallback(() => {
     stopWatching();
@@ -133,13 +134,13 @@ export function useUserLocation(active: boolean) {
 
     if (!active) {
       setStatus("disabled");
-      setMessage("Location tracking is off. Manual coordinates remain available.");
+      setMessage(t("operations.map.geoDisabled"));
       return;
     }
 
     if (!visible) {
       setStatus("paused");
-      setMessage("Live tracking is paused while this tab is hidden.");
+      setMessage(t("operations.map.geoPaused"));
       return;
     }
 
@@ -147,40 +148,38 @@ export function useUserLocation(active: boolean) {
 
     if (!window.isSecureContext) {
       setStatus("insecure");
-      setMessage(
-        "Browser geolocation requires HTTPS (or localhost). Use manual coordinates, or open SAFEWAY over HTTPS."
-      );
+      setMessage(t("operations.map.geoInsecure"));
       return;
     }
 
     if (!navigator.geolocation) {
       setStatus("unsupported");
-      setMessage("This browser does not support geolocation. Use manual coordinates instead.");
+      setMessage(t("operations.map.geoUnsupported"));
       return;
     }
 
     const seq = ++requestSeqRef.current;
     setStatus("detecting");
-    setMessage("Requesting browser permission to show your current location on this map…");
+    setMessage(t("operations.map.geoRequesting"));
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
         if (!mountedRef.current || seq !== requestSeqRef.current) return;
         setLocation(toTrackedLocation(position));
         setStatus("detected");
-        setMessage("Location detected. The map will follow live updates while this page is open.");
+        setMessage(t("operations.map.geoDetected"));
         startWatching();
       },
       (error) => {
         if (!mountedRef.current || seq !== requestSeqRef.current) return;
-        const mapped = describeError(error);
+        const mapped = describeError(error, t);
         setStatus(mapped.status);
         setMessage(mapped.message);
         stopWatching();
       },
       POSITION_OPTIONS
     );
-  }, [active, visible, startWatching, stopWatching]);
+  }, [active, visible, startWatching, stopWatching, t]);
 
   useEffect(() => {
     begin();
