@@ -1,0 +1,147 @@
+/* Mapping-scoped styles for the interactive Leaflet view. */
+
+.mapShell {
+  position: relative;
+  width: 100%;
+}
+
+.mapCanvas {
+  height: 100%;
+  width: 100%;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.controls {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  z-index: 1000;
+  display: flex;
+  gap: 0.35rem;
+}
+
+.controls button {
+  border: 1px solid rgba(23, 54, 79, 0.2);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.96);
+  color: #17364f;
+  padding: 0.4rem 0.65rem;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(23, 54, 79, 0.16);
+}
+
+.controls button:hover:not(:disabled),
+.controls button:focus-visible:not(:disabled) {
+  background: #eaf3fa;
+  outline: 2px solid #438fc5;
+  outline-offset: 1px;
+}
+
+.controls button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.legend {
+  position: absolute;
+  left: 0.75rem;
+  bottom: 0.75rem;
+  z-index: 1000;
+  max-width: min(16rem, calc(100% - 1.5rem));
+  padding: 0.55rem 0.7rem;
+  border: 1px solid rgba(23, 54, 79, 0.16);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 2px 10px rgba(23, 54, 79, 0.14);
+  font-size: 0.75rem;
+  color: #334155;
+}
+
+.legendTitle {
+  margin: 0 0 0.35rem;
+  font-weight: 700;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.legendList {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.2rem 0.6rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.legendSwatch {
+  width: 0.6rem;
+  height: 0.6rem;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  border: 1px solid #fff;
+  box-shadow: 0 0 0 1px rgba(23, 54, 79, 0.25);
+}
+
+.fallback {
+  margin-top: 0.5rem;
+}
+
+.listButton {
+  display: block;
+  width: 100%;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  padding: 0.25rem 0.35rem;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.listButton:hover,
+.listButton:focus-visible {
+  background: #eaf3fa;
+  outline: 2px solid #438fc5;
+  outline-offset: -2px;
+}
+
+.selected {
+  background: #fff4d6 !important;
+  font-weight: 600;
+}
+
+@media (max-width: 768px) {
+  .controls {
+    top: 0.5rem;
+    right: 0.5rem;
+    flex-direction: column;
+  }
+
+  .controls button {
+    font-size: 0.78rem;
+    padding: 0.35rem 0.55rem;
+  }
+
+  .legend {
+    position: static;
+    max-width: none;
+    margin-top: 0.5rem;
+  }
+
+  .legendList {
+    grid-template-columns: 1fr;
+  }
+}
