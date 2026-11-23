@@ -45,6 +45,7 @@ public sealed class PublicPortalEndpointTests : IClassFixture<CmsWebApplicationF
         {
             fullName = $"Portal {purpose}",
             email = $"portal.{purpose}.{Guid.NewGuid():N}@tests.local",
+            phoneNumber = "0771234567",
             password = TestSecrets.Password,
             accountPurpose = purpose
         });
@@ -79,6 +80,7 @@ public sealed class PublicPortalEndpointTests : IClassFixture<CmsWebApplicationF
         {
             fullName = "Invalid Purpose",
             email = $"invalid.{Guid.NewGuid():N}@tests.local",
+            phoneNumber = "0771234567",
             password = TestSecrets.Password,
             accountPurpose = purpose
         });
@@ -97,6 +99,7 @@ public sealed class PublicPortalEndpointTests : IClassFixture<CmsWebApplicationF
         {
             fullName = "Linked Donor",
             email,
+            phoneNumber = "0771234567",
             password = TestSecrets.Password,
             accountPurpose = "donor"
         });
@@ -144,6 +147,7 @@ public sealed class PublicPortalEndpointTests : IClassFixture<CmsWebApplicationF
         {
             fullName = "Enrolling Volunteer",
             email,
+            phoneNumber = "0771234567",
             password = TestSecrets.Password
         });
 
@@ -182,6 +186,7 @@ public sealed class PublicPortalEndpointTests : IClassFixture<CmsWebApplicationF
             {
                 fullName = email.Split('.')[0],
                 email,
+                phoneNumber = "0771234567",
                 password = TestSecrets.Password,
                 accountPurpose = "donor"
             });

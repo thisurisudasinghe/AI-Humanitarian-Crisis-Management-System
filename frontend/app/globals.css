@@ -1374,9 +1374,9 @@ footer {
 }
 
 .report-layout {
-    min-height: calc(100vh - 72px);
+    min-height: 100vh;
     display: grid;
-    grid-template-columns: 38% 62%;
+    grid-template-columns: 1fr 1fr;
 }
 
 .form-aside {
@@ -1984,6 +1984,7 @@ footer {
 .login-form-panel {
     padding: 45px clamp(30px, 9vw, 140px);
     background: white;
+    overflow-y: auto;
 }
 
 .login-form {
@@ -5878,6 +5879,65 @@ a.btn-primary {
     color: #415766;
     font-size: 12px;
     line-height: 1.6;
+}
+
+.field-error {
+    display: block;
+    margin-top: 6px;
+    color: #8a4b47;
+    font-size: 11px;
+    line-height: 1.45;
+}
+
+input[aria-invalid="true"],
+textarea[aria-invalid="true"],
+select[aria-invalid="true"] {
+    border-color: #d8a7a2;
+    background-color: #fffaf9;
+}
+
+.register-benefits-compact {
+    margin-top: 28px;
+    display: grid;
+    gap: 12px;
+}
+
+.register-benefits-compact > div {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #c9dbe6;
+    font-size: 13px;
+}
+
+.register-benefits-compact svg {
+    color: #8fb8d1;
+    flex: 0 0 auto;
+}
+
+.register-success-panel {
+    padding: 24px 0;
+}
+
+.register-success-icon {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    background: #edf6f2;
+    color: var(--green);
+    margin-bottom: 18px;
+}
+
+.register-success-panel h2 {
+    margin-bottom: 10px;
+}
+
+.register-success-panel p {
+    color: var(--muted);
+    margin-bottom: 20px;
+    line-height: 1.7;
 }
 
 .integration-notice {

@@ -177,6 +177,7 @@ public sealed class PasswordResetTests : IClassFixture<CmsWebApplicationFactory>
         {
             fullName = "Reset Test User",
             email,
+            phoneNumber = "0771234567",
             password = TestSecrets.Password
         });
 

@@ -68,6 +68,7 @@ public sealed class AuthenticationService : IAuthenticationService
         var fullName = (request.FullName ?? string.Empty).Trim();
         var email = NormalizeEmail(request.Email);
         var password = request.Password ?? string.Empty;
+        var normalizedPhone = NormalizePhoneNumber(request.PhoneNumber);
 
         var errors = new Dictionary<string, string[]>();
         if (fullName.Length == 0)
@@ -78,6 +79,11 @@ public sealed class AuthenticationService : IAuthenticationService
         if (!IsValidEmail(email))
         {
             errors[nameof(request.Email)] = ["A valid email address is required."];
+        }
+
+        if (normalizedPhone is null)
+        {
+            errors[nameof(request.PhoneNumber)] = ["Enter a valid Sri Lankan phone number (07XXXXXXXX or +947XXXXXXXX)."];
         }
 
         if (password.Length < 8 || password.Length > 128)
@@ -126,6 +132,7 @@ public sealed class AuthenticationService : IAuthenticationService
         {
             FirstName = firstName,
             LastName = lastName,
+            PhoneNumber = normalizedPhone!,
             EmailEncrypted = _emailProtection.EncryptEmail(email),
             EmailHash = emailHash,
             PasswordHash = _passwordHashing.HashPassword(new User(), password),
@@ -886,5 +893,44 @@ public sealed class AuthenticationService : IAuthenticationService
         }
 
         return email.IndexOf('.', atIndex + 1) >= 0;
+    }
+
+    private static string? NormalizePhoneNumber(string? phoneNumber)
+    {
+        if (string.IsNullOrWhiteSpace(phoneNumber))
+        {
+            return null;
+        }
+
+        var digits = new StringBuilder(phoneNumber.Length);
+        foreach (var ch in phoneNumber.Trim())
+        {
+            if (char.IsDigit(ch))
+            {
+                digits.Append(ch);
+                continue;
+            }
+
+            if (ch is ' ' or '-' or '(' or ')' or '+')
+            {
+                continue;
+            }
+
+            return null;
+        }
+
+        var raw = digits.ToString();
+        var trimmed = phoneNumber.Trim();
+        if (raw.Length == 10 && raw.StartsWith("07", StringComparison.Ordinal))
+        {
+            return "+94" + raw[1..];
+        }
+
+        if (raw.Length == 11 && raw.StartsWith("947", StringComparison.Ordinal))
+        {
+            return "+94" + raw[2..];
+        }
+
+        return null;
     }
 }
