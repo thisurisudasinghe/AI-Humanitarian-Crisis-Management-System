@@ -176,6 +176,26 @@ END;
 GO
 
 -- ----------------------------------------------------------------------------
+-- identity.password_reset_tokens
+-- ----------------------------------------------------------------------------
+IF OBJECT_ID(N'[identity].[password_reset_tokens]', N'U') IS NULL
+BEGIN
+    CREATE TABLE [identity].[password_reset_tokens] (
+        [id] uniqueidentifier NOT NULL,
+        [user_id] uniqueidentifier NOT NULL,
+        [token_hash] nvarchar(64) NOT NULL,
+        [expires_at] datetime2 NOT NULL,
+        [used_at] datetime2 NULL,
+        [created_at] datetime2 NOT NULL,
+        [updated_at] datetime2 NULL,
+        CONSTRAINT [PK_password_reset_tokens] PRIMARY KEY ([id]),
+        CONSTRAINT [FK_password_reset_tokens_users] FOREIGN KEY ([user_id])
+            REFERENCES [identity].[users] ([id]) ON DELETE CASCADE
+    );
+END;
+GO
+
+-- ----------------------------------------------------------------------------
 -- identity.user_roles
 -- ----------------------------------------------------------------------------
 IF OBJECT_ID(N'[identity].[user_roles]', N'U') IS NULL
@@ -340,6 +360,22 @@ IF NOT EXISTS (
       AND [object_id] = OBJECT_ID(N'[identity].[refresh_tokens]'))
     CREATE UNIQUE INDEX [UX_refresh_tokens_token_hash]
         ON [identity].[refresh_tokens] ([token_hash]);
+GO
+
+IF NOT EXISTS (
+    SELECT 1 FROM sys.indexes
+    WHERE [name] = N'IX_password_reset_tokens_user_id'
+      AND [object_id] = OBJECT_ID(N'[identity].[password_reset_tokens]'))
+    CREATE INDEX [IX_password_reset_tokens_user_id]
+        ON [identity].[password_reset_tokens] ([user_id]);
+GO
+
+IF NOT EXISTS (
+    SELECT 1 FROM sys.indexes
+    WHERE [name] = N'UX_password_reset_tokens_token_hash'
+      AND [object_id] = OBJECT_ID(N'[identity].[password_reset_tokens]'))
+    CREATE UNIQUE INDEX [UX_password_reset_tokens_token_hash]
+        ON [identity].[password_reset_tokens] ([token_hash]);
 GO
 
 IF NOT EXISTS (

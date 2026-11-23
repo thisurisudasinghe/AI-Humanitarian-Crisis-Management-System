@@ -10,9 +10,11 @@ using Cms.Domain.Entities;
 using Cms.Domain.Enums;
 using Cms.Infrastructure.Authentication;
 using Cms.Infrastructure.Data;
+using Cms.Infrastructure.Notifications;
 using Cms.Infrastructure.Security;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 
 namespace Cms.Infrastructure.Services;
 
@@ -30,6 +32,8 @@ public sealed class AuthenticationService : IAuthenticationService
     private readonly EmailProtectionService _emailProtection;
     private readonly PasswordHashingService _passwordHashing;
     private readonly IDateTimeService _dateTimeService;
+    private readonly INotificationSender _notificationSender;
+    private readonly SmtpOptions _smtpOptions;
 
     public AuthenticationService(
         CmsDbContext db,
@@ -39,7 +43,9 @@ public sealed class AuthenticationService : IAuthenticationService
         JwtTokenService jwtTokenService,
         EmailProtectionService emailProtection,
         PasswordHashingService passwordHashing,
-        IDateTimeService dateTimeService)
+        IDateTimeService dateTimeService,
+        INotificationSender notificationSender,
+        IOptions<SmtpOptions> smtpOptions)
     {
         _db = db;
         _configuration = configuration;
@@ -49,6 +55,8 @@ public sealed class AuthenticationService : IAuthenticationService
         _emailProtection = emailProtection;
         _passwordHashing = passwordHashing;
         _dateTimeService = dateTimeService;
+        _notificationSender = notificationSender;
+        _smtpOptions = smtpOptions.Value;
     }
 
     public async Task<AuthResponseDto> RegisterAsync(
@@ -454,6 +462,224 @@ public sealed class AuthenticationService : IAuthenticationService
         // Access-token claims are immutable, so the enrolment response must
         // carry a freshly signed token for the new role to take effect.
         return await IssueTokensAsync(user, email, cancellationToken);
+    }
+
+    public async Task<ForgotPasswordResponseDto> ForgotPasswordAsync(
+        ForgotPasswordRequestDto request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        var email = NormalizeEmail(request.Email);
+        if (!IsValidEmail(email))
+        {
+            throw new ValidationException(
+                "A valid email address is required.",
+                new Dictionary<string, string[]>
+                {
+                    [nameof(request.Email)] = ["A valid email address is required."]
+                });
+        }
+
+        var emailDeliveryConfigured = !string.IsNullOrWhiteSpace(_smtpOptions.Host);
+        var genericResponse = new ForgotPasswordResponseDto
+        {
+            EmailDeliveryConfigured = emailDeliveryConfigured,
+            Message = emailDeliveryConfigured
+                ? "If an account with that email address exists, a password reset link has been sent."
+                : "Email delivery is not configured for this environment. Password reset email could not be sent."
+        };
+
+        var emailHash = _emailProtection.HashEmail(email);
+        var user = await _db.Users
+            .SingleOrDefaultAsync(candidate => candidate.EmailHash == emailHash, cancellationToken);
+
+        if (user is null || user.Status != UserStatus.Active)
+        {
+            await _auditLogger.LogAsync(
+                user?.Id,
+                AuditActions.PasswordResetRequested,
+                "identity.User",
+                user?.Id.ToString(),
+                new { outcome = user is null ? "UnknownEmail" : "InactiveAccount" },
+                cancellationToken);
+
+            return genericResponse;
+        }
+
+        var now = _dateTimeService.UtcNow;
+        var activeTokens = await _db.PasswordResetTokens
+            .Where(token => token.UserId == user.Id && token.UsedAt == null && token.ExpiresAt > now)
+            .ToListAsync(cancellationToken);
+
+        foreach (var activeToken in activeTokens)
+        {
+            activeToken.UsedAt = now;
+            activeToken.UpdatedAt = now;
+        }
+
+        var plainToken = CreateSecureToken();
+        var resetToken = new PasswordResetToken
+        {
+            UserId = user.Id,
+            TokenHash = HashRefreshToken(plainToken),
+            ExpiresAt = now.AddMinutes(30),
+            CreatedAt = now
+        };
+
+        _db.PasswordResetTokens.Add(resetToken);
+        await _db.SaveChangesAsync(cancellationToken);
+
+        await _auditLogger.LogAsync(
+            user.Id,
+            AuditActions.PasswordResetRequested,
+            "identity.User",
+            user.Id.ToString(),
+            new { outcome = emailDeliveryConfigured ? "Issued" : "IssuedWithoutEmailDelivery" },
+            cancellationToken);
+
+        if (!emailDeliveryConfigured)
+        {
+            return genericResponse;
+        }
+
+        var frontendBaseUrl = (_configuration["Frontend:BaseUrl"] ?? "http://localhost:3000").TrimEnd('/');
+        var resetLink = $"{frontendBaseUrl}/reset-password?token={Uri.EscapeDataString(plainToken)}";
+
+        var notification = new Notification
+        {
+            RecipientUserId = user.Id,
+            Channel = NotificationChannel.Email,
+            TemplateKey = "PasswordReset",
+            Subject = "Reset your SAFEWAY password",
+            Body =
+                "We received a request to reset your SAFEWAY password.\n\n" +
+                $"Use this link to choose a new password: {resetLink}\n\n" +
+                "This link expires in 30 minutes and can be used only once. " +
+                "If you did not request a password reset, you can ignore this email.",
+            Status = NotificationStatus.Pending,
+            User = user
+        };
+
+        try
+        {
+            await _notificationSender.SendAsync(notification, cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            await _auditLogger.LogAsync(
+                user.Id,
+                AuditActions.PasswordResetRequested,
+                "identity.User",
+                user.Id.ToString(),
+                new { outcome = "DeliveryFailed" },
+                cancellationToken);
+        }
+
+        return genericResponse;
+    }
+
+    public async Task ResetPasswordAsync(
+        ResetPasswordRequestDto request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        var token = (request.Token ?? string.Empty).Trim();
+        var newPassword = request.NewPassword ?? string.Empty;
+        var confirmPassword = request.ConfirmPassword ?? string.Empty;
+
+        var errors = new Dictionary<string, string[]>();
+        if (token.Length == 0)
+        {
+            errors[nameof(request.Token)] = ["A reset token is required."];
+        }
+
+        if (newPassword.Length < 8 || newPassword.Length > 128)
+        {
+            errors[nameof(request.NewPassword)] = ["Password must be between 8 and 128 characters."];
+        }
+
+        if (!string.Equals(newPassword, confirmPassword, StringComparison.Ordinal))
+        {
+            errors[nameof(request.ConfirmPassword)] = ["Passwords do not match."];
+        }
+
+        if (errors.Count > 0)
+        {
+            throw new ValidationException("Password reset details are invalid.", errors);
+        }
+
+        var tokenHash = HashRefreshToken(token);
+        var now = _dateTimeService.UtcNow;
+        var storedToken = await _db.PasswordResetTokens
+            .Include(reset => reset.User)
+            .SingleOrDefaultAsync(reset => reset.TokenHash == tokenHash, cancellationToken);
+
+        if (storedToken is null ||
+            storedToken.UsedAt is not null ||
+            storedToken.ExpiresAt <= now ||
+            storedToken.User.Status != UserStatus.Active)
+        {
+            await _auditLogger.LogAsync(
+                storedToken?.UserId,
+                AuditActions.PasswordResetCompleted,
+                "identity.PasswordResetToken",
+                storedToken?.Id.ToString(),
+                new { outcome = "InvalidOrExpired" },
+                cancellationToken);
+
+            throw new ValidationException(
+                "This password reset link is invalid or has expired.",
+                new Dictionary<string, string[]>
+                {
+                    [nameof(request.Token)] = ["This password reset link is invalid or has expired."]
+                });
+        }
+
+        var user = storedToken.User;
+        user.PasswordHash = _passwordHashing.HashPassword(user, newPassword);
+        user.UpdatedAt = now;
+
+        storedToken.UsedAt = now;
+        storedToken.UpdatedAt = now;
+
+        var otherTokens = await _db.PasswordResetTokens
+            .Where(reset => reset.UserId == user.Id && reset.Id != storedToken.Id && reset.UsedAt == null)
+            .ToListAsync(cancellationToken);
+        foreach (var other in otherTokens)
+        {
+            other.UsedAt = now;
+            other.UpdatedAt = now;
+        }
+
+        var liveRefreshTokens = await _db.RefreshTokens
+            .Where(refresh => refresh.UserId == user.Id && !refresh.IsRevoked)
+            .ToListAsync(cancellationToken);
+        foreach (var refresh in liveRefreshTokens)
+        {
+            refresh.IsRevoked = true;
+            refresh.UpdatedAt = now;
+        }
+
+        await _db.SaveChangesAsync(cancellationToken);
+
+        await _auditLogger.LogAsync(
+            user.Id,
+            AuditActions.PasswordResetCompleted,
+            "identity.User",
+            user.Id.ToString(),
+            new { outcome = "Success" },
+            cancellationToken);
+    }
+
+    private static string CreateSecureToken()
+    {
+        var bytes = RandomNumberGenerator.GetBytes(32);
+        return Convert.ToBase64String(bytes)
+            .TrimEnd('=')
+            .Replace('+', '-')
+            .Replace('/', '_');
     }
 
     private async Task<AuthResponseDto> IssueTokensAsync(

@@ -71,6 +71,7 @@ export default function LoginPage() {
             <button
               type="button"
               className={role === "public" ? "active" : ""}
+              aria-pressed={role === "public"}
               onClick={() => setRole("public")}
             >
               Public access
@@ -78,6 +79,7 @@ export default function LoginPage() {
             <button
               type="button"
               className={role === "officer" ? "active" : ""}
+              aria-pressed={role === "officer"}
               onClick={() => setRole("officer")}
             >
               Authorized officer
@@ -103,7 +105,7 @@ export default function LoginPage() {
 
             <label>
               <span className="field-label">
-                Password <Link href="/contact">Forgot password?</Link>
+                Password <Link href="/forgot-password">Forgot password?</Link>
               </span>
               <span className="password-field">
                 <input
@@ -115,10 +117,12 @@ export default function LoginPage() {
                 />
                 <button
                   type="button"
+                  className="password-toggle"
                   onClick={() => setShow((value) => !value)}
                   aria-label={show ? "Hide password" : "Show password"}
+                  aria-pressed={show}
                 >
-                  <Icon name="eye" />
+                  <Icon name={show ? "eyeOff" : "eye"} size={18} />
                 </button>
               </span>
             </label>
