@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
 import { useT } from "@/lib/i18n";
+import { publicContact } from "@/lib/publicContact";
 import { Icon } from "./Icon";
 import { NetworkArtwork } from "./NetworkArtwork";
 
@@ -163,72 +163,37 @@ function HowBody() {
 
 function ContactBody() {
   const t = useT();
-  const [sent, setSent] = useState(false);
 
   return (
     <div className="page-body contact-layout">
-      <section className="contact-options">
-        {(
-          [
-            ["phone", t("info.contact.c1Label"), t("info.contact.c1Title"), t("info.contact.c1Copy")],
-            ["file", t("info.contact.c2Label"), t("info.contact.c2Title"), t("info.contact.c2Copy")],
-            ["shield", t("info.contact.c3Label"), t("info.contact.c3Title"), t("info.contact.c3Copy")]
-          ] as const
-        ).map(([icon, label, ctitle, copy]) => (
-          <article key={label}>
-            <i><Icon name={icon} /></i>
+      <section className="contact-options" aria-label={t("info.contact.infoTitle")}>
+        {publicContact.channels.map((channel) => (
+          <article key={channel.id}>
+            <i><Icon name={channel.icon} size={19} /></i>
             <span>
-              <small>{label}</small>
-              <h3>{ctitle}</h3>
-              <p>{copy}</p>
+              <small>{t("info.contact.detailsKicker")}</small>
+              <h3>{t(channel.labelKey)}</h3>
+              <p className={channel.value ? undefined : "contact-placeholder"}>
+                {channel.value ?? t(channel.placeholderKey)}
+              </p>
             </span>
           </article>
         ))}
       </section>
 
-      <section className="contact-form">
-        {sent ? (
-          <div className="contact-success" aria-live="polite">
-            <i><Icon name="check" size={30} /></i>
-            <h2>{t("info.contact.sentTitle")}</h2>
-            <p>{t("info.contact.sentCopy")}</p>
-            <button type="button" onClick={() => setSent(false)}>{t("info.contact.writeAnother")}</button>
-          </div>
-        ) : (
-          <form onSubmit={(event) => { event.preventDefault(); setSent(true); }}>
-            <div className="section-kicker">{t("info.contact.formKicker")}</div>
-            <h2>{t("info.contact.formTitle")}</h2>
-            <div className="two-fields">
-              <label>
-                <span className="field-label">{t("info.contact.firstName")}</span>
-                <input placeholder={t("info.contact.firstNamePh")} autoComplete="given-name" required />
-              </label>
-              <label>
-                <span className="field-label">{t("info.contact.lastName")}</span>
-                <input placeholder={t("info.contact.lastNamePh")} autoComplete="family-name" required />
-              </label>
-            </div>
-            <label>
-              <span className="field-label">{t("info.contact.email")}</span>
-              <input type="email" placeholder={t("info.contact.emailPh")} autoComplete="email" required />
-            </label>
-            <label>
-              <span className="field-label">{t("info.contact.topicLabel")}</span>
-              <select defaultValue={t("info.contact.topicGeneral")}>
-                <option>{t("info.contact.topicGeneral")}</option>
-                <option>{t("info.contact.topicReport")}</option>
-                <option>{t("info.contact.topicAccount")}</option>
-              </select>
-            </label>
-            <label>
-              <span className="field-label">{t("info.contact.messageLabel")}</span>
-              <textarea rows={5} placeholder={t("info.contact.messagePh")} required />
-            </label>
-            <button className="btn btn-primary" type="submit">
-              {t("info.contact.send")} <Icon name="arrow" />
-            </button>
-          </form>
-        )}
+      <section className="contact-info-card">
+        <div className="section-kicker">{t("info.contact.quickLinksTitle")}</div>
+        <h2>{t("info.contact.infoTitle")}</h2>
+        {publicContact.verified ? null : <p>{t("info.contact.detailsNotice")}</p>}
+        <div className="contact-info-links">
+          <Link className="btn btn-primary" href="/report">
+            <Icon name="alert" size={17} /> {t("nav.reportCrisis")}
+          </Link>
+          <Link className="btn btn-outline" href="/find-assistance">
+            <Icon name="search" size={17} /> {t("nav.findAssistance")}
+          </Link>
+        </div>
+        <p className="contact-info-copy">{t("info.contact.quickLinksCopy")}</p>
       </section>
     </div>
   );
