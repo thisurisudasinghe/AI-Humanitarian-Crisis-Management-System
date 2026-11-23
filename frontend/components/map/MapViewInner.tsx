@@ -5,6 +5,7 @@
 
 import L from "leaflet";
 import { MapContainer, Marker, Popup, TileLayer } from "react-leaflet";
+import { useT } from "@/lib/i18n";
 
 export interface MapMarker {
   id: string;
@@ -36,6 +37,7 @@ function markerIcon(type: string) {
 }
 
 export default function MapViewInner({ markers, height = 420 }: MapViewProps) {
+  const t = useT();
   const valid = markers.filter(
     (marker) => Number.isFinite(marker.lat) && Number.isFinite(marker.lng),
   );
@@ -58,9 +60,9 @@ export default function MapViewInner({ markers, height = 420 }: MapViewProps) {
               icon={markerIcon(marker.type ?? "location")}
             >
               <Popup>
-                <strong>{marker.label ?? marker.name ?? "Location"}</strong>
+                <strong>{marker.label ?? marker.name ?? t("map.location")}</strong>
                 <br />
-                <span>{marker.description ?? marker.type ?? "Location"}</span>
+                <span>{marker.description ?? marker.type ?? t("map.location")}</span>
               </Popup>
             </Marker>
           ))}
@@ -68,15 +70,15 @@ export default function MapViewInner({ markers, height = 420 }: MapViewProps) {
       </div>
 
       {/* Accessible fallback list: always rendered, not hidden behind the tiles. */}
-      <section className="panel map-fallback" aria-label="Map locations list">
-        <h2>Locations ({valid.length})</h2>
+      <section className="panel map-fallback" aria-label={t("map.mapList")}>
+        <h2>{t("map.locations", { count: String(valid.length) })}</h2>
         {valid.length === 0 ? (
-          <p className="muted">No locations are available yet.</p>
+          <p className="muted">{t("map.noLocations")}</p>
         ) : (
           <ul>
             {valid.map((marker) => (
               <li key={`${marker.type ?? "location"}-${marker.id}`}>
-                <strong>{marker.label ?? marker.name ?? "Location"}</strong> — {marker.type ?? "location"}
+                <strong>{marker.label ?? marker.name ?? t("map.location")}</strong> - {marker.type ?? "location"}
                 {marker.description ? ` — ${marker.description}` : ""}
                 <span className="muted"> ({marker.lat.toFixed(4)}, {marker.lng.toFixed(4)})</span>
               </li>

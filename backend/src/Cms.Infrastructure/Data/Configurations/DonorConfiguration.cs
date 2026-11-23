@@ -33,6 +33,12 @@ public class DonorConfiguration : IEntityTypeConfiguration<Donor>
         builder.Property(donor => donor.IsActive)
             .IsRequired();
 
+        builder.Property(donor => donor.UserId);
+
+        builder.HasIndex(donor => donor.UserId, "IX_donors_user_id")
+            .IsUnique()
+            .HasFilter("[user_id] IS NOT NULL");
+
         builder.HasIndex(donor => donor.Name, "IX_donors_name");
         builder.HasIndex(donor => donor.IsActive, "IX_donors_is_active");
     }

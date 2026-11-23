@@ -1,6 +1,8 @@
 "use client";
 
 import { AuthGuard } from "@/components/AuthGuard";
+import { localizedErrorMessage } from "@/lib/i18n/errors";
+import { useT } from "@/lib/i18n";
 import { RoleNames } from "@/lib/roles";
 
 // Member 4 / D4-11 operations map. Data comes through the integrated SAFEWAY operations API adapter.
@@ -8,8 +10,8 @@ import { RoleNames } from "@/lib/roles";
 // silently hides shelters or service centres.
 
 import dynamic from "next/dynamic";
-import { useEffect, useState } from "react";
-import { api, errorMessage } from "@/lib/operations-api";
+import { useEffect, useMemo, useState } from "react";
+import { api } from "@/lib/operations-api";
 import type { MapMarker } from "@/components/map/MapView";
 import type { MapPoint } from "@/components/map/MapPicker";
 
@@ -43,68 +45,101 @@ interface Area {
   description?: string | null;
 }
 
+type MarkerSource =
+  | {
+      kind: "shelter";
+      id: string;
+      lat: number;
+      lng: number;
+      label: string;
+      freePlaces: number;
+      occupancy: number;
+      capacity: number;
+    }
+  | {
+      kind: "service";
+      id: string;
+      lat: number;
+      lng: number;
+      label: string;
+      description: string;
+    }
+  | {
+      kind: "area";
+      id: string;
+      lat: number;
+      lng: number;
+      label: string;
+      radiusKm?: number | string | null;
+      description?: string | null;
+    };
+
 function OperationsMapContent() {
-  const [markers, setMarkers] = useState<MapMarker[]>([]);
+  const t = useT();
+  const [sources, setSources] = useState<MarkerSource[]>([]);
   const [loading, setLoading] = useState(true);
-  const [shelterError, setShelterError] = useState("");
-  const [centreError, setCentreError] = useState("");
-  const [areaError, setAreaError] = useState("");
+  const [shelterError, setShelterError] = useState<unknown>(null);
+  const [centreError, setCentreError] = useState<unknown>(null);
+  const [areaError, setAreaError] = useState<unknown>(null);
   const [picked, setPicked] = useState<MapPoint | null>(null);
 
   useEffect(() => {
     let active = true;
     async function load() {
       setLoading(true);
-      const next: MapMarker[] = [];
+      const next: MarkerSource[] = [];
 
       try {
         const shelters = await api<PublicShelter[]>("/shelters/public");
         shelters.forEach((shelter) => next.push({
+          kind: "shelter",
           id: shelter.id,
           lat: Number(shelter.lat),
           lng: Number(shelter.lng),
           label: shelter.name,
-          type: "shelter",
-          description: `${shelter.freePlaces} free places (${shelter.occupancy}/${shelter.capacity} occupied)`,
+          freePlaces: shelter.freePlaces,
+          occupancy: shelter.occupancy,
+          capacity: shelter.capacity
         }));
-        if (active) setShelterError("");
+        if (active) setShelterError(null);
       } catch (error) {
-        if (active) setShelterError(errorMessage(error));
+        if (active) setShelterError(error);
       }
 
       try {
         const centres = await api<ServiceCentre[]>("/public/service-centres");
         centres.forEach((centre) => next.push({
+          kind: "service",
           id: centre.id,
           lat: Number(centre.lat),
           lng: Number(centre.lng),
           label: centre.name,
-          type: "service-centre",
-          description: centre.address || centre.services || "Service centre",
+          description: centre.address || centre.services || ""
         }));
-        if (active) setCentreError("");
+        if (active) setCentreError(null);
       } catch (error) {
-        if (active) setCentreError(errorMessage(error));
+        if (active) setCentreError(error);
       }
 
       try {
         const areas = await api<Area[]>("/operations/areas");
         areas.forEach((area) => next.push({
+          kind: "area",
           id: area.id,
           lat: Number(area.lat),
           lng: Number(area.lng),
           label: area.name,
-          type: "area",
-          description: area.description ?? (area.radiusKm ? `Radius ${area.radiusKm} km` : "Operational area"),
+          radiusKm: area.radiusKm,
+          description: area.description
         }));
-        if (active) setAreaError("");
+        if (active) setAreaError(null);
       } catch (error) {
         // Areas are staff-only. Show the failure instead of pretending the map is complete.
-        if (active) setAreaError(errorMessage(error));
+        if (active) setAreaError(error);
       }
 
       if (active) {
-        setMarkers(next);
+        setSources(next);
         setLoading(false);
       }
     }
@@ -112,21 +147,60 @@ function OperationsMapContent() {
     return () => { active = false; };
   }, []);
 
+  const markers = useMemo<MapMarker[]>(() => sources.map((source) => {
+    if (source.kind === "shelter") {
+      return {
+        id: source.id,
+        lat: source.lat,
+        lng: source.lng,
+        label: source.label,
+        type: "shelter",
+        description: t("operations.map.freePlaces", {
+          freePlaces: source.freePlaces,
+          occupancy: source.occupancy,
+          capacity: source.capacity
+        })
+      };
+    }
+
+    if (source.kind === "service") {
+      return {
+        id: source.id,
+        lat: source.lat,
+        lng: source.lng,
+        label: source.label,
+        type: "service-centre",
+        description: source.description || t("operations.map.serviceCentre")
+      };
+    }
+
+    return {
+      id: source.id,
+      lat: source.lat,
+      lng: source.lng,
+      label: source.label,
+      type: "area",
+      description: source.description ?? (source.radiusKm
+        ? t("operations.map.radius", { radiusKm: source.radiusKm })
+        : t("operations.map.operationalArea"))
+    };
+  }), [sources, t]);
+
   return (
     <>
-      <h1>Operations map</h1>
-      <p className="muted">Approved shelters, service centres and operational areas. Coordinates can always be entered manually when the geocoder is offline.</p>
+      <h1>{t("operations.map.title")}</h1>
+      <p className="muted">{t("operations.map.subtitle")}</p>
 
-      {loading && <p className="muted" role="status">Loading map data…</p>}
-      {shelterError && <p className="error" role="alert">Shelters: {shelterError}</p>}
-      {centreError && <p className="error" role="alert">Service centres: {centreError}</p>}
-      {areaError && <p className="error" role="alert">Operational areas: {areaError}</p>}
+      {loading && <p className="muted" role="status">{t("operations.map.loading")}</p>}
+      {shelterError ? <p className="error" role="alert">{t("operations.map.sheltersError", { error: localizedErrorMessage(shelterError, t) })}</p> : null}
+      {centreError ? <p className="error" role="alert">{t("operations.map.centresError", { error: localizedErrorMessage(centreError, t) })}</p> : null}
+      {areaError ? <p className="error" role="alert">{t("operations.map.areasError", { error: localizedErrorMessage(areaError, t) })}</p> : null}
 
       <MapView markers={markers} />
 
       <section className="panel" aria-labelledby="map-picker-heading">
-        <h2 id="map-picker-heading">Pick a location</h2>
-        <p className="muted">This is the same MapPicker used by location forms. Search fails soft and manual coordinates stay available.</p>
+        <h2 id="map-picker-heading">{t("operations.map.pickLocation")}</h2>
+        <p className="muted">{t("operations.map.pickerHelp")}</p>
         <MapPicker
           height={300}
           value={picked ?? undefined}
@@ -134,7 +208,7 @@ function OperationsMapContent() {
         />
         {picked && (
           <p className="success" role="status">
-            Selected: {picked.lat.toFixed(5)}, {picked.lng.toFixed(5)}{picked.address ? ` — ${picked.address}` : ""}
+            {t("operations.map.selected", { lat: picked.lat.toFixed(5), lng: picked.lng.toFixed(5) })}{picked.address ? t("operations.map.selectedAddress", { address: picked.address }) : ""}
           </p>
         )}
       </section>

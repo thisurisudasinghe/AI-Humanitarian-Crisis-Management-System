@@ -140,6 +140,14 @@ var allowedOrigins = builder.Configuration
     .Get<string[]>()
     ?? ["http://localhost:3000"];
 
+if (isDevelopment)
+{
+    allowedOrigins = allowedOrigins
+        .Concat(["http://localhost:3000", "http://localhost:3001"])
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .ToArray();
+}
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("Default", policy =>
@@ -186,6 +194,18 @@ builder.Services.AddRateLimiter(options =>
         {
             PermitLimit = 60,
             Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0
+        });
+    });
+
+    // Password recovery endpoints: tighter budget to limit abuse.
+    options.AddPolicy("password-reset", httpContext =>
+    {
+        var key = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        return RateLimitPartition.GetFixedWindowLimiter(key, _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 10,
+            Window = TimeSpan.FromMinutes(15),
             QueueLimit = 0
         });
     });

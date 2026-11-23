@@ -1,9 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { localizedErrorMessage } from "@/lib/i18n/errors";
 import { Button, Input, Select, Skeleton, Toast } from "@/components/ui";
 import { AuthGuard } from "@/components/AuthGuard";
-import { api, apiJson, errorMessage } from "@/lib/api";
+import { api, apiJson } from "@/lib/api";
 import { formatDate } from "@/lib/admin";
 import {
   CampaignStatuses,
@@ -22,6 +23,7 @@ import {
 } from "@/lib/donations";
 import { RoleNames, hasAnyRole } from "@/lib/roles";
 import { useAuth } from "@/lib/auth";
+import { useT } from "@/lib/i18n";
 import { currentMonthRange } from "@/lib/dates";
 
 const donationRoles = [
@@ -42,6 +44,7 @@ function parsePositive(value: string): number | null {
 
 export default function DonationsPage() {
   const { user } = useAuth();
+  const t = useT();
 
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
@@ -116,7 +119,7 @@ export default function DonationsPage() {
     void loadAll()
       .catch((caught: unknown) => {
         if (!cancelled) {
-          setNotice({ message: errorMessage(caught), tone: "error" });
+          setNotice({ message: localizedErrorMessage(caught, t), tone: "error" });
         }
       })
       .finally(() => {
@@ -156,7 +159,7 @@ export default function DonationsPage() {
         setNotice({ message: success, tone: "success" });
       }
     } catch (caught) {
-      setNotice({ message: errorMessage(caught), tone: "error" });
+      setNotice({ message: localizedErrorMessage(caught, t), tone: "error" });
     } finally {
       setBusy(false);
     }
@@ -173,7 +176,7 @@ export default function DonationsPage() {
       setDonorName("");
       setDonorEmail("");
       setDonorType("Individual");
-    }, "Donor registered.");
+    }, t("donations.successDonorRegistered"));
   }
 
   function onCreateCampaign() {
@@ -188,7 +191,7 @@ export default function DonationsPage() {
 
       setCampaignName("");
       setCampaignGoal("");
-    }, "Campaign created in Draft state.");
+    }, t("donations.successCampaignCreated"));
   }
 
   function onActivateCampaign(campaign: CampaignDto) {
@@ -198,7 +201,7 @@ export default function DonationsPage() {
         "PATCH",
         { status: "Active" satisfies CampaignStatus }
       );
-    }, "Campaign activated.");
+    }, t("donations.successCampaignActivated"));
   }
 
   function onCreateDonation() {
@@ -229,7 +232,7 @@ export default function DonationsPage() {
       setDonationItem("");
       setDonationQuantity("");
       setDonationEstimatedValue("");
-    }, "Donation recorded.");
+    }, t("donations.successDonationRecorded"));
   }
 
   function onAllocate() {
@@ -244,7 +247,7 @@ export default function DonationsPage() {
       );
 
       setAllocationAmount("");
-    }, "Donation allocated.");
+    }, t("donations.successDonationAllocated"));
   }
 
   function onToggleFlag(donation: DonationDto) {
@@ -257,7 +260,7 @@ export default function DonationsPage() {
           reason: donation.isSuspicious ? null : "Flagged for review"
         }
       );
-    }, donation.isSuspicious ? "Flag cleared." : "Donation flagged.");
+    }, donation.isSuspicious ? t("donations.successFlagCleared") : t("donations.successDonationFlagged"));
   }
 
   function onCreateExpense() {
@@ -269,7 +272,7 @@ export default function DonationsPage() {
 
       setExpenseDescription("");
       setExpenseAmount("");
-    }, "Expense recorded.");
+    }, t("donations.successExpenseRecorded"));
   }
 
   return (
@@ -277,14 +280,13 @@ export default function DonationsPage() {
       <div className="page">
         <header className="page__header">
           <div>
-            <h1>Donations</h1>
+            <h1>{t("donations.title")}</h1>
             <p>
-              Record donations, allocate them to campaigns and review the
-              transparency report.
+              {t("donations.subtitle")}
             </p>
           </div>
           <Button onClick={() => void loadAll()} disabled={loading || busy}>
-            Refresh
+            {t("donations.refresh")}
           </Button>
         </header>
 
@@ -293,13 +295,13 @@ export default function DonationsPage() {
             <section className="card">
               <div className="filters">
                 <Input
-                  label="From"
+                  label={t("donations.from")}
                   type="date"
                   value={from}
                   onChange={(event) => setFrom(event.target.value)}
                 />
                 <Input
-                  label="To"
+                  label={t("donations.to")}
                   type="date"
                   value={to}
                   onChange={(event) => setTo(event.target.value)}
@@ -307,29 +309,29 @@ export default function DonationsPage() {
               </div>
             </section>
 
-            <section className="card-grid" aria-label="Donation summary">
+            <section className="card-grid" aria-label={t("donations.summaryAriaLabel")}>
               {loading ? (
                 <Skeleton rows={4} />
               ) : (
                 <>
                   <div className="card">
-                    <div className="metric__label">Donations</div>
+                    <div className="metric__label">{t("donations.title")}</div>
                     <div className="metric__value">
                       {report?.totalDonationCount ?? 0}
                     </div>
                   </div>
                   <div className="card">
-                    <div className="metric__label">Donors</div>
+                    <div className="metric__label">{t("donations.donors")}</div>
                     <div className="metric__value">{report?.totalDonorCount ?? 0}</div>
                   </div>
                   <div className="card">
-                    <div className="metric__label">Flagged donations</div>
+                    <div className="metric__label">{t("donations.flaggedDonations")}</div>
                     <div className="metric__value">
                       {report?.suspiciousDonationCount ?? 0}
                     </div>
                   </div>
                   <div className="card">
-                    <div className="metric__label">Flagged allocations</div>
+                    <div className="metric__label">{t("donations.flaggedAllocations")}</div>
                     <div className="metric__value">
                       {report?.suspiciousAllocationCount ?? 0}
                     </div>
@@ -339,9 +341,9 @@ export default function DonationsPage() {
             </section>
 
             <section className="card">
-              <h2>Transparency report</h2>
+              <h2>{t("donations.transparencyReport")}</h2>
               <p className="metric__label">
-                Aggregated by currency. Donor names are never included.
+                {t("donations.reportHint")}
               </p>
               {loading ? (
                 <Skeleton rows={3} />
@@ -350,14 +352,14 @@ export default function DonationsPage() {
                   <table className="table">
                     <thead>
                       <tr>
-                        <th scope="col">Currency</th>
-                        <th scope="col">Monetary</th>
-                        <th scope="col">In-kind value</th>
-                        <th scope="col">Allocated</th>
-                        <th scope="col">Spent</th>
-                        <th scope="col">Donations</th>
-                        <th scope="col">Donors</th>
-                        <th scope="col">Flagged</th>
+                        <th scope="col">{t("donations.currency")}</th>
+                        <th scope="col">{t("donations.monetary")}</th>
+                        <th scope="col">{t("donations.inKindValue")}</th>
+                        <th scope="col">{t("donations.allocated")}</th>
+                        <th scope="col">{t("donations.spent")}</th>
+                        <th scope="col">{t("donations.title")}</th>
+                        <th scope="col">{t("donations.donors")}</th>
+                        <th scope="col">{t("donations.flagged")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -379,7 +381,7 @@ export default function DonationsPage() {
                   </table>
                 </div>
               ) : (
-                <p className="metric__label">No donations in this period yet.</p>
+                <p className="metric__label">{t("donations.noDonationsInPeriod")}</p>
               )}
 
               {report && report.campaigns.length > 0 ? (
@@ -387,13 +389,13 @@ export default function DonationsPage() {
                   <table className="table">
                     <thead>
                       <tr>
-                        <th scope="col">Campaign</th>
-                        <th scope="col">Status</th>
-                        <th scope="col">Goal</th>
-                        <th scope="col">Raised</th>
-                        <th scope="col">Spent</th>
-                        <th scope="col">Remaining</th>
-                        <th scope="col">Progress</th>
+                        <th scope="col">{t("donations.campaign")}</th>
+                        <th scope="col">{t("donations.status")}</th>
+                        <th scope="col">{t("donations.goal")}</th>
+                        <th scope="col">{t("donations.raised")}</th>
+                        <th scope="col">{t("donations.spent")}</th>
+                        <th scope="col">{t("donations.remaining")}</th>
+                        <th scope="col">{t("donations.progress")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -414,30 +416,30 @@ export default function DonationsPage() {
               ) : null}
 
               <p className="metric__label">
-                Generated at {formatDate(report?.generatedAt)}
+                {t("donations.generatedAt", { date: formatDate(report?.generatedAt) })}
               </p>
             </section>
 
             <section className="card">
-              <h2>Donations</h2>
+              <h2>{t("donations.title")}</h2>
               {loading ? (
                 <Skeleton rows={4} />
               ) : donations.length === 0 ? (
-                <p className="metric__label">No donations recorded yet.</p>
+                <p className="metric__label">{t("donations.noDonations")}</p>
               ) : (
                 <div className="table-wrap">
                   <table className="table">
                     <thead>
                       <tr>
-                        <th scope="col">Reference</th>
-                        <th scope="col">Donor</th>
-                        <th scope="col">Type</th>
-                        <th scope="col">Value</th>
-                        <th scope="col">Allocated</th>
-                        <th scope="col">Status</th>
-                        <th scope="col">Review</th>
-                        <th scope="col">Received</th>
-                        {canManage ? <th scope="col">Actions</th> : null}
+                        <th scope="col">{t("donations.reference")}</th>
+                        <th scope="col">{t("donations.donor")}</th>
+                        <th scope="col">{t("donations.type")}</th>
+                        <th scope="col">{t("donations.value")}</th>
+                        <th scope="col">{t("donations.allocated")}</th>
+                        <th scope="col">{t("donations.status")}</th>
+                        <th scope="col">{t("donations.review")}</th>
+                        <th scope="col">{t("donations.received")}</th>
+                        {canManage ? <th scope="col">{t("donations.actions")}</th> : null}
                       </tr>
                     </thead>
                     <tbody>
@@ -468,7 +470,7 @@ export default function DonationsPage() {
                                 }`}
                                 title={donation.suspiciousReason ?? undefined}
                               >
-                                {donation.isSuspicious ? "Flagged" : "Clear"}
+                                {donation.isSuspicious ? t("donations.flagged") : t("donations.clear")}
                               </span>
                             </td>
                             <td>{formatDate(donation.receivedAt)}</td>
@@ -479,7 +481,7 @@ export default function DonationsPage() {
                                   onClick={() => onToggleFlag(donation)}
                                   disabled={busy}
                                 >
-                                  {donation.isSuspicious ? "Clear flag" : "Flag"}
+                                  {donation.isSuspicious ? t("donations.clearFlag") : t("donations.flag")}
                                 </Button>
                               </td>
                             ) : null}
@@ -494,12 +496,12 @@ export default function DonationsPage() {
               {canManage ? (
                 <div className="filters">
                   <Select
-                    label="Donor"
+                    label={t("donations.donor")}
                     id="donation-donor"
                     value={donationDonorId}
                     onChange={(event) => setDonationDonorId(event.target.value)}
                   >
-                    <option value="">Select a donor</option>
+                    <option value="">{t("donations.selectDonor")}</option>
                     {donors
                       .filter((donor) => donor.isActive)
                       .map((donor) => (
@@ -509,7 +511,7 @@ export default function DonationsPage() {
                       ))}
                   </Select>
                   <Select
-                    label="Type"
+                    label={t("donations.type")}
                     id="donation-type"
                     value={donationType}
                     onChange={(event) =>
@@ -523,7 +525,7 @@ export default function DonationsPage() {
                     ))}
                   </Select>
                   <Input
-                    label="Currency"
+                    label={t("donations.currency")}
                     id="donation-currency"
                     value={donationCurrency}
                     maxLength={3}
@@ -533,7 +535,7 @@ export default function DonationsPage() {
                   />
                   {donationType === "Monetary" ? (
                     <Input
-                      label="Amount"
+                      label={t("donations.amount")}
                       id="donation-amount"
                       type="number"
                       min="0.01"
@@ -544,19 +546,19 @@ export default function DonationsPage() {
                   ) : (
                     <>
                       <Input
-                        label="Item"
+                        label={t("donations.item")}
                         value={donationItem}
                         onChange={(event) => setDonationItem(event.target.value)}
                       />
                       <Input
-                        label="Quantity"
+                        label={t("donations.quantity")}
                         type="number"
                         min="1"
                         value={donationQuantity}
                         onChange={(event) => setDonationQuantity(event.target.value)}
                       />
                       <Input
-                        label="Estimated value"
+                        label={t("donations.estimatedValue")}
                         type="number"
                         min="0"
                         step="0.01"
@@ -577,38 +579,38 @@ export default function DonationsPage() {
                         : donationItem.trim().length === 0)
                     }
                   >
-                    Record donation
+                    {t("donations.recordDonation")}
                   </Button>
                 </div>
               ) : null}
             </section>
 
             <section className="card">
-              <h2>Allocate a donation</h2>
+              <h2>{t("donations.allocateTitle")}</h2>
               {canManage ? (
                 <div className="filters">
                   <Select
-                    label="Donation"
+                    label={t("donations.donation")}
                     id="allocation-donation"
                     value={allocationDonationId}
                     onChange={(event) => setAllocationDonationId(event.target.value)}
                   >
-                    <option value="">Select a donation</option>
+                    <option value="">{t("donations.selectDonation")}</option>
                     {allocatableDonations.map((donation) => (
                       <option key={donation.id} value={donation.id}>
                         {donation.reference} —{" "}
                         {formatMoney(donation.unallocatedAmount, donation.currency)}{" "}
-                        available
+                        {t("donations.available")}
                       </option>
                     ))}
                   </Select>
                   <Select
-                    label="Campaign"
+                    label={t("donations.campaign")}
                     id="allocation-campaign"
                     value={allocationCampaignId}
                     onChange={(event) => setAllocationCampaignId(event.target.value)}
                   >
-                    <option value="">Select a campaign</option>
+                    <option value="">{t("donations.selectCampaign")}</option>
                     {activeCampaigns.map((campaign) => (
                       <option key={campaign.id} value={campaign.id}>
                         {campaign.name} ({campaign.currency})
@@ -616,7 +618,7 @@ export default function DonationsPage() {
                     ))}
                   </Select>
                   <Input
-                    label="Amount"
+                    label={t("donations.amount")}
                     id="allocation-amount"
                     type="number"
                     min="0.01"
@@ -633,34 +635,33 @@ export default function DonationsPage() {
                       parsePositive(allocationAmount) === null
                     }
                   >
-                    Allocate
+                    {t("donations.allocate")}
                   </Button>
                 </div>
               ) : (
                 <p className="metric__label">
-                  Only Donor Officers and System Administrators can allocate
-                  donations.
+                  {t("donations.allocateRestricted")}
                 </p>
               )}
             </section>
 
             <section className="card">
-              <h2>Donors</h2>
+              <h2>{t("donations.donors")}</h2>
               {loading ? (
                 <Skeleton rows={3} />
               ) : donors.length === 0 ? (
-                <p className="metric__label">No donors registered yet.</p>
+                <p className="metric__label">{t("donations.noDonors")}</p>
               ) : (
                 <div className="table-wrap">
                   <table className="table">
                     <thead>
                       <tr>
-                        <th scope="col">Name</th>
-                        <th scope="col">Type</th>
-                        <th scope="col">Anonymous</th>
-                        <th scope="col">Donations</th>
-                        <th scope="col">Contributed (all currencies)</th>
-                        <th scope="col">Status</th>
+                        <th scope="col">{t("donations.name")}</th>
+                        <th scope="col">{t("donations.type")}</th>
+                        <th scope="col">{t("donations.anonymous")}</th>
+                        <th scope="col">{t("donations.title")}</th>
+                        <th scope="col">{t("donations.contributed")}</th>
+                        <th scope="col">{t("donations.status")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -668,7 +669,7 @@ export default function DonationsPage() {
                         <tr key={donor.id}>
                           <td>{donor.name}</td>
                           <td>{donor.donorType}</td>
-                          <td>{donor.isAnonymous ? "Yes" : "No"}</td>
+                          <td>{donor.isAnonymous ? t("donations.yes") : t("donations.no")}</td>
                           <td>{donor.donationCount}</td>
                           <td>{donor.totalContributed.toFixed(2)}</td>
                           <td>
@@ -677,7 +678,7 @@ export default function DonationsPage() {
                                 donor.isActive ? "badge--ok" : "badge--muted"
                               }`}
                             >
-                              {donor.isActive ? "Active" : "Inactive"}
+                              {donor.isActive ? t("donations.active") : t("donations.inactive")}
                             </span>
                           </td>
                         </tr>
@@ -690,12 +691,12 @@ export default function DonationsPage() {
               {canManage ? (
                 <div className="filters">
                   <Input
-                    label="Name"
+                    label={t("donations.name")}
                     value={donorName}
                     onChange={(event) => setDonorName(event.target.value)}
                   />
                   <Select
-                    label="Donor type"
+                    label={t("donations.donorType")}
                     value={donorType}
                     onChange={(event) =>
                       setDonorType(event.target.value as DonorType)
@@ -708,7 +709,7 @@ export default function DonationsPage() {
                     ))}
                   </Select>
                   <Input
-                    label="Contact email"
+                    label={t("donations.contactEmail")}
                     type="email"
                     value={donorEmail}
                     onChange={(event) => setDonorEmail(event.target.value)}
@@ -717,30 +718,30 @@ export default function DonationsPage() {
                     onClick={onCreateDonor}
                     disabled={busy || donorName.trim().length === 0}
                   >
-                    Register donor
+                    {t("donations.registerDonor")}
                   </Button>
                 </div>
               ) : null}
             </section>
 
             <section className="card">
-              <h2>Campaigns</h2>
+              <h2>{t("donations.campaigns")}</h2>
               {loading ? (
                 <Skeleton rows={3} />
               ) : campaigns.length === 0 ? (
-                <p className="metric__label">No campaigns created yet.</p>
+                <p className="metric__label">{t("donations.noCampaigns")}</p>
               ) : (
                 <div className="table-wrap">
                   <table className="table">
                     <thead>
                       <tr>
-                        <th scope="col">Name</th>
-                        <th scope="col">Status</th>
-                        <th scope="col">Goal</th>
-                        <th scope="col">Raised</th>
-                        <th scope="col">Spent</th>
-                        <th scope="col">Progress</th>
-                        {canManage ? <th scope="col">Actions</th> : null}
+                        <th scope="col">{t("donations.name")}</th>
+                        <th scope="col">{t("donations.status")}</th>
+                        <th scope="col">{t("donations.goal")}</th>
+                        <th scope="col">{t("donations.raised")}</th>
+                        <th scope="col">{t("donations.spent")}</th>
+                        <th scope="col">{t("donations.progress")}</th>
+                        {canManage ? <th scope="col">{t("donations.actions")}</th> : null}
                       </tr>
                     </thead>
                     <tbody>
@@ -760,7 +761,7 @@ export default function DonationsPage() {
                                   onClick={() => onActivateCampaign(campaign)}
                                   disabled={busy}
                                 >
-                                  Activate
+                                  {t("donations.activate")}
                                 </Button>
                               ) : null}
                             </td>
@@ -776,12 +777,12 @@ export default function DonationsPage() {
                 <>
                   <div className="filters">
                     <Input
-                      label="Campaign name"
+                      label={t("donations.campaignName")}
                       value={campaignName}
                       onChange={(event) => setCampaignName(event.target.value)}
                     />
                     <Input
-                      label="Goal amount"
+                      label={t("donations.goalAmount")}
                       type="number"
                       min="0"
                       step="0.01"
@@ -789,7 +790,7 @@ export default function DonationsPage() {
                       onChange={(event) => setCampaignGoal(event.target.value)}
                     />
                     <Input
-                      label="Currency"
+                      label={t("donations.currency")}
                       id="campaign-currency"
                       value={campaignCurrency}
                       maxLength={3}
@@ -801,19 +802,19 @@ export default function DonationsPage() {
                       onClick={onCreateCampaign}
                       disabled={busy || campaignName.trim().length === 0}
                     >
-                      Create campaign
+                      {t("donations.createCampaign")}
                     </Button>
                   </div>
 
-                  <h3>Record an expense</h3>
+                  <h3>{t("donations.expenseTitle")}</h3>
                   <div className="filters">
                     <Select
-                      label="Campaign"
+                      label={t("donations.campaign")}
                       id="expense-campaign"
                       value={expenseCampaignId}
                       onChange={(event) => setExpenseCampaignId(event.target.value)}
                     >
-                      <option value="">Select a campaign</option>
+                      <option value="">{t("donations.selectCampaign")}</option>
                       {campaigns
                         .filter((campaign) => campaign.status !== "Cancelled")
                         .map((campaign) => (
@@ -823,12 +824,12 @@ export default function DonationsPage() {
                         ))}
                     </Select>
                     <Input
-                      label="Description"
+                      label={t("donations.description")}
                       value={expenseDescription}
                       onChange={(event) => setExpenseDescription(event.target.value)}
                     />
                     <Input
-                      label="Amount"
+                      label={t("donations.amount")}
                       id="expense-amount"
                       type="number"
                       min="0.01"
@@ -845,7 +846,7 @@ export default function DonationsPage() {
                         parsePositive(expenseAmount) === null
                       }
                     >
-                      Record expense
+                      {t("donations.recordExpense")}
                     </Button>
                   </div>
                 </>
@@ -853,10 +854,9 @@ export default function DonationsPage() {
             </section>
 
             <section className="card">
-              <h2>Status reference</h2>
+              <h2>{t("donations.statusReferenceTitle")}</h2>
               <p className="metric__label">
-                Donation statuses: {DonationStatuses.join(", ")}. Campaign
-                statuses: {CampaignStatuses.join(", ")}.
+                {t("donations.statusReference", { donations: DonationStatuses.join(", "), campaigns: CampaignStatuses.join(", ") })}
               </p>
             </section>
           </>

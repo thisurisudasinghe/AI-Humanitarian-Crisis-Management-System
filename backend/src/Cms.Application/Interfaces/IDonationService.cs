@@ -48,6 +48,23 @@ public interface IDonationService
         CreateCampaignExpenseRequestDto request,
         CancellationToken cancellationToken = default);
 
+    /// <summary>Returns the donor profile linked to a public user, if enrolled.</summary>
+    Task<DonorDto?> GetDonorForUserAsync(
+        Guid userId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>Lists only donations belonging to the signed-in public donor.</summary>
+    Task<PagedResultDto<DonationDto>> GetDonationsForUserAsync(
+        Guid userId,
+        DonationQueryDto query,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>Records a donation against the caller's linked donor profile.</summary>
+    Task<DonationDto> CreateDonationForUserAsync(
+        Guid userId,
+        CreateDonationRequestDto request,
+        CancellationToken cancellationToken = default);
+
     Task<PagedResultDto<DonationDto>> GetDonationsAsync(
         DonationQueryDto query,
         CancellationToken cancellationToken = default);

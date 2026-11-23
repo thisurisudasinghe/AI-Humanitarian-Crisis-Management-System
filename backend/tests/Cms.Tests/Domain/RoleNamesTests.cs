@@ -5,7 +5,7 @@ namespace Cms.Tests.Domain;
 public class RoleNamesTests
 {
     [Fact]
-    public void All_contains_exactly_the_ten_frozen_roles()
+    public void All_contains_exactly_the_supported_roles()
     {
         var expected = new[]
         {
@@ -18,10 +18,11 @@ public class RoleNamesTests
             "Volunteer",
             "DonorOfficer",
             "PartnerOfficer",
-            "SystemAdmin"
+            "SystemAdmin",
+            "Donor"
         };
 
-        Assert.Equal(10, RoleNames.All.Count);
+        Assert.Equal(11, RoleNames.All.Count);
         Assert.Equal(expected.Order(), RoleNames.All.Order());
     }
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { localizedErrorMessage } from "@/lib/i18n/errors";
 import {
   Badge,
   Button,
@@ -16,13 +17,14 @@ import {
 } from "@/components/ui";
 import { AuthGuard } from "@/components/AuthGuard";
 import { AdminNav } from "@/components/safeway/AdminNav";
-import { api, apiJson, errorMessage } from "@/lib/api";
+import { api, apiJson } from "@/lib/api";
 import {
   formatDate,
   type OrganisationDto,
   type PagedResult,
   type UserSummary
 } from "@/lib/admin";
+import { useT } from "@/lib/i18n";
 import { AllRoles, RoleNames } from "@/lib/roles";
 import { useDebouncedValue } from "@/lib/useDebouncedValue";
 
@@ -37,6 +39,7 @@ const emptyForm = {
 };
 
 export default function UsersPage() {
+  const t = useT();
   const [search, setSearch] = useState("");
   const [role, setRole] = useState("");
   const [active, setActive] = useState("all");
@@ -96,7 +99,7 @@ export default function UsersPage() {
       })
       .catch((caught: unknown) => {
         if (!cancelled) {
-          setNotice({ message: errorMessage(caught), tone: "error" });
+          setNotice({ message: localizedErrorMessage(caught, t), tone: "error" });
         }
       })
       .finally(() => {
@@ -150,10 +153,10 @@ export default function UsersPage() {
       await apiJson<UserSummary>("/api/v1/users", "POST", body);
       setCreateOpen(false);
       setForm(emptyForm);
-      setNotice({ message: "User created.", tone: "success" });
+      setNotice({ message: t("admin.users.created"), tone: "success" });
       await refresh();
     } catch (caught) {
-      setNotice({ message: errorMessage(caught), tone: "error" });
+      setNotice({ message: localizedErrorMessage(caught, t), tone: "error" });
     } finally {
       setSaving(false);
     }
@@ -185,7 +188,7 @@ export default function UsersPage() {
 
     const firstName = editTarget.firstName.trim();
     if (!firstName) {
-      setNotice({ message: "First name is required.", tone: "error" });
+      setNotice({ message: t("admin.users.validationFirstName"), tone: "error" });
       return;
     }
 
@@ -202,10 +205,10 @@ export default function UsersPage() {
         status: editTarget.status
       });
       setEditTarget(null);
-      setNotice({ message: "User updated.", tone: "success" });
+      setNotice({ message: t("admin.users.updated"), tone: "success" });
       await refresh();
     } catch (caught) {
-      setNotice({ message: errorMessage(caught), tone: "error" });
+      setNotice({ message: localizedErrorMessage(caught, t), tone: "error" });
     } finally {
       setSaving(false);
     }
@@ -220,12 +223,14 @@ export default function UsersPage() {
         status: user.isActive ? "Inactive" : "Active"
       });
       setNotice({
-        message: user.isActive ? "User deactivated." : "User activated.",
+        message: user.isActive
+          ? t("admin.users.deactivated")
+          : t("admin.users.activated"),
         tone: "success"
       });
       await refresh();
     } catch (caught) {
-      setNotice({ message: errorMessage(caught), tone: "error" });
+      setNotice({ message: localizedErrorMessage(caught, t), tone: "error" });
     }
   }
 
@@ -235,7 +240,7 @@ export default function UsersPage() {
     }
 
     if (roleTarget.roles.length === 0) {
-      setNotice({ message: "Select at least one role.", tone: "error" });
+      setNotice({ message: t("admin.users.validationRoleRequired"), tone: "error" });
       return;
     }
 
@@ -249,10 +254,10 @@ export default function UsersPage() {
         { roles: roleTarget.roles }
       );
       setRoleTarget(null);
-      setNotice({ message: "Roles updated.", tone: "success" });
+      setNotice({ message: t("admin.users.rolesUpdated"), tone: "success" });
       await refresh();
     } catch (caught) {
-      setNotice({ message: errorMessage(caught), tone: "error" });
+      setNotice({ message: localizedErrorMessage(caught, t), tone: "error" });
     } finally {
       setSaving(false);
     }
@@ -261,7 +266,7 @@ export default function UsersPage() {
   const columns: Column<UserSummary>[] = [
     {
       key: "user",
-      header: "User",
+      header: t("admin.users.colUser"),
       render: (user) => (
         <div>
           <strong>{user.fullName}</strong>
@@ -271,7 +276,7 @@ export default function UsersPage() {
     },
     {
       key: "roles",
-      header: "Roles",
+      header: t("admin.users.colRoles"),
       render: (user) => (
         <div className="actions">
           {user.roles.map((item) => (
@@ -282,35 +287,35 @@ export default function UsersPage() {
     },
     {
       key: "organisation",
-      header: "Organisation",
+      header: t("admin.users.colOrganisation"),
       render: (user) => user.organisationName ?? "—"
     },
     {
       key: "status",
-      header: "Status",
+      header: t("admin.users.colStatus"),
       render: (user) => <StatusBadge active={user.isActive} />
     },
     {
       key: "lastLogin",
-      header: "Last login",
+      header: t("admin.users.colLastLogin"),
       render: (user) => formatDate(user.lastLoginAt)
     },
     {
       key: "actions",
-      header: "Actions",
+      header: t("admin.users.colActions"),
       render: (user) => (
         <div className="actions">
           <Button variant="secondary" onClick={() => openEdit(user)}>
-            Edit
+            {t("admin.users.edit")}
           </Button>
           <Button
             variant="secondary"
             onClick={() => setRoleTarget({ user, roles: [...user.roles] })}
           >
-            Edit roles
+            {t("admin.users.editRoles")}
           </Button>
           <Button variant="secondary" onClick={() => setStatusTarget(user)}>
-            {user.isActive ? "Deactivate" : "Activate"}
+            {user.isActive ? t("admin.users.deactivate") : t("admin.users.activate")}
           </Button>
         </div>
       )
@@ -322,10 +327,10 @@ export default function UsersPage() {
       <div className="page">
         <header className="page__header">
           <div>
-            <h1>Users</h1>
-            <p>Create staff accounts, assign roles and manage account status.</p>
+            <h1>{t("admin.users.title")}</h1>
+            <p>{t("admin.users.subtitle")}</p>
           </div>
-          <Button onClick={() => setCreateOpen(true)}>Create user</Button>
+          <Button onClick={() => setCreateOpen(true)}>{t("admin.users.create")}</Button>
         </header>
 
         <AdminNav />
@@ -333,8 +338,8 @@ export default function UsersPage() {
         <section className="card">
           <div className="filters">
             <Input
-              label="Search"
-              placeholder="Name or exact email"
+              label={t("admin.users.fieldSearch")}
+              placeholder={t("admin.users.placeholderSearch")}
               value={search}
               onChange={(event) => {
                 setSearch(event.target.value);
@@ -342,14 +347,14 @@ export default function UsersPage() {
               }}
             />
             <Select
-              label="Role"
+              label={t("admin.users.fieldRole")}
               value={role}
               onChange={(event) => {
                 setRole(event.target.value);
                 setPage(1);
               }}
             >
-              <option value="">All roles</option>
+              <option value="">{t("admin.users.allRoles")}</option>
               {AllRoles.map((item) => (
                 <option key={item} value={item}>
                   {item}
@@ -357,16 +362,16 @@ export default function UsersPage() {
               ))}
             </Select>
             <Select
-              label="Status"
+              label={t("admin.users.fieldStatus")}
               value={active}
               onChange={(event) => {
                 setActive(event.target.value);
                 setPage(1);
               }}
             >
-              <option value="all">All statuses</option>
-              <option value="true">Active</option>
-              <option value="false">Inactive</option>
+              <option value="all">{t("admin.users.allStatuses")}</option>
+              <option value="true">{t("admin.users.active")}</option>
+              <option value="false">{t("admin.users.inactive")}</option>
             </Select>
           </div>
         </section>
@@ -382,16 +387,16 @@ export default function UsersPage() {
               pageSize={result?.pageSize ?? 20}
               totalCount={result?.totalCount ?? 0}
               onPageChange={setPage}
-              emptyMessage="No users match the current filters."
+              emptyMessage={t("admin.users.empty")}
             />
           )}
         </section>
       </div>
 
       {createOpen ? (
-        <Modal title="Create user" onClose={() => setCreateOpen(false)}>
+        <Modal title={t("admin.users.modalCreateTitle")} onClose={() => setCreateOpen(false)}>
           <Input
-            label="Full name"
+            label={t("admin.users.fieldFullName")}
             value={form.fullName}
             onChange={(event) =>
               setForm({ ...form, fullName: event.target.value })
@@ -399,14 +404,14 @@ export default function UsersPage() {
             required
           />
           <Input
-            label="Email"
+            label={t("admin.users.fieldEmail")}
             type="email"
             value={form.email}
             onChange={(event) => setForm({ ...form, email: event.target.value })}
             required
           />
           <Input
-            label="Temporary password"
+            label={t("admin.users.fieldTemporaryPassword")}
             type="password"
             minLength={8}
             value={form.password}
@@ -416,13 +421,13 @@ export default function UsersPage() {
             required
           />
           <Select
-            label="Organisation"
+            label={t("admin.users.fieldOrganisation")}
             value={form.organisationId}
             onChange={(event) =>
               setForm({ ...form, organisationId: event.target.value })
             }
           >
-            <option value="">No organisation</option>
+            <option value="">{t("admin.users.noOrganisation")}</option>
             {organisations.map((organisation) => (
               <option key={organisation.id} value={organisation.id}>
                 {organisation.name}
@@ -430,7 +435,7 @@ export default function UsersPage() {
             ))}
           </Select>
           <label className="field">
-            <span className="field__label">Roles</span>
+            <span className="field__label">{t("admin.users.fieldRoles")}</span>
             <select
               className="input"
               multiple
@@ -449,14 +454,14 @@ export default function UsersPage() {
                 </option>
               ))}
             </select>
-            <span className="field__hint">Hold Ctrl/Cmd to select multiple roles.</span>
+            <span className="field__hint">{t("admin.users.hintMultiSelectRoles")}</span>
           </label>
           <div className="actions">
             <Button onClick={() => void createUser()} disabled={saving}>
-              {saving ? "Creating…" : "Create user"}
+              {saving ? t("admin.users.creating") : t("admin.users.create")}
             </Button>
             <Button variant="secondary" onClick={() => setCreateOpen(false)}>
-              Cancel
+              {t("admin.users.cancel")}
             </Button>
           </div>
         </Modal>
@@ -464,11 +469,11 @@ export default function UsersPage() {
 
       {roleTarget ? (
         <Modal
-          title={`Edit roles — ${roleTarget.user.fullName}`}
+          title={t("admin.users.modalEditRolesTitle", { name: roleTarget.user.fullName })}
           onClose={() => setRoleTarget(null)}
         >
           <label className="field">
-            <span className="field__label">Assigned roles</span>
+            <span className="field__label">{t("admin.users.fieldAssignedRoles")}</span>
             <select
               className="input"
               multiple
@@ -490,10 +495,10 @@ export default function UsersPage() {
           </label>
           <div className="actions">
             <Button onClick={() => void saveRoles()} disabled={saving}>
-              {saving ? "Saving…" : "Save roles"}
+              {saving ? t("admin.users.saving") : t("admin.users.saveRoles")}
             </Button>
             <Button variant="secondary" onClick={() => setRoleTarget(null)}>
-              Cancel
+              {t("admin.users.cancel")}
             </Button>
           </div>
         </Modal>
@@ -501,11 +506,11 @@ export default function UsersPage() {
 
       {editTarget ? (
         <Modal
-          title={`Edit user — ${editTarget.user.fullName}`}
+          title={t("admin.users.modalEditUserTitle", { name: editTarget.user.fullName })}
           onClose={() => setEditTarget(null)}
         >
           <Input
-            label="First name"
+            label={t("admin.users.fieldFirstName")}
             value={editTarget.firstName}
             onChange={(event) =>
               setEditTarget({ ...editTarget, firstName: event.target.value })
@@ -513,20 +518,20 @@ export default function UsersPage() {
             required
           />
           <Input
-            label="Last name"
+            label={t("admin.users.fieldLastName")}
             value={editTarget.lastName}
             onChange={(event) =>
               setEditTarget({ ...editTarget, lastName: event.target.value })
             }
           />
           <Select
-            label="Organisation"
+            label={t("admin.users.fieldOrganisation")}
             value={editTarget.organisationId}
             onChange={(event) =>
               setEditTarget({ ...editTarget, organisationId: event.target.value })
             }
           >
-            <option value="">No organisation</option>
+            <option value="">{t("admin.users.noOrganisation")}</option>
             {organisations.map((organisation) => (
               <option key={organisation.id} value={organisation.id}>
                 {organisation.name}
@@ -534,22 +539,22 @@ export default function UsersPage() {
             ))}
           </Select>
           <Select
-            label="Status"
+            label={t("admin.users.fieldStatus")}
             value={editTarget.status}
             onChange={(event) =>
               setEditTarget({ ...editTarget, status: event.target.value })
             }
           >
-            <option value="Active">Active</option>
-            <option value="Inactive">Inactive</option>
-            <option value="Suspended">Suspended</option>
+            <option value="Active">{t("admin.users.active")}</option>
+            <option value="Inactive">{t("admin.users.inactive")}</option>
+            <option value="Suspended">{t("admin.users.suspended")}</option>
           </Select>
           <div className="actions">
             <Button onClick={() => void saveUser()} disabled={saving}>
-              {saving ? "Saving…" : "Save changes"}
+              {saving ? t("admin.users.saving") : t("admin.users.saveChanges")}
             </Button>
             <Button variant="secondary" onClick={() => setEditTarget(null)}>
-              Cancel
+              {t("admin.users.cancel")}
             </Button>
           </div>
         </Modal>
@@ -557,13 +562,17 @@ export default function UsersPage() {
 
       {statusTarget ? (
         <ConfirmDialog
-          title={statusTarget.isActive ? "Deactivate user" : "Activate user"}
+          title={statusTarget.isActive
+            ? t("admin.users.confirmDeactivateTitle")
+            : t("admin.users.confirmActivateTitle")}
           message={
             statusTarget.isActive
-              ? `Deactivate ${statusTarget.fullName}? They will no longer be able to sign in.`
-              : `Activate ${statusTarget.fullName}? They will be able to sign in again.`
+              ? t("admin.users.confirmDeactivateMessage", { name: statusTarget.fullName })
+              : t("admin.users.confirmActivateMessage", { name: statusTarget.fullName })
           }
-          confirmLabel={statusTarget.isActive ? "Deactivate" : "Activate"}
+          confirmLabel={statusTarget.isActive
+            ? t("admin.users.deactivate")
+            : t("admin.users.activate")}
           onConfirm={() => void toggleStatus(statusTarget)}
           onCancel={() => setStatusTarget(null)}
         />

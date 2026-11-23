@@ -21,12 +21,15 @@ import {
   type AuthResponse,
   type CurrentUser
 } from "@/lib/api";
-import { hasAnyRole } from "@/lib/roles";
+import { hasAnyRole, type PublicPurpose } from "@/lib/roles";
+import { enrollPublicRole } from "@/lib/portal";
 
 interface RegisterInput {
   fullName: string;
   email: string;
+  phoneNumber: string;
   password: string;
+  accountPurpose?: PublicPurpose;
 }
 
 interface AuthContextValue {
@@ -34,6 +37,7 @@ interface AuthContextValue {
   ready: boolean;
   login: (email: string, password: string) => Promise<CurrentUser>;
   register: (input: RegisterInput) => Promise<CurrentUser>;
+  enroll: (purpose: PublicPurpose) => Promise<CurrentUser>;
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
   can: (allowed: readonly string[]) => boolean;
@@ -110,6 +114,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [completeAuth]
   );
 
+  const enroll = useCallback(
+    async (purpose: PublicPurpose) => {
+      // The server validates the purpose and returns fresh tokens containing
+      // the new role claim. The frontend never assigns roles itself.
+      const auth = await enrollPublicRole(purpose);
+      return completeAuth(auth);
+    },
+    [completeAuth]
+  );
+
   const logout = useCallback(async () => {
     const refreshToken = getRefreshToken();
 
@@ -139,8 +153,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo<AuthContextValue>(
-    () => ({ user, ready, login, register, logout, refresh, can }),
-    [user, ready, login, register, logout, refresh, can]
+    () => ({ user, ready, login, register, enroll, logout, refresh, can }),
+    [user, ready, login, register, enroll, logout, refresh, can]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

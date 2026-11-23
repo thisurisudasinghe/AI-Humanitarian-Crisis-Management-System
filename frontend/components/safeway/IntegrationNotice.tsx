@@ -1,10 +1,9 @@
+"use client";
+
 import type { ReactNode } from "react";
+import { useT } from "@/lib/i18n";
 import { Icon } from "./Icon";
 
-/**
- * Explains that a module is intentionally not wired yet.
- * Used instead of inventing endpoints that the backend does not expose.
- */
 export function IntegrationNotice({
   title,
   owner,
@@ -16,6 +15,7 @@ export function IntegrationNotice({
   children: ReactNode;
   inline?: boolean;
 }) {
+  const t = useT();
   return (
     <div
       className={inline ? "integration-notice integration-notice--inline" : "integration-notice"}
@@ -25,7 +25,7 @@ export function IntegrationNotice({
       <div>
         <b>{title}</b>
         <p>{children}</p>
-        <small>Owned by {owner} · API not yet available</small>
+        <small>{t("common.ownedBy")} {owner} — {t("common.apiNotAvailable")}</small>
       </div>
     </div>
   );
@@ -40,11 +40,12 @@ export function EmptyPanel({
   children: ReactNode;
   owner?: string;
 }) {
+  const t = useT();
   return (
     <div className="empty-panel">
       <b>{title}</b>
       <p>{children}</p>
-      {owner ? <small>Pending {owner}</small> : null}
+      {owner ? <small>{t("common.pending")} {owner}</small> : null}
     </div>
   );
 }

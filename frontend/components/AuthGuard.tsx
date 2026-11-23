@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/auth";
 import { hasAnyRole } from "@/lib/roles";
 import { Brand } from "@/components/safeway/Brand";
 import { Icon } from "@/components/safeway/Icon";
+import { useT } from "@/lib/i18n";
 
 export function AuthGuard({
   children,
@@ -15,6 +16,7 @@ export function AuthGuard({
   children: ReactNode;
   allowedRoles?: readonly string[];
 }) {
+  const t = useT();
   const { user, ready } = useAuth();
   const router = useRouter();
 
@@ -30,7 +32,7 @@ export function AuthGuard({
         <div>
           <Brand />
           <div className="skeleton-block" style={{ marginTop: 24 }} />
-          <p>Checking your session…</p>
+          <p>{t("authGuard.checking")}</p>
         </div>
       </div>
     );
@@ -41,15 +43,12 @@ export function AuthGuard({
       <div className="forbidden-page">
         <div>
           <span className="badge coral">
-            <i /> 403 · Forbidden
+            <i /> {t("authGuard.forbiddenBadge")}
           </span>
-          <h1>This workspace is not available for your role.</h1>
-          <p>
-            Your account is signed in, but it does not hold one of the roles this page requires.
-            Ask a system administrator if you believe you should have access.
-          </p>
+          <h1>{t("authGuard.title")}</h1>
+          <p>{t("authGuard.copy")}</p>
           <Link className="btn btn-primary" href="/dashboard">
-            Back to dashboard <Icon name="arrow" />
+            {t("authGuard.back")} <Icon name="arrow" />
           </Link>
         </div>
       </div>

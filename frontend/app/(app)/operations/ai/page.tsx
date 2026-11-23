@@ -1,12 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import { localizedErrorMessage } from "@/lib/i18n/errors";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { AuthGuard } from "@/components/AuthGuard";
 import { Icon } from "@/components/safeway/Icon";
 import { Badge, Button, Input, Skeleton, Toast } from "@/components/ui";
 import { formatDate } from "@/lib/admin";
-import { errorMessage } from "@/lib/api";
+
+import { useT } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth";
 import {
   DecisionOutcomes,
@@ -57,13 +59,14 @@ function confidencePercent(value: number): number {
 }
 
 function PayloadDetails({ value }: { value?: string | null }) {
+  const t = useT();
   if (!value) {
     return <span>—</span>;
   }
 
   return (
     <details>
-      <summary>View payload JSON</summary>
+      <summary>{t("operations.ai.viewPayloadJson")}</summary>
       <pre
         style={{
           whiteSpace: "pre-wrap",
@@ -81,6 +84,7 @@ function PayloadDetails({ value }: { value?: string | null }) {
 }
 
 export default function AiDecisionSupportPage() {
+  const t = useT();
   const { can } = useAuth();
   const [typeFilter, setTypeFilter] = useState("");
   const [targetFilter, setTargetFilter] = useState("");
@@ -111,7 +115,7 @@ export default function AiDecisionSupportPage() {
           : (items[0]?.id ?? null)
       );
     } catch (error) {
-      setNotice({ message: errorMessage(error), tone: "error" });
+      setNotice({ message: localizedErrorMessage(error, t), tone: "error" });
     } finally {
       setLoading(false);
     }
@@ -139,7 +143,7 @@ export default function AiDecisionSupportPage() {
       })
       .catch((error: unknown) => {
         if (!cancelled) {
-          setNotice({ message: errorMessage(error), tone: "error" });
+          setNotice({ message: localizedErrorMessage(error, t), tone: "error" });
           setSelected(null);
         }
       })
@@ -169,7 +173,7 @@ export default function AiDecisionSupportPage() {
     try {
       setDecisions(await getRecommendationDecisions(selectedId));
     } catch (error) {
-      setNotice({ message: errorMessage(error), tone: "error" });
+      setNotice({ message: localizedErrorMessage(error, t), tone: "error" });
     } finally {
       setDecisionsLoading(false);
     }
@@ -184,7 +188,7 @@ export default function AiDecisionSupportPage() {
 
     if (targetFilter.trim() && !isGuid(targetFilter)) {
       setNotice({
-        message: "Target ID must be a valid GUID.",
+        message: t("operations.ai.errTargetId"),
         tone: "error"
       });
       return;
@@ -207,7 +211,7 @@ export default function AiDecisionSupportPage() {
     }
 
     if (!reason.trim()) {
-      setNotice({ message: "A decision reason is required.", tone: "error" });
+      setNotice({ message: t("operations.ai.errReasonRequired"), tone: "error" });
       return;
     }
 
@@ -216,7 +220,7 @@ export default function AiDecisionSupportPage() {
     if (outcome === "Modified") {
       if (!finalPayloadJson.trim()) {
         setNotice({
-          message: "A final payload is required when modifying a recommendation.",
+          message: t("operations.ai.errFinalPayloadRequired"),
           tone: "error"
         });
         return;
@@ -226,7 +230,7 @@ export default function AiDecisionSupportPage() {
         JSON.parse(finalPayloadJson);
       } catch {
         setNotice({
-          message: "Final payload must be valid JSON.",
+          message: t("operations.ai.errInvalidJson"),
           tone: "error"
         });
         return;
@@ -245,14 +249,14 @@ export default function AiDecisionSupportPage() {
         finalPayloadJson: payload
       });
       setNotice({
-        message: `${recorded.outcome} decision recorded.`,
+        message: t("operations.ai.decisionRecorded", { outcome: recorded.outcome }),
         tone: "success"
       });
       setReason("");
       setFinalPayloadJson("");
       await Promise.all([loadDecisions(), load(filters)]);
     } catch (error) {
-      setNotice({ message: errorMessage(error), tone: "error" });
+      setNotice({ message: localizedErrorMessage(error, t), tone: "error" });
     } finally {
       setSaving(false);
     }
@@ -262,19 +266,18 @@ export default function AiDecisionSupportPage() {
     <AuthGuard allowedRoles={StaffRoles}>
       <div className="ops-title">
         <div>
-          <p>AI DECISION SUPPORT</p>
-          <h1>Recommendations &amp; human review</h1>
+          <p>{t("operations.shared.aiDecisionSupport")}</p>
+          <h1>{t("operations.ai.title")}</h1>
           <span>
-            Every suggestion is advisory. A named officer records the decision and the
-            full history stays reviewable.
+            {t("operations.ai.subtitle")}
           </span>
         </div>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           <Link className="btn btn-outline" href="/operations/ai/chat">
-            <Icon name="brain" /> FAQ chat
+            <Icon name="brain" /> {t("operations.ai.faqChat")}
           </Link>
           <Link className="btn btn-outline" href="/operations/decisions">
-            <Icon name="file" /> Decision history
+            <Icon name="file" /> {t("operations.shared.decisionHistory")}
           </Link>
         </div>
       </div>
@@ -288,29 +291,29 @@ export default function AiDecisionSupportPage() {
       <section className="ops-card">
         <div className="card-heading">
           <div>
-            <h3>Recommendation queue</h3>
-            <p>Live output from the decision-support API</p>
+            <h3>{t("operations.shared.recommendationQueue")}</h3>
+            <p>{t("operations.ai.queueSubtitle")}</p>
           </div>
           <Button variant="secondary" onClick={() => void load(filters)} disabled={loading}>
-            Refresh
+            {t("operations.shared.refresh")}
           </Button>
         </div>
 
         <form className="filters" onSubmit={applyFilters} style={{ padding: 20 }}>
           <Input
-            label="Type"
-            placeholder="e.g. ShelterDispatch"
+            label={t("operations.ai.typeLabel")}
+            placeholder={t("operations.ai.typePlaceholder")}
             value={typeFilter}
             onChange={(event) => setTypeFilter(event.target.value)}
           />
           <Input
-            label="Target ID"
-            placeholder="Guid"
+            label={t("operations.ai.targetIdLabel")}
+            placeholder={t("operations.shared.guid")}
             value={targetFilter}
             onChange={(event) => setTargetFilter(event.target.value)}
           />
           <Button type="submit" disabled={loading}>
-            Apply filters
+            {t("operations.shared.applyFilters")}
           </Button>
         </form>
 
@@ -319,18 +322,18 @@ export default function AiDecisionSupportPage() {
             <Skeleton rows={5} />
           </div>
         ) : recommendations.length === 0 ? (
-          <div className="empty-state">No recommendations match the current filters.</div>
+          <div className="empty-state">{t("operations.ai.emptyQueue")}</div>
         ) : (
           <div className="table-wrap">
             <table className="table">
               <thead>
                 <tr>
-                  <th scope="col">Type</th>
-                  <th scope="col">Target</th>
-                  <th scope="col">Confidence</th>
-                  <th scope="col">Source</th>
-                  <th scope="col">Created</th>
-                  <th scope="col">Review</th>
+                  <th scope="col">{t("operations.ai.typeLabel")}</th>
+                  <th scope="col">{t("operations.ai.colTarget")}</th>
+                  <th scope="col">{t("operations.ai.colConfidence")}</th>
+                  <th scope="col">{t("operations.ai.colSource")}</th>
+                  <th scope="col">{t("operations.ai.colCreated")}</th>
+                  <th scope="col">{t("operations.ai.colReview")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -352,7 +355,7 @@ export default function AiDecisionSupportPage() {
                         onClick={() => setSelectedId(item.id)}
                         disabled={selectedId === item.id}
                       >
-                        {selectedId === item.id ? "Selected" : "View"}
+                        {selectedId === item.id ? t("operations.shared.selected") : t("operations.shared.view")}
                       </Button>
                     </td>
                   </tr>
@@ -369,11 +372,11 @@ export default function AiDecisionSupportPage() {
             <Icon name="brain" />
           </span>
           <div>
-            <i>AI DECISION SUPPORT</i>
-            <h3>Selected recommendation</h3>
+            <i>{t("operations.shared.aiDecisionSupport")}</i>
+            <h3>{t("operations.ai.selectedTitle")}</h3>
           </div>
           <small>
-            <Icon name="shield" size={13} /> Requires human review
+            <Icon name="shield" size={13} /> {t("operations.shared.requiresHumanReview")}
           </small>
         </div>
 
@@ -383,18 +386,18 @@ export default function AiDecisionSupportPage() {
           </div>
         ) : !selected ? (
           <div className="empty-state">
-            Select a recommendation from the queue to review its evidence and record a decision.
+            {t("operations.ai.selectPrompt")}
           </div>
         ) : (
           <>
             <div className="recommendation">
               <div className="rec-score">
-                <span>RECOMMENDED TYPE</span>
+                <span>{t("operations.ai.recommendedType")}</span>
                 <b>{selected.type}</b>
                 <em>
-                  Target <code>{selected.targetId}</code>
+                  {t("operations.shared.target")} <code>{selected.targetId}</code>
                 </em>
-                <em>Generated {formatDate(selected.createdAt)}</em>
+                <em>{t("operations.ai.generated", { date: formatDate(selected.createdAt) })}</em>
               </div>
               <div
                 className="confidence-ring"
@@ -412,22 +415,22 @@ export default function AiDecisionSupportPage() {
             </div>
 
             <div className="reasoning">
-              <b>Supporting signals</b>
+              <b>{t("operations.shared.supportingSignals")}</b>
               <ul>
                 <li>{selected.rationale}</li>
-                <li>Source: {selected.source}</li>
+                <li>{t("operations.shared.source", { source: selected.source })}</li>
               </ul>
             </div>
 
             <div className="suggested">
-              <b>AI payload (advisory)</b>
+              <b>{t("operations.ai.aiPayloadAdvisory")}</b>
               <PayloadDetails value={selected.payloadJson} />
             </div>
 
             {can(decisionRolesFor(selected.type)) ? (
               <form onSubmit={submitDecision} style={{ padding: "0 22px 20px" }}>
                 <label className="field">
-                  <span className="field__label">Decision</span>
+                  <span className="field__label">{t("operations.ai.decisionLabel")}</span>
                   <select
                     className="input"
                     value={outcome}
@@ -448,19 +451,19 @@ export default function AiDecisionSupportPage() {
                 </label>
 
                 <label className="field">
-                  <span className="field__label">Reason (required)</span>
+                  <span className="field__label">{t("operations.ai.reasonLabel")}</span>
                   <textarea
                     className="input"
                     rows={3}
                     value={reason}
                     onChange={(event) => setReason(event.target.value)}
-                    placeholder="Why is this the right human decision?"
+                    placeholder={t("operations.ai.reasonPlaceholder")}
                   />
                 </label>
 
                 {outcome === "Modified" ? (
                   <label className="field">
-                    <span className="field__label">Final payload JSON (required)</span>
+                    <span className="field__label">{t("operations.ai.finalPayloadLabel")}</span>
                     <textarea
                       className="input"
                       rows={5}
@@ -472,37 +475,35 @@ export default function AiDecisionSupportPage() {
 
                 <div className="actions">
                   <Button type="submit" disabled={saving}>
-                    {saving ? "Saving…" : "Record decision"}
+                    {saving ? t("operations.ai.saving") : t("operations.ai.recordDecision")}
                   </Button>
                   <span className="metric__label">
-                    Recording a decision appends to the review history; it never edits AI output.
+                    {t("operations.ai.decisionNote")}
                   </span>
                 </div>
               </form>
             ) : (
               <p className="metric__label" style={{ padding: "0 22px 20px" }}>
-                Your role can review recommendations. AI advice never performs critical
-                actions; only the authorized human role for this recommendation type can
-                record a decision.
+                {t("operations.ai.roleNote")}
               </p>
             )}
 
             <div style={{ padding: "0 22px 22px" }}>
-              <b>Decision history</b>
+              <b>{t("operations.shared.decisionHistory")}</b>
               {decisionsLoading ? (
                 <Skeleton rows={2} />
               ) : decisions.length === 0 ? (
-                <p className="metric__label">No decisions recorded for this recommendation yet.</p>
+                <p className="metric__label">{t("operations.ai.noDecisions")}</p>
               ) : (
                 <div className="table-wrap">
                   <table className="table">
                     <thead>
                       <tr>
-                        <th scope="col">Outcome</th>
-                        <th scope="col">Reason</th>
-                        <th scope="col">Final payload</th>
-                        <th scope="col">Decided by</th>
-                        <th scope="col">Decided at</th>
+                        <th scope="col">{t("operations.ai.colOutcome")}</th>
+                        <th scope="col">{t("operations.ai.colReason")}</th>
+                        <th scope="col">{t("operations.decisions.finalPayload")}</th>
+                        <th scope="col">{t("operations.ai.colDecidedBy")}</th>
+                        <th scope="col">{t("operations.ai.colDecidedAt")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -533,27 +534,27 @@ export default function AiDecisionSupportPage() {
       <section className="ops-card" style={{ marginTop: 16 }}>
         <div className="card-heading">
           <div>
-            <h3>Human oversight rules</h3>
-            <p>How this platform handles automated suggestions</p>
+            <h3>{t("operations.ai.oversightTitle")}</h3>
+            <p>{t("operations.ai.oversightSubtitle")}</p>
           </div>
         </div>
         <div className="resource-bars">
           <div>
             <span>
-              <b>Advisory only</b>
-              <i>AI advice never performs critical actions or records a decision.</i>
+              <b>{t("operations.ai.advisoryOnly")}</b>
+              <i>{t("operations.ai.advisoryBody")}</i>
             </span>
           </div>
           <div>
             <span>
-              <b>Named approver</b>
-              <i>Only authorized human roles make and record decisions.</i>
+              <b>{t("operations.ai.namedApprover")}</b>
+              <i>{t("operations.ai.namedApproverBody")}</i>
             </span>
           </div>
           <div>
             <span>
-              <b>Append-only record</b>
-              <i>Approvals and overrides are written to the audit trail.</i>
+              <b>{t("operations.ai.appendOnly")}</b>
+              <i>{t("operations.ai.appendOnlyBody")}</i>
             </span>
           </div>
         </div>

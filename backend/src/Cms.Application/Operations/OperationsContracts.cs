@@ -96,6 +96,13 @@ public sealed record VolunteerTaskDto(
     Guid? VolunteerId,
     DateTime? CompletedAt);
 
+/// <summary>Caller-scoped read model for the public volunteer portal.</summary>
+public sealed record VolunteerPortalDto(
+    VolunteerDto? Profile,
+    IReadOnlyList<VolunteerAvailabilityDto> Availability,
+    int CompletedTasks,
+    IReadOnlyList<VolunteerTaskDto> Opportunities);
+
 public sealed record AssistanceRequestDto(
     Guid Id,
     Guid FromOrgId,
@@ -232,6 +239,7 @@ public interface IOperationsService
     Task<VolunteerDto> VerifyVolunteerAsync(Guid id, bool approved, string? reason, CancellationToken ct);
     Task<VolunteerAvailabilityDto> AddAvailabilityAsync(AddAvailabilityInput input, CancellationToken ct);
     Task<PagedResult<VolunteerTaskDto>> GetMyTasksAsync(int page, int pageSize, CancellationToken ct);
+    Task<VolunteerPortalDto> GetVolunteerPortalAsync(CancellationToken ct);
     Task<PagedResult<VolunteerTaskDto>> GetVolunteerTasksAsync(string? status, int page, int pageSize, CancellationToken ct);
     Task<VolunteerTaskDto> CreateVolunteerTaskAsync(CreateVolunteerTaskInput input, CancellationToken ct);
     Task<VolunteerTaskDto> AssignVolunteerTaskAsync(Guid id, Guid volunteerId, CancellationToken ct);

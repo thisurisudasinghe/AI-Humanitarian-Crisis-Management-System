@@ -79,6 +79,33 @@ public sealed class AuthController : ControllerBase
         return NoContent();
     }
 
+    /// <summary>Requests a password reset email for an account.</summary>
+    [HttpPost("forgot-password")]
+    [AllowAnonymous]
+    [EnableRateLimiting("password-reset")]
+    [ProducesResponseType(typeof(ForgotPasswordResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    public async Task<ActionResult<ForgotPasswordResponseDto>> ForgotPassword(
+        [FromBody] ForgotPasswordRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        return Ok(await _authenticationService.ForgotPasswordAsync(request, cancellationToken));
+    }
+
+    /// <summary>Resets a password using a single-use reset token.</summary>
+    [HttpPost("reset-password")]
+    [AllowAnonymous]
+    [EnableRateLimiting("password-reset")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> ResetPassword(
+        [FromBody] ResetPasswordRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        await _authenticationService.ResetPasswordAsync(request, cancellationToken);
+        return NoContent();
+    }
+
     /// <summary>Smoke check for the EmergencyCoordinator and CaseManager role pair.</summary>
     [HttpGet("role-check")]
     [Authorize(Roles = RoleNames.EmergencyCoordinator + "," + RoleNames.CaseManager)]

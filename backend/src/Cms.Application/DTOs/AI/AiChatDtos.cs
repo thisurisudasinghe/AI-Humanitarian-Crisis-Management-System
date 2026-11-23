@@ -6,6 +6,9 @@ namespace Cms.Application.DTOs.AI;
 public sealed class AiChatRequestDto
 {
     public string Message { get; set; } = string.Empty;
+
+    /// <summary>Optional UI locale (en, si, ta) for localized fixed responses.</summary>
+    public string? Locale { get; set; }
 }
 
 public sealed class AiChatResponseDto
