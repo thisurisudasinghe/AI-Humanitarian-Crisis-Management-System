@@ -12,7 +12,7 @@ public static class AuthorizedRoles
         Roles.Citizen + "," + Roles.EmergencyCoordinator + "," + Roles.CaseManager + "," +
         Roles.LogisticsManager + "," + Roles.ShelterAdmin + "," + Roles.VolunteerCoordinator + "," +
         Roles.Volunteer + "," + Roles.DonorOfficer + "," + Roles.PartnerOfficer + "," +
-        Roles.SystemAdmin;
+        Roles.SystemAdmin + "," + RoleNames.Donor;
 
     public const string Staff =
         Roles.EmergencyCoordinator + "," + Roles.CaseManager + "," + Roles.LogisticsManager + "," +

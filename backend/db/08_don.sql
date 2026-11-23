@@ -35,11 +35,31 @@ BEGIN
         [contact_phone] nvarchar(20) NULL,
         [is_anonymous] bit NOT NULL,
         [is_active] bit NOT NULL,
+        [user_id] uniqueidentifier NULL,
         [created_by_user_id] uniqueidentifier NULL,
         [created_at] datetime2 NOT NULL,
         [updated_at] datetime2 NULL,
         CONSTRAINT [PK_donors] PRIMARY KEY ([id])
     );
+END;
+GO
+
+-- Safe incremental upgrade for existing databases (never drops data).
+IF COL_LENGTH(N'[don].[donors]', N'user_id') IS NULL
+BEGIN
+    ALTER TABLE [don].[donors] ADD [user_id] uniqueidentifier NULL;
+END;
+GO
+
+IF COL_LENGTH(N'[don].[donors]', N'user_id') IS NOT NULL
+   AND NOT EXISTS (
+    SELECT 1 FROM sys.indexes
+    WHERE [object_id] = OBJECT_ID(N'[don].[donors]')
+      AND [name] = N'IX_donors_user_id')
+BEGIN
+    CREATE UNIQUE INDEX [IX_donors_user_id]
+        ON [don].[donors] ([user_id])
+        WHERE [user_id] IS NOT NULL;
 END;
 GO
 

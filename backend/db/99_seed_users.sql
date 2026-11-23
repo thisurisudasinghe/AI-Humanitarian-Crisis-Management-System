@@ -119,6 +119,16 @@ BEGIN
 END;
 GO
 
+IF NOT EXISTS (
+    SELECT 1 FROM [identity].[roles]
+    WHERE [id] = '0a000000-0000-0000-0000-000000000011'
+       OR [name] = N'Donor')
+BEGIN
+    INSERT INTO [identity].[roles] ([id], [name], [description], [created_at], [updated_at])
+    VALUES ('0a000000-0000-0000-0000-000000000011', N'Donor', N'Public donor participant', '2026-11-01T00:00:00', NULL);
+END;
+GO
+
 -- ----------------------------------------------------------------------------
 -- Demo organisation
 -- ----------------------------------------------------------------------------

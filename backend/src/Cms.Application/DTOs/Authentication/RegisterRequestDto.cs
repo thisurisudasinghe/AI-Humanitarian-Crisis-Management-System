@@ -18,4 +18,11 @@ public class RegisterRequestDto
     [MinLength(8)]
     [MaxLength(128)]
     public string Password { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Optional public account purpose. Server validates against the safe
+    /// public self-registration allowlist and never grants privileged roles.
+    /// </summary>
+    [MaxLength(50)]
+    public string? AccountPurpose { get; set; }
 }

@@ -80,12 +80,26 @@ public static class JwtAuthenticationExtensions
 
         services.AddAuthorization(options =>
         {
-            var staffRoles = RoleNames.All
-                .Where(role => role != RoleNames.Citizen)
-                .ToArray();
+            var staffRoles = new[]
+            {
+                RoleNames.EmergencyCoordinator,
+                RoleNames.CaseManager,
+                RoleNames.LogisticsManager,
+                RoleNames.ShelterAdmin,
+                RoleNames.VolunteerCoordinator,
+                RoleNames.DonorOfficer,
+                RoleNames.PartnerOfficer,
+                RoleNames.SystemAdmin
+            };
 
             options.AddPolicy("StaffOnly", policy =>
                 policy.RequireRole(staffRoles));
+
+            options.AddPolicy("PublicPortal", policy =>
+                policy.RequireRole(
+                    RoleNames.Citizen,
+                    RoleNames.Volunteer,
+                    RoleNames.Donor));
 
             options.AddPolicy("AdminOnly", policy =>
                 policy.RequireRole(RoleNames.SystemAdmin));

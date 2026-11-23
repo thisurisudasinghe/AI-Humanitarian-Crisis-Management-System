@@ -627,6 +627,42 @@ public sealed class OperationsService(
         return new PagedResult<VolunteerTaskDto>(rows.Select(MapTask).ToArray(), total, page < 1 ? 1 : page, size);
     }
 
+    public async Task<VolunteerPortalDto> GetVolunteerPortalAsync(CancellationToken ct)
+    {
+        if (!user.UserId.HasValue) throw new UnauthorizedAccessException();
+
+        var opportunities = await db.VolunteerTasks.AsNoTracking()
+            .Where(x => x.VolunteerId == null && x.Status == "Open")
+            .OrderBy(x => x.ScheduledAt).ThenBy(x => x.CreatedAt)
+            .Take(20).ToListAsync(ct);
+
+        var profile = await db.Volunteers.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.UserId == user.UserId.Value, ct);
+
+        if (profile is null)
+        {
+            return new VolunteerPortalDto(
+                null,
+                Array.Empty<VolunteerAvailabilityDto>(),
+                0,
+                opportunities.Select(MapTask).ToArray());
+        }
+
+        var availability = await db.VolunteerAvailabilities.AsNoTracking()
+            .Where(x => x.VolunteerId == profile.Id)
+            .OrderBy(x => x.StartsAt).Take(20).ToListAsync(ct);
+
+        var completed = await db.VolunteerActivities.AsNoTracking()
+            .CountAsync(x => x.VolunteerId == profile.Id, ct);
+
+        return new VolunteerPortalDto(
+            MapVolunteer(profile),
+            availability.Select(x =>
+                new VolunteerAvailabilityDto(x.Id, x.VolunteerId, x.StartsAt, x.EndsAt)).ToArray(),
+            completed,
+            opportunities.Select(MapTask).ToArray());
+    }
+
     public async Task<PagedResult<VolunteerTaskDto>> GetVolunteerTasksAsync(string? status, int page, int pageSize, CancellationToken ct)
     {
         var q = db.VolunteerTasks.AsNoTracking().AsQueryable();

@@ -229,6 +229,7 @@ public sealed class DevelopmentDemoSeeder : IHostedService
         RoleNames.DonorOfficer => Guid.Parse("0a000000-0000-0000-0000-000000000008"),
         RoleNames.PartnerOfficer => Guid.Parse("0a000000-0000-0000-0000-000000000009"),
         RoleNames.SystemAdmin => Guid.Parse("0a000000-0000-0000-0000-000000000010"),
+        RoleNames.Donor => Guid.Parse("0a000000-0000-0000-0000-000000000011"),
         _ => throw new ArgumentOutOfRangeException(
             nameof(roleName), roleName, "Unknown system role.")
     };
