@@ -1380,21 +1380,59 @@ footer {
 }
 
 .form-aside {
-    padding: 64px clamp(40px, 6vw, 95px);
+    padding: 56px clamp(36px, 5vw, 72px);
     color: white;
-    background: var(--deep);
+    background: linear-gradient(160deg, #10273a 0%, #183d57 55%, #1e4d6d 100%);
     position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+    overflow: hidden;
+}
+
+.form-aside::after {
+    content: "";
+    position: absolute;
+    inset: auto -10% -20% auto;
+    width: 420px;
+    height: 420px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.08), transparent 68%);
+    pointer-events: none;
+}
+
+.form-aside > * {
+    position: relative;
+    z-index: 1;
 }
 
 .back-link {
     color: var(--muted);
     font-size: 12px;
     font-weight: 650;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: color var(--t-fast), transform var(--t-fast);
+}
+
+.back-link:hover {
+    color: var(--deep);
+}
+
+.back-link:focus-visible {
+    outline: 2px solid var(--blue);
+    outline-offset: 3px;
+    border-radius: 4px;
 }
 
 .form-aside .back-link {
     color: #c3d4df;
     margin-bottom: 70px;
+}
+
+.form-aside .back-link:hover {
+    color: #ffffff;
 }
 
 .form-aside h1 {
@@ -1487,6 +1525,11 @@ footer {
     max-width: 900px;
 }
 
+.form-panel > .back-link {
+    margin-bottom: 28px;
+    width: fit-content;
+}
+
 .mobile-progress {
     display: none;
 }
@@ -1530,9 +1573,16 @@ footer {
     color: var(--muted);
 }
 
-.field-label button {
+.field-label button,
+.field-label a {
     color: var(--blue);
     font-size: 11px;
+    font-weight: 650;
+    text-decoration: none;
+}
+
+.field-label a:hover {
+    text-decoration: underline;
 }
 
 .category-grid {
@@ -1958,23 +2008,41 @@ footer {
 .role-toggle {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    background: #f0f5f8;
+    gap: 4px;
     padding: 4px;
     margin: 28px 0;
+    background: #f3f7fb;
+    border: 1px solid #dbe5ee;
+    border-radius: 12px;
 }
 
 .role-toggle button {
-    padding: 12px;
+    padding: 12px 14px;
+    border-radius: 9px;
+    border: 1px solid transparent;
     text-align: center;
-    font-size: 11px;
-    font-weight: 700;
+    font-size: 13px;
+    font-weight: 650;
     color: var(--muted);
+    background: transparent;
+    transition: background-color var(--t-fast), color var(--t-fast), border-color var(--t-fast), box-shadow var(--t-fast);
+}
+
+.role-toggle button:hover:not(.active) {
+    color: var(--deep);
+    background: rgba(255, 255, 255, 0.72);
 }
 
 .role-toggle button.active {
-    background: white;
-    color: var(--deep);
-    box-shadow: 0 2px 10px rgba(23, 54, 79, 0.08);
+    background: linear-gradient(180deg, #1a4460 0%, #163c57 100%);
+    color: #ffffff;
+    border-color: #163c57;
+    box-shadow: 0 6px 14px rgba(22, 60, 87, 0.18);
+}
+
+.role-toggle button:focus-visible {
+    outline: 2px solid var(--blue);
+    outline-offset: 2px;
 }
 
 .password-field {
@@ -1982,11 +2050,37 @@ footer {
     position: relative;
 }
 
-.password-field button {
+.password-field input {
+    padding-right: 48px;
+}
+
+.password-toggle {
     position: absolute;
-    right: 13px;
-    top: 11px;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 32px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
     color: var(--muted);
+    cursor: pointer;
+    transition: color var(--t-fast), background-color var(--t-fast);
+}
+
+.password-toggle:hover {
+    color: var(--deep);
+    background: rgba(22, 60, 87, 0.06);
+}
+
+.password-toggle:focus-visible {
+    outline: 2px solid var(--blue);
+    outline-offset: 2px;
+    color: var(--deep);
 }
 
 .login-submit {
@@ -5760,6 +5854,30 @@ a.btn-primary {
 
 .form-error:empty {
     display: none;
+}
+
+.form-success {
+    margin-top: 18px;
+    padding: 12px 14px;
+    border: 1px solid #bfd8cb;
+    border-left: 4px solid var(--green);
+    border-radius: 4px;
+    background: #f2f8f5;
+    color: #245746;
+    font-size: 12px;
+    line-height: 1.6;
+}
+
+.form-warning {
+    margin-top: 18px;
+    padding: 12px 14px;
+    border: 1px solid #d9dce2;
+    border-left: 4px solid #6f8290;
+    border-radius: 4px;
+    background: #f7f9fb;
+    color: #415766;
+    font-size: 12px;
+    line-height: 1.6;
 }
 
 .integration-notice {

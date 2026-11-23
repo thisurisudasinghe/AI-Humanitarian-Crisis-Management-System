@@ -13,6 +13,8 @@ public static class AuditActions
     public const string UserRoleChanged = "User.RoleChanged";
     public const string UserUpdated = "User.Updated";
     public const string UserDeactivated = "User.Deactivated";
+    public const string PasswordResetRequested = "User.PasswordResetRequested";
+    public const string PasswordResetCompleted = "User.PasswordResetCompleted";
 
     // Administration
     public const string OrganisationCreated = "Organisation.Created";

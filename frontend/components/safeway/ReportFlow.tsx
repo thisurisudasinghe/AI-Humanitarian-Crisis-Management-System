@@ -200,18 +200,14 @@ export function ReportFlow() {
       <SimpleHeader />
       <main className="report-layout">
         <aside className="form-aside">
-          <button
-            className="back-link"
-            type="button"
-            onClick={() => (step > 1 ? setStep(step - 1) : undefined)}
-          >
-            ← Back
-          </button>
-          <div className="eyebrow">
-            <span /> Crisis report
+          <Brand light />
+          <div>
+            <div className="eyebrow">
+              <span /> Crisis report
+            </div>
+            <h1>Help us understand what&apos;s happening.</h1>
+            <p>Share only what you safely can. You can review everything before submitting.</p>
           </div>
-          <h1>Help us understand what&apos;s happening.</h1>
-          <p>Share only what you safely can. You can review everything before submitting.</p>
           <div className="step-list">
             {["What happened", "Location & needs", "Review"].map((label, index) => (
               <div
@@ -232,6 +228,9 @@ export function ReportFlow() {
         </aside>
 
         <section className="form-panel">
+          <Link className="back-link report-back-link" href="/">
+            ← Back to home
+          </Link>
           <div className="mobile-progress">
             Step {step} of 3{" "}
             <span>

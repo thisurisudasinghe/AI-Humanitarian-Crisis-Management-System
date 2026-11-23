@@ -32,4 +32,12 @@ public interface IAuthenticationService
     Task<AuthResponseDto> EnrollPublicRoleAsync(
         string purpose,
         CancellationToken cancellationToken = default);
+
+    Task<ForgotPasswordResponseDto> ForgotPasswordAsync(
+        ForgotPasswordRequestDto request,
+        CancellationToken cancellationToken = default);
+
+    Task ResetPasswordAsync(
+        ResetPasswordRequestDto request,
+        CancellationToken cancellationToken = default);
 }

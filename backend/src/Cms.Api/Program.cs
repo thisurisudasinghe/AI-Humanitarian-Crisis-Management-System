@@ -198,6 +198,18 @@ builder.Services.AddRateLimiter(options =>
         });
     });
 
+    // Password recovery endpoints: tighter budget to limit abuse.
+    options.AddPolicy("password-reset", httpContext =>
+    {
+        var key = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        return RateLimitPartition.GetFixedWindowLimiter(key, _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 10,
+            Window = TimeSpan.FromMinutes(15),
+            QueueLimit = 0
+        });
+    });
+
     // Public read-only endpoints (for example health checks) get a tighter budget.
     options.AddPolicy("public", httpContext =>
     {
