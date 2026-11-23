@@ -25,27 +25,30 @@ const STATUS_KEYS: Record<number, string> = {
   409: "apiErrors.conflict",
   413: "apiErrors.payloadTooLarge",
   422: "apiErrors.validation",
-  429: "apiErrors.rateLimited"
+  429: "apiErrors.rateLimited",
+  500: "apiErrors.server",
+  502: "apiErrors.server",
+  503: "apiErrors.server",
+  504: "apiErrors.server"
 };
 
 /**
  * Maps stable API problem codes/statuses to localized UI messages.
- * Unknown codes keep their original API detail; no trace/internal fields are exposed.
+ * Unknown failures use a safe localized message so raw database or framework
+ * details are never rendered. Genuine failures remain observable by status/code.
  */
 export function localizedErrorMessage(error: unknown, t: Translator): string {
   if (error instanceof ApiError) {
+    const isValidation = error.code === "VALIDATION_FAILED" || error.status === 422;
     const fieldErrors = Object.values(error.details.errors ?? {})
       .flat()
       .filter(Boolean);
 
-    if (fieldErrors.length > 0) return fieldErrors.join(" ");
+    if (isValidation && fieldErrors.length > 0) return fieldErrors.join(" ");
 
     const key = CODE_KEYS[error.code] ?? STATUS_KEYS[error.status];
-    if (key) return t(key);
-
-    return error.message || t("apiErrors.generic");
+    return key ? t(key) : t("apiErrors.server");
   }
 
-  if (error instanceof Error) return error.message || t("apiErrors.generic");
   return t("apiErrors.generic");
 }

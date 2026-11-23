@@ -227,7 +227,7 @@ export default function DonorPortalPage() {
     : "—";
 
   return (
-    <AuthGuard allowedRoles={[RoleNames.Donor]}>
+    <AuthGuard allowedRoles={[RoleNames.Donor]} activationPurpose="donor">
       <PortalHeader
         eyebrow={t("portal.donor.eyebrow")}
         title={t("portal.donor.title")}

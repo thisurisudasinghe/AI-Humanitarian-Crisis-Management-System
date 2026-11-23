@@ -6,6 +6,7 @@
  * DEV2-specific payload mapping and response types.
  */
 import { api, apiJson, ApiError } from "@/lib/api";
+import { localizedErrorMessage } from "@/lib/i18n/errors";
 
 export interface CrisisReportInput {
   category: string;
@@ -330,5 +331,5 @@ export function caseRequestErrorMessage(
   if (cause instanceof ApiError && cause.status === 401) {
     return t ? t("apiErrors.unauthorized") : "Sign in as a citizen to submit and track reports.";
   }
-  return cause instanceof Error ? cause.message : fallback;
+  return t ? localizedErrorMessage(cause, t) : fallback;
 }
