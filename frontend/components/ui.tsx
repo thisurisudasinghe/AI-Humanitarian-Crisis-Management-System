@@ -8,6 +8,7 @@ import {
   type ReactNode,
   type SelectHTMLAttributes
 } from "react";
+import { useT } from "@/lib/i18n";
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: "primary" | "secondary" | "danger";
@@ -78,16 +79,18 @@ export function Badge({ children }: { children: ReactNode }) {
 }
 
 export function StatusBadge({ active }: { active: boolean }) {
+  const t = useT();
   return (
     <span className={`badge ${active ? "badge--ok" : "badge--muted"}`}>
-      {active ? "Active" : "Inactive"}
+      {active ? t("ui.active") : t("ui.inactive")}
     </span>
   );
 }
 
 export function Skeleton({ rows = 3 }: { rows?: number }) {
+  const t = useT();
   return (
-    <div className="skeleton-stack" aria-label="Loading">
+    <div className="skeleton-stack" aria-label={t("ui.loading")}>
       {Array.from({ length: rows }).map((_, index) => (
         <div className="skeleton" key={index} />
       ))}
@@ -108,6 +111,7 @@ export function Modal({
   onClose: () => void;
   children: ReactNode;
 }) {
+  const t = useT();
   const dialogRef = useRef<HTMLDivElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
 
@@ -167,8 +171,8 @@ export function Modal({
       >
         <div className="modal__header">
           <h2>{title}</h2>
-          <Button variant="secondary" onClick={onClose} aria-label="Close dialog">
-            ✕
+          <Button variant="secondary" onClick={onClose} aria-label={t("ui.closeDialog")}>
+            ×
           </Button>
         </div>
         <div className="modal__body">{children}</div>
@@ -180,7 +184,7 @@ export function Modal({
 export function ConfirmDialog({
   title,
   message,
-  confirmLabel = "Confirm",
+  confirmLabel,
   onConfirm,
   onCancel
 }: {
@@ -190,15 +194,16 @@ export function ConfirmDialog({
   onConfirm: () => void;
   onCancel: () => void;
 }) {
+  const t = useT();
   return (
     <Modal title={title} onClose={onCancel}>
       <p>{message}</p>
       <div className="actions">
         <Button variant="danger" onClick={onConfirm}>
-          {confirmLabel}
+          {confirmLabel ?? t("ui.confirm")}
         </Button>
         <Button variant="secondary" onClick={onCancel}>
-          Cancel
+          {t("ui.cancel")}
         </Button>
       </div>
     </Modal>
@@ -214,6 +219,7 @@ export function Toast({
   tone?: "error" | "success";
   onDismiss: () => void;
 }) {
+  const t = useT();
   if (!message) {
     return null;
   }
@@ -221,8 +227,8 @@ export function Toast({
   return (
     <div className={`toast toast--${tone}`} role={tone === "error" ? "alert" : "status"}>
       <span>{message}</span>
-      <Button variant="secondary" onClick={onDismiss} aria-label="Dismiss message">
-        ✕
+      <Button variant="secondary" onClick={onDismiss} aria-label={t("ui.dismissMessage")}>
+        ×
       </Button>
     </div>
   );
@@ -241,7 +247,7 @@ export function ServerTable<T>({
   pageSize,
   totalCount,
   onPageChange,
-  emptyMessage = "No records found."
+  emptyMessage
 }: {
   columns: Column<T>[];
   rows: T[];
@@ -251,10 +257,11 @@ export function ServerTable<T>({
   onPageChange: (page: number) => void;
   emptyMessage?: string;
 }) {
+  const t = useT();
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
 
   if (rows.length === 0) {
-    return <EmptyState>{emptyMessage}</EmptyState>;
+    return <EmptyState>{emptyMessage ?? t("ui.noRecords")}</EmptyState>;
   }
 
   return (
@@ -279,23 +286,23 @@ export function ServerTable<T>({
           ))}
         </tbody>
       </table>
-      <nav className="pager" aria-label="Pagination">
+      <nav className="pager" aria-label={t("ui.pagination")}>
         <Button
           variant="secondary"
           disabled={page <= 1}
           onClick={() => onPageChange(page - 1)}
         >
-          Previous
+          {t("ui.previous")}
         </Button>
         <span>
-          Page {page} of {totalPages}
+          {t("ui.pageOf", { page: String(page), total: String(totalPages) })}
         </span>
         <Button
           variant="secondary"
           disabled={page >= totalPages}
           onClick={() => onPageChange(page + 1)}
         >
-          Next
+          {t("ui.next")}
         </Button>
       </nav>
     </div>

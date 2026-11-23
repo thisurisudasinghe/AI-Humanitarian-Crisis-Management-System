@@ -168,7 +168,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
           ...publicNav.slice(1)
         ];
   const displayName = user?.fullName ?? t("common.loading");
-  const roleLabel = mode === "ops" ? humanizeRole(roles[0]) : t("dashboard.publicAccount");
+  const roleLabel = mode === "ops" ? humanizeRole(roles[0], t) : t("dashboard.publicAccount");
 
   async function onLogout() {
     await logout();

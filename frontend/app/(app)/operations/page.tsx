@@ -1,15 +1,17 @@
 "use client";
 
 import Link from "next/link";
+import { localizedErrorMessage } from "@/lib/i18n/errors";
 import { useEffect, useState } from "react";
 import { AuthGuard } from "@/components/AuthGuard";
 import { Icon } from "@/components/safeway/Icon";
 import { EmptyPanel, IntegrationNotice } from "@/components/safeway/IntegrationNotice";
-import { api, errorMessage } from "@/lib/api";
+import { api } from "@/lib/api";
 import type { AuditEventDto, KpiReportDto, PagedResult } from "@/lib/admin";
 import { useAuth } from "@/lib/auth";
 import { formatShortDate } from "@/lib/format";
 import { RoleNames, StaffRoles, hasAnyRole } from "@/lib/roles";
+import { useT } from "@/lib/i18n";
 
 const kpiRoles = [
   RoleNames.SystemAdmin,
@@ -24,6 +26,7 @@ function monthRange(): { from: string; to: string } {
 }
 
 export default function OperationsPage() {
+  const t = useT();
   const { user } = useAuth();
   const [kpi, setKpi] = useState<KpiReportDto | null>(null);
   const [audit, setAudit] = useState<AuditEventDto[]>([]);
@@ -60,7 +63,7 @@ export default function OperationsPage() {
         }
       } catch (caught) {
         if (!cancelled) {
-          setError(errorMessage(caught));
+          setError(localizedErrorMessage(caught, t));
         }
       } finally {
         if (!cancelled) {
@@ -78,51 +81,54 @@ export default function OperationsPage() {
   const metrics: [string, string, string, string, string][] = canViewKpis
     ? [
         [
-          "Unresolved requests",
+          t("operations.overview.metricUnresolvedRequests"),
           kpi ? String(kpi.unresolvedRequestCount) : "—",
-          "Live from the Dev 1 API",
+          t("operations.overview.metricLiveDevApi"),
           "alert",
           "blue"
         ],
         [
-          "Active campaigns",
+          t("operations.overview.metricActiveCampaigns"),
           kpi ? String(kpi.activeCampaignCount) : "—",
-          "Donation campaigns in progress",
+          t("operations.overview.metricDonationCampaigns"),
           "heart",
           "green"
         ],
         [
-          "Audit events",
+          t("operations.overview.metricAuditEvents"),
           kpi ? String(kpi.auditEventCount) : "—",
-          "Append-only governance trail",
+          t("operations.overview.metricGovernanceTrail"),
           "shield",
           "coral"
         ],
         [
-          "New registrations",
+          t("operations.overview.metricNewRegistrations"),
           kpi ? String(kpi.newUserCount) : "—",
-          "Accounts created this period",
+          t("operations.overview.metricAccountsCreated"),
           "chart",
           "amber"
         ]
       ]
     : [
-        ["Unresolved requests", "—", "Requires a KPI role", "alert", "blue"],
-        ["Active campaigns", "—", "Requires a KPI role", "heart", "green"],
-        ["Audit events", "—", "Requires a KPI role", "shield", "coral"],
-        ["New registrations", "—", "Requires a KPI role", "chart", "amber"]
+        [t("operations.overview.metricUnresolvedRequests"), "—", t("operations.overview.requiresKpiRole"), "alert", "blue"],
+        [t("operations.overview.metricActiveCampaigns"), "—", t("operations.overview.requiresKpiRole"), "heart", "green"],
+        [t("operations.overview.metricAuditEvents"), "—", t("operations.overview.requiresKpiRole"), "shield", "coral"],
+        [t("operations.overview.metricNewRegistrations"), "—", t("operations.overview.requiresKpiRole"), "chart", "amber"]
       ];
 
   return (
     <AuthGuard allowedRoles={StaffRoles}>
       <div className="ops-title">
         <div>
-          <p>OPERATIONS OVERVIEW</p>
-          <h1>Response command centre</h1>
+          <p>{t("operations.overview.eyebrow")}</p>
+          <h1>{t("operations.overview.title")}</h1>
           <span>
             {kpi
-              ? `KPI period from ${formatShortDate(kpi.from)} to ${formatShortDate(kpi.to)}`
-              : "Live operational metrics appear as modules are connected"}
+              ? t("operations.overview.kpiPeriod", {
+                  from: formatShortDate(kpi.from),
+                  to: formatShortDate(kpi.to)
+                })
+              : t("operations.overview.subtitleFallback")}
           </span>
         </div>
         <div>
@@ -130,12 +136,12 @@ export default function OperationsPage() {
             className="btn btn-outline"
             type="button"
             disabled
-            title="Brief export will be provided by the reporting module"
+            title={t("operations.overview.exportTitle")}
           >
-            <Icon name="file" /> Export brief
+            <Icon name="file" /> {t("operations.overview.exportBrief")}
           </button>
           <Link className="btn btn-primary" href="/operations/crises">
-            <Icon name="alert" /> Incident queue
+            <Icon name="alert" /> {t("operations.crises.incidentQueue")}
           </Link>
         </div>
       </div>
@@ -164,37 +170,35 @@ export default function OperationsPage() {
         ))}
       </div>
 
-      <IntegrationNotice title="Crisis, shelter and resource metrics are not connected" owner="Dev 2 and Dev 4">
-        Only identity, donation and governance aggregates are live. Operational cards show a dash
-        rather than invented counts.
+      <IntegrationNotice title={t("operations.overview.integrationTitle")} owner={t("operations.overview.integrationOwner")}>
+        {t("operations.overview.integrationBody")}
       </IntegrationNotice>
 
       <div className="ops-grid-main">
         <section className="ops-card crisis-table-card">
           <div className="card-heading">
             <div>
-              <h3>Active crisis response</h3>
-              <p>Priority incidents requiring coordination</p>
+              <h3>{t("operations.overview.activeCrisis")}</h3>
+              <p>{t("operations.shared.priorityIncidents")}</p>
             </div>
             <div className="table-actions">
               <Link href="/operations/crises">
-                View all <Icon name="arrow" size={16} />
+                {t("operations.overview.viewAll")} <Icon name="arrow" size={16} />
               </Link>
             </div>
           </div>
           <div className="crisis-table">
             <div className="table-head">
-              <span>INCIDENT</span>
-              <span>SEVERITY</span>
-              <span>ASSIGNED</span>
-              <span>PROGRESS</span>
-              <span>UPDATED</span>
+              <span>{t("operations.shared.incident")}</span>
+              <span>{t("operations.shared.severity")}</span>
+              <span>{t("operations.shared.assigned")}</span>
+              <span>{t("operations.shared.progress")}</span>
+              <span>{t("operations.shared.updated")}</span>
               <span />
             </div>
             <div className="table-empty">
-              <EmptyPanel title="No crisis data source yet" owner="Dev 2 — crisis & case management">
-                Incident rows will render from the crisis and case endpoints. No sample incidents
-                are shown so the overview cannot be mistaken for live data.
+              <EmptyPanel title={t("operations.overview.noCrisisTitle")} owner={t("operations.overview.noCrisisOwner")}>
+                {t("operations.overview.noCrisisBody")}
               </EmptyPanel>
             </div>
           </div>
@@ -203,32 +207,32 @@ export default function OperationsPage() {
         <aside className="ops-card live-map-card">
           <div className="card-heading">
             <div>
-              <h3>Live situation map</h3>
-              <p>Active incidents &amp; resources</p>
+              <h3>{t("operations.overview.liveMap")}</h3>
+              <p>{t("operations.overview.activeIncidentsResources")}</p>
             </div>
-            <Link href="/operations/map" aria-label="Open live map">
+            <Link href="/operations/map" aria-label={t("operations.overview.openLiveMap")}>
               <Icon name="arrow" size={16} />
             </Link>
           </div>
           <div className="mini-map">
             <div className="map-roads" />
             <div className="map-overlay">
-              Map data not connected
-              <small>Incident and resource locations will come from Dev 2 and Dev 4.</small>
+              {t("operations.overview.mapNotConnected")}
+              <small>{t("operations.overview.mapNotConnectedDetail")}</small>
             </div>
           </div>
           <div className="map-legend">
             <span>
               <i className="critical" />
-              Incident
+              {t("operations.shared.incident")}
             </span>
             <span>
               <i />
-              Shelter
+              {t("operations.shared.shelter")}
             </span>
             <span>
               <i className="green" />
-              Resource
+              {t("operations.shared.resource")}
             </span>
           </div>
         </aside>
@@ -238,25 +242,25 @@ export default function OperationsPage() {
         <section className="ops-card">
           <div className="card-heading">
             <div>
-              <h3>Resource readiness</h3>
-              <p>Availability across active inventory</p>
+              <h3>{t("operations.overview.resourceReadiness")}</h3>
+              <p>{t("operations.overview.inventoryAvailability")}</p>
             </div>
             <Link href="/resources">
-              Manage <Icon name="arrow" size={15} />
+              {t("operations.overview.manage")} <Icon name="arrow" size={15} />
             </Link>
           </div>
-          <EmptyPanel title="Inventory is not connected" owner="Dev 4 — logistics & shelter network">
-            Readiness bars will use live stock levels once the logistics API is available.
+          <EmptyPanel title={t("operations.overview.inventoryTitle")} owner={t("operations.overview.inventoryOwner")}>
+            {t("operations.overview.inventoryBody")}
           </EmptyPanel>
         </section>
 
         <section className="ops-card">
           <div className="card-heading">
             <div>
-              <h3>Recent activity</h3>
-              <p>Team and system actions</p>
+              <h3>{t("operations.overview.recentActivity")}</h3>
+              <p>{t("operations.overview.teamActions")}</p>
             </div>
-            {admin ? <Link href="/admin/audit">View audit log</Link> : null}
+            {admin ? <Link href="/admin/audit">{t("operations.shared.viewAuditLog")}</Link> : null}
           </div>
           {admin ? (
             audit.length > 0 ? (
@@ -279,11 +283,11 @@ export default function OperationsPage() {
                 ))}
               </div>
             ) : (
-              <EmptyPanel title="No audit events yet">Append-only events will appear here.</EmptyPanel>
+              <EmptyPanel title={t("operations.overview.noAuditTitle")}>{t("operations.overview.noAuditBody")}</EmptyPanel>
             )
           ) : (
-            <EmptyPanel title="Audit trail requires SystemAdmin">
-              The append-only audit viewer is restricted by the AdminOnly policy.
+            <EmptyPanel title={t("operations.overview.auditRequiresAdmin")}>
+              {t("operations.overview.auditRestricted")}
             </EmptyPanel>
           )}
         </section>
@@ -293,18 +297,17 @@ export default function OperationsPage() {
             <span>
               <Icon name="brain" />
             </span>
-            <i>AI DECISION SUPPORT</i>
+            <i>{t("operations.shared.aiDecisionSupport")}</i>
           </div>
-          <h3>Recommendations are not connected yet</h3>
+          <h3>{t("operations.overview.aiNotConnected")}</h3>
           <p>
-            Risk signals and suggested responses will appear after the Dev 3 decision-support
-            service is available. Human approval remains mandatory.
+            {t("operations.overview.aiNotConnectedBody")}
           </p>
           <Link href="/operations/ai">
-            Review the integration plan <Icon name="arrow" size={16} />
+            {t("operations.overview.reviewIntegrationPlan")} <Icon name="arrow" size={16} />
           </Link>
           <small>
-            <Icon name="shield" size={13} /> Human approval is required
+            <Icon name="shield" size={13} /> {t("operations.shared.humanApprovalRequired")}
           </small>
         </section>
       </div>

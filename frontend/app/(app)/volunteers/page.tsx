@@ -1,7 +1,9 @@
 "use client";
 
 import { AuthGuard } from "@/components/AuthGuard";
+import { localizedErrorMessage } from "@/lib/i18n/errors";
 import { useAuth } from "@/lib/auth";
+import { useT } from "@/lib/i18n";
 import { hasAnyRole, RoleNames } from "@/lib/roles";
 
 // Member 4 / D4-11 volunteer workspace and coordinator queue. Verification,
@@ -10,7 +12,7 @@ import { hasAnyRole, RoleNames } from "@/lib/roles";
 
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
-import { api, errorMessage, Paged } from "@/lib/operations-api";
+import { api, Paged } from "@/lib/operations-api";
 
 const MapPicker = dynamic(() => import("@/components/map/MapPicker"), { ssr: false });
 
@@ -41,6 +43,7 @@ const EMPTY_TASKS: Paged<VolunteerTask> = { items: [], total: 0, page: 1, pageSi
 
 function VolunteerWorkspaceContent() {
   const { user } = useAuth();
+  const t = useT();
   const roles = user?.roles ?? [];
   const canVolunteer = roles.includes(RoleNames.Volunteer);
   const canCoordinate = hasAnyRole(roles, [
@@ -79,7 +82,7 @@ function VolunteerWorkspaceContent() {
     try {
       setMyTasks(await api<Paged<VolunteerTask>>("/volunteer-tasks/mine"));
     } catch (loadError) {
-      setError(errorMessage(loadError));
+      setError(localizedErrorMessage(loadError, t));
     }
   }
 
@@ -92,7 +95,7 @@ function VolunteerWorkspaceContent() {
       setVolunteers(people);
       setAllTasks(tasks);
     } catch (loadError) {
-      setError(errorMessage(loadError));
+      setError(localizedErrorMessage(loadError, t));
     }
   }
 
@@ -113,7 +116,7 @@ function VolunteerWorkspaceContent() {
       if (tab === "volunteer") await loadMyTasks();
       else await loadCoordinator();
     } catch (actionError) {
-      setError(errorMessage(actionError));
+      setError(localizedErrorMessage(actionError, t));
     } finally {
       setBusy(false);
     }
@@ -204,61 +207,61 @@ function VolunteerWorkspaceContent() {
 
   return (
     <>
-      <h1>Volunteer operations</h1>
-      <div className="tabs" role="tablist" aria-label="Volunteer workspace">
-        {canVolunteer && <button type="button" role="tab" aria-selected={tab === "volunteer"} onClick={() => setTab("volunteer")}>My workspace</button>}
-        {canCoordinate && <button type="button" role="tab" aria-selected={tab === "coordinator"} onClick={() => setTab("coordinator")}>Coordinator</button>}
+      <h1>{t("volunteers.title")}</h1>
+      <div className="tabs" role="tablist" aria-label={t("volunteers.workspaceAriaLabel")}>
+        {canVolunteer && <button type="button" role="tab" aria-selected={tab === "volunteer"} onClick={() => setTab("volunteer")}>{t("volunteers.myWorkspace")}</button>}
+        {canCoordinate && <button type="button" role="tab" aria-selected={tab === "coordinator"} onClick={() => setTab("coordinator")}>{t("volunteers.coordinator")}</button>}
       </div>
       {error && <p className="error" role="alert">{error}</p>}
 
       {tab === "volunteer" ? (
         <>
           <section className="panel">
-            <h2>My profile</h2>
+            <h2>{t("volunteers.myProfile")}</h2>
             <div className="form-grid">
-              <label htmlFor="vol-skills">Skills (JSON array)</label>
+              <label htmlFor="vol-skills">{t("volunteers.skills")}</label>
               <input id="vol-skills" value={skills} onChange={(event) => setSkills(event.target.value)} />
-              <label htmlFor="vol-languages">Languages (JSON array)</label>
+              <label htmlFor="vol-languages">{t("volunteers.languages")}</label>
               <input id="vol-languages" value={languages} onChange={(event) => setLanguages(event.target.value)} />
-              <label htmlFor="vol-lat">Latitude</label>
+              <label htmlFor="vol-lat">{t("volunteers.latitude")}</label>
               <input id="vol-lat" type="number" step="any" value={lat} onChange={(event) => setLat(event.target.value)} />
-              <label htmlFor="vol-lng">Longitude</label>
+              <label htmlFor="vol-lng">{t("volunteers.longitude")}</label>
               <input id="vol-lng" type="number" step="any" value={lng} onChange={(event) => setLng(event.target.value)} />
-              <label htmlFor="vol-active">Available for tasks</label>
+              <label htmlFor="vol-active">{t("volunteers.availableForTasks")}</label>
               <input id="vol-active" type="checkbox" checked={active} onChange={(event) => setActive(event.target.checked)} />
             </div>
             <MapPicker height={230} value={{ lat: Number(lat), lng: Number(lng) }} onChange={(point) => { setLat(String(point.lat)); setLng(String(point.lng)); }} />
-            <button type="button" onClick={() => void saveProfile()} disabled={busy}>Save profile</button>
+            <button type="button" onClick={() => void saveProfile()} disabled={busy}>{t("volunteers.saveProfile")}</button>
           </section>
 
           <section className="panel">
-            <h2>Add availability</h2>
+            <h2>{t("volunteers.addAvailability")}</h2>
             <div className="inline">
-              <label htmlFor="avail-start">Starts at</label>
+              <label htmlFor="avail-start">{t("volunteers.startsAt")}</label>
               <input id="avail-start" type="datetime-local" value={availabilityStart} onChange={(event) => setAvailabilityStart(event.target.value)} />
-              <label htmlFor="avail-end">Ends at</label>
+              <label htmlFor="avail-end">{t("volunteers.endsAt")}</label>
               <input id="avail-end" type="datetime-local" value={availabilityEnd} onChange={(event) => setAvailabilityEnd(event.target.value)} />
-              <button type="button" onClick={() => void addAvailability()} disabled={busy || !availabilityStart || !availabilityEnd}>Add window</button>
+              <button type="button" onClick={() => void addAvailability()} disabled={busy || !availabilityStart || !availabilityEnd}>{t("volunteers.addWindow")}</button>
             </div>
           </section>
 
           <section className="panel">
-            <h2>My tasks</h2>
-            {myTasks.items.length === 0 ? <p className="muted">No tasks are assigned to you.</p> : (
+            <h2>{t("volunteers.myTasks")}</h2>
+            {myTasks.items.length === 0 ? <p className="muted">{t("volunteers.noTasks")}</p> : (
               <ul className="task-list">
                 {myTasks.items.map((task) => (
                   <li key={task.id}>
                     <strong>{task.title}</strong> <span className="badge">{task.status}</span>
-                    <p className="small muted">Skills: {task.requiredSkillsJson}</p>
+                    <p className="small muted">{t("volunteers.skillsLabel")} {task.requiredSkillsJson}</p>
                     <div className="inline">
                       {task.status === "Assigned" && (
                         <>
-                          <button type="button" onClick={() => void respond(task.id, true)} disabled={busy}>Accept</button>
-                          <button type="button" className="secondary" onClick={() => void respond(task.id, false)} disabled={busy}>Decline</button>
+                          <button type="button" onClick={() => void respond(task.id, true)} disabled={busy}>{t("volunteers.accept")}</button>
+                          <button type="button" className="secondary" onClick={() => void respond(task.id, false)} disabled={busy}>{t("volunteers.decline")}</button>
                         </>
                       )}
                       {task.status === "Accepted" && (
-                        <button type="button" onClick={() => void complete(task.id)} disabled={busy}>Complete</button>
+                        <button type="button" onClick={() => void complete(task.id)} disabled={busy}>{t("volunteers.complete")}</button>
                       )}
                     </div>
                   </li>
@@ -270,14 +273,14 @@ function VolunteerWorkspaceContent() {
       ) : (
         <>
           <section className="panel">
-            <h2>Verification queue</h2>
+            <h2>{t("volunteers.verificationQueue")}</h2>
             {canManageVolunteers && <div className="inline">
-              <label htmlFor="verify-reason">Reason</label>
+              <label htmlFor="verify-reason">{t("volunteers.reason")}</label>
               <input id="verify-reason" value={verifyReason} onChange={(event) => setVerifyReason(event.target.value)} />
             </div>}
-            {volunteers.length === 0 ? <p className="muted">No volunteer profiles.</p> : (
+            {volunteers.length === 0 ? <p className="muted">{t("volunteers.noProfiles")}</p> : (
               <table>
-                <thead><tr><th>Volunteer</th><th>Skills</th><th>Status</th><th>Action</th></tr></thead>
+                <thead><tr><th>{t("volunteers.volunteer")}</th><th>{t("volunteers.skillsHeader")}</th><th>{t("volunteers.status")}</th><th>{t("volunteers.action")}</th></tr></thead>
                 <tbody>
                   {volunteers.map((volunteer) => (
                     <tr key={volunteer.id}>
@@ -285,8 +288,8 @@ function VolunteerWorkspaceContent() {
                       <td className="small">{volunteer.skillsJson}</td>
                       <td>{volunteer.verificationStatus}</td>
                       <td className="inline">
-                        {canManageVolunteers ? <><button type="button" onClick={() => void verify(volunteer.id, true)} disabled={busy || !verifyReason.trim()}>Verify</button>
-                        <button type="button" className="secondary" onClick={() => void verify(volunteer.id, false)} disabled={busy || !verifyReason.trim()}>Reject</button></> : "View only"}
+                        {canManageVolunteers ? <><button type="button" onClick={() => void verify(volunteer.id, true)} disabled={busy || !verifyReason.trim()}>{t("volunteers.verify")}</button>
+                        <button type="button" className="secondary" onClick={() => void verify(volunteer.id, false)} disabled={busy || !verifyReason.trim()}>{t("volunteers.reject")}</button></> : t("volunteers.viewOnly")}
                       </td>
                     </tr>
                   ))}
@@ -296,45 +299,45 @@ function VolunteerWorkspaceContent() {
           </section>
 
           {canMatchVolunteers && <section className="panel">
-            <h2>Volunteer matching</h2>
-            <p className="muted small">Read-only ranking. Only verified, active and available volunteers are eligible.</p>
-            <div className="inline"><label htmlFor="vol-match-request">Request ID</label><input id="vol-match-request" value={matchRequestId} onChange={(event) => setMatchRequestId(event.target.value)} /><button type="button" onClick={() => void findVolunteerMatches()} disabled={busy || !matchRequestId.trim()}>Find volunteers</button></div>
-            {volunteerMatches && (volunteerMatches.length === 0 ? <p className="muted">No eligible volunteers.</p> : <ol className="match-list">{volunteerMatches.map((match) => <li key={match.targetId}><strong>{match.targetId.slice(0, 8)}</strong> <span className="badge">{Math.round(match.score * 100)}%</span> {match.isApproximate && <span className="badge badge-warn">approximate</span>}<p className="small">{match.rationale}</p></li>)}</ol>)}
+            <h2>{t("volunteers.matching")}</h2>
+            <p className="muted small">{t("volunteers.matchHint")}</p>
+            <div className="inline"><label htmlFor="vol-match-request">{t("volunteers.requestId")}</label><input id="vol-match-request" value={matchRequestId} onChange={(event) => setMatchRequestId(event.target.value)} /><button type="button" onClick={() => void findVolunteerMatches()} disabled={busy || !matchRequestId.trim()}>{t("volunteers.findVolunteers")}</button></div>
+            {volunteerMatches && (volunteerMatches.length === 0 ? <p className="muted">{t("volunteers.noEligibleVolunteers")}</p> : <ol className="match-list">{volunteerMatches.map((match) => <li key={match.targetId}><strong>{match.targetId.slice(0, 8)}</strong> <span className="badge">{Math.round(match.score * 100)}%</span> {match.isApproximate && <span className="badge badge-warn">{t("volunteers.approximate")}</span>}<p className="small">{match.rationale}</p></li>)}</ol>)}
           </section>}
 
           {canManageVolunteers && <section className="panel">
-            <h2>Create a task</h2>
+            <h2>{t("volunteers.createTaskTitle")}</h2>
             <div className="form-grid">
-              <label htmlFor="task-title">Title</label>
+              <label htmlFor="task-title">{t("volunteers.titleLabel")}</label>
               <input id="task-title" value={taskTitle} onChange={(event) => setTaskTitle(event.target.value)} />
-              <label htmlFor="task-skills">Required skills (JSON array)</label>
+              <label htmlFor="task-skills">{t("volunteers.requiredSkills")}</label>
               <input id="task-skills" value={taskSkills} onChange={(event) => setTaskSkills(event.target.value)} />
-              <label htmlFor="task-request">Request ID (optional)</label>
+              <label htmlFor="task-request">{t("volunteers.requestIdOptional")}</label>
               <input id="task-request" value={taskRequest} onChange={(event) => setTaskRequest(event.target.value)} />
             </div>
-            <button type="button" onClick={() => void createTask()} disabled={busy || !taskTitle.trim()}>Create task</button>
+            <button type="button" onClick={() => void createTask()} disabled={busy || !taskTitle.trim()}>{t("volunteers.createTask")}</button>
           </section>}
 
           {canManageVolunteers && <section className="panel">
-            <h2>Task assignment</h2>
+            <h2>{t("volunteers.taskAssignment")}</h2>
             <div className="inline">
-              <label htmlFor="assign-task">Task</label>
+              <label htmlFor="assign-task">{t("volunteers.task")}</label>
               <select id="assign-task" value={assignTask} onChange={(event) => setAssignTask(event.target.value)}>
-                <option value="">Select a task</option>
+                <option value="">{t("volunteers.selectTask")}</option>
                 {allTasks.items.filter((task) => task.status === "Open").map((task) => (
                   <option key={task.id} value={task.id}>{task.title}</option>
                 ))}
               </select>
-              <label htmlFor="assign-volunteer">Verified volunteer</label>
+              <label htmlFor="assign-volunteer">{t("volunteers.verifiedVolunteer")}</label>
               <select id="assign-volunteer" value={assignVolunteer} onChange={(event) => setAssignVolunteer(event.target.value)}>
-                <option value="">Select a volunteer</option>
+                <option value="">{t("volunteers.selectVolunteer")}</option>
                 {volunteers.filter((volunteer) => volunteer.verificationStatus === "Verified" && volunteer.active).map((volunteer) => (
                   <option key={volunteer.id} value={volunteer.id}>{volunteer.userId.slice(0, 8)}</option>
                 ))}
               </select>
-              <button type="button" onClick={() => void assign()} disabled={busy || !assignTask || !assignVolunteer}>Assign</button>
+              <button type="button" onClick={() => void assign()} disabled={busy || !assignTask || !assignVolunteer}>{t("volunteers.assign")}</button>
             </div>
-            <p className="small muted">Unverified volunteers are rejected by the server (403) and are excluded from matching.</p>
+            <p className="small muted">{t("volunteers.unverifiedHint")}</p>
             <ul className="task-list">
               {allTasks.items.map((task) => (
                 <li key={task.id}><strong>{task.title}</strong> <span className="badge">{task.status}</span></li>

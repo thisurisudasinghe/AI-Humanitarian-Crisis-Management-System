@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { localizedErrorMessage } from "@/lib/i18n/errors";
 import {
   Badge,
   Button,
@@ -11,14 +12,16 @@ import {
 } from "@/components/ui";
 import { AuthGuard } from "@/components/AuthGuard";
 import { AdminNav } from "@/components/safeway/AdminNav";
-import { api, errorMessage } from "@/lib/api";
+import { api } from "@/lib/api";
 import { formatDate, type PagedResult } from "@/lib/admin";
+import { useT } from "@/lib/i18n";
 import type { NotificationDto } from "@/lib/notifications";
 import { RoleNames } from "@/lib/roles";
 
 type Notice = { message: string; tone: "error" | "success" } | null;
 
 export default function FailedNotificationsPage() {
+  const t = useT();
   const [page, setPage] = useState(1);
   const [result, setResult] = useState<PagedResult<NotificationDto> | null>(null);
   const [loading, setLoading] = useState(true);
@@ -43,7 +46,7 @@ export default function FailedNotificationsPage() {
       })
       .catch((caught: unknown) => {
         if (!cancelled) {
-          setNotice({ message: errorMessage(caught), tone: "error" });
+          setNotice({ message: localizedErrorMessage(caught, t), tone: "error" });
         }
       })
       .finally(() => {
@@ -60,32 +63,32 @@ export default function FailedNotificationsPage() {
   const columns: Column<NotificationDto>[] = [
     {
       key: "created",
-      header: "Failed at",
+      header: t("admin.notifications.colFailedAt"),
       render: (notification) => formatDate(notification.createdAt)
     },
     {
       key: "recipient",
-      header: "Recipient",
+      header: t("admin.notifications.colRecipient"),
       render: (notification) => <code>{notification.recipientUserId}</code>
     },
     {
       key: "channel",
-      header: "Channel",
+      header: t("admin.notifications.colChannel"),
       render: (notification) => <Badge>{notification.channel}</Badge>
     },
     {
       key: "template",
-      header: "Template",
+      header: t("admin.notifications.colTemplate"),
       render: (notification) => <strong>{notification.templateKey}</strong>
     },
     {
       key: "subject",
-      header: "Subject",
+      header: t("admin.notifications.colSubject"),
       render: (notification) => notification.subject ?? "—"
     },
     {
       key: "status",
-      header: "Status",
+      header: t("admin.notifications.colStatus"),
       render: (notification) => <Badge>{notification.status}</Badge>
     }
   ];
@@ -95,14 +98,11 @@ export default function FailedNotificationsPage() {
       <div className="page">
         <header className="page__header">
           <div>
-            <h1>Failed notifications</h1>
-            <p>
-              Delivery attempts that failed. The outbox owns retries; this view
-              helps administrators spot channels that need attention.
-            </p>
+            <h1>{t("admin.notifications.title")}</h1>
+            <p>{t("admin.notifications.subtitle")}</p>
           </div>
           <Button variant="secondary" onClick={() => void load().then(setResult)}>
-            Refresh
+            {t("admin.notifications.refresh")}
           </Button>
         </header>
 
@@ -119,7 +119,7 @@ export default function FailedNotificationsPage() {
               pageSize={result?.pageSize ?? 20}
               totalCount={result?.totalCount ?? 0}
               onPageChange={setPage}
-              emptyMessage="No failed notification deliveries."
+              emptyMessage={t("admin.notifications.empty")}
             />
           )}
         </section>

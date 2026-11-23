@@ -5,11 +5,17 @@
 // never be imported by a server-rendered module. Member 2 can drop this into a
 // request form without changing its props.
 import dynamic from "next/dynamic";
+import { useT } from "@/lib/i18n";
 import type { MapPickerProps } from "./MapPickerInner";
+
+function MapLoading() {
+  const t = useT();
+  return <div className="map map-loading">{t("shared.mapLoading")}</div>;
+}
 
 const MapPickerInner = dynamic(() => import("./MapPickerInner"), {
   ssr: false,
-  loading: () => <div className="map map-loading">Loading map…</div>,
+  loading: MapLoading,
 });
 
 export type { MapPoint } from "./MapPickerInner";

@@ -1,9 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { localizedErrorMessage } from "@/lib/i18n/errors";
 import { Button, Input, Skeleton, Toast } from "@/components/ui";
 import { AuthGuard } from "@/components/AuthGuard";
-import { api, apiBlob, errorMessage } from "@/lib/api";
+import { api, apiBlob } from "@/lib/api";
 import {
   formatDate,
   formatMetric,
@@ -17,6 +18,7 @@ import {
   type RoleName
 } from "@/lib/roles";
 import { useAuth } from "@/lib/auth";
+import { useT } from "@/lib/i18n";
 import { currentMonthRange } from "@/lib/dates";
 import { useDebouncedValue } from "@/lib/useDebouncedValue";
 
@@ -31,24 +33,25 @@ type Notice = { message: string; tone: "error" | "success" } | null;
 const guidPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-function parseGuid(value: string, label: string): string | undefined {
+function parseGuid(value: string, invalidMessage: string): string | undefined {
   const trimmed = value.trim();
   if (!trimmed) {
     return undefined;
   }
 
   if (!guidPattern.test(trimmed)) {
-    throw new Error(`${label} must be a valid GUID.`);
+    throw new Error(invalidMessage);
   }
 
   return trimmed;
 }
 
 function AreaTable({ rows }: { rows: KpiAreaBreakdown[] }) {
+  const t = useT();
   if (rows.length === 0) {
     return (
       <p className="metric__label">
-        No requests or shelter allocations in the selected period.
+        {t("kpis.noAreaData")}
       </p>
     );
   }
@@ -58,8 +61,8 @@ function AreaTable({ rows }: { rows: KpiAreaBreakdown[] }) {
       <table className="table">
         <thead>
           <tr>
-            <th scope="col">Area</th>
-            <th scope="col">Count</th>
+            <th scope="col">{t("kpis.area")}</th>
+            <th scope="col">{t("kpis.count")}</th>
           </tr>
         </thead>
         <tbody>
@@ -77,6 +80,7 @@ function AreaTable({ rows }: { rows: KpiAreaBreakdown[] }) {
 
 export default function KpiPage() {
   const { user } = useAuth();
+  const t = useT();
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [crisisEventId, setCrisisEventId] = useState("");
@@ -110,18 +114,18 @@ export default function KpiPage() {
       to: `${to}T23:59:59Z`
     });
 
-    const crisis = parseGuid(debouncedCrisisEventId, "Crisis event ID");
+    const crisis = parseGuid(debouncedCrisisEventId, t("kpis.invalidGuid", { label: t("kpis.crisisEventId") }));
     if (crisis) {
       params.set("crisisEventId", crisis);
     }
 
-    const area = parseGuid(debouncedAreaId, "Area ID");
+    const area = parseGuid(debouncedAreaId, t("kpis.invalidGuid", { label: t("kpis.areaId") }));
     if (area) {
       params.set("areaId", area);
     }
 
     return params;
-  }, [debouncedAreaId, debouncedCrisisEventId, from, to]);
+  }, [debouncedAreaId, debouncedCrisisEventId, from, to, t]);
 
   const load = useCallback(async (): Promise<KpiReportDto | null> => {
     const params = buildParams();
@@ -156,9 +160,9 @@ export default function KpiPage() {
       link.remove();
       URL.revokeObjectURL(url);
 
-      setNotice({ message: "KPI report downloaded.", tone: "success" });
+      setNotice({ message: t("kpis.downloadSuccess"), tone: "success" });
     } catch (caught) {
-      setNotice({ message: errorMessage(caught), tone: "error" });
+      setNotice({ message: localizedErrorMessage(caught, t), tone: "error" });
     } finally {
       setExporting(false);
     }
@@ -176,7 +180,7 @@ export default function KpiPage() {
       })
       .catch((caught: unknown) => {
         if (!cancelled) {
-          setNotice({ message: errorMessage(caught), tone: "error" });
+          setNotice({ message: localizedErrorMessage(caught, t), tone: "error" });
         }
       })
       .finally(() => {
@@ -197,8 +201,8 @@ export default function KpiPage() {
       <div className="page">
         <header className="page__header">
           <div>
-            <h1>KPIs</h1>
-            <p>Cross-module performance indicators for the selected period.</p>
+            <h1>{t("kpis.title")}</h1>
+            <p>{t("kpis.subtitle")}</p>
           </div>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             <Button
@@ -206,10 +210,10 @@ export default function KpiPage() {
               onClick={() => void handleExport()}
               disabled={loading || exporting || !report}
             >
-              {exporting ? "Exporting…" : "Export CSV"}
+              {exporting ? t("kpis.exporting") : t("kpis.exportCsv")}
             </Button>
-            <Button onClick={() => void load().then(setReport).catch((caught: unknown) => setNotice({ message: errorMessage(caught), tone: "error" }))} disabled={loading}>
-              Refresh
+            <Button onClick={() => void load().then(setReport).catch((caught: unknown) => setNotice({ message: localizedErrorMessage(caught, t), tone: "error" }))} disabled={loading}>
+              {t("kpis.refresh")}
             </Button>
           </div>
         </header>
@@ -219,31 +223,31 @@ export default function KpiPage() {
             <section className="card">
               <div className="filters">
                 <Input
-                  label="From"
+                  label={t("kpis.from")}
                   type="date"
                   value={from}
                   onChange={(event) => setFrom(event.target.value)}
                 />
                 <Input
-                  label="To"
+                  label={t("kpis.to")}
                   type="date"
                   value={to}
                   onChange={(event) => setTo(event.target.value)}
                 />
                 <Input
-                  label="Crisis event ID"
-                  placeholder="Optional GUID"
+                  label={t("kpis.crisisEventId")}
+                  placeholder={t("kpis.optionalGuid")}
                   value={crisisEventId}
                   error={
-                    crisisInvalid ? "Enter a GUID or leave the field blank." : undefined
+                    crisisInvalid ? t("kpis.guidError") : undefined
                   }
                   onChange={(event) => setCrisisEventId(event.target.value)}
                 />
                 <Input
-                  label="Area ID"
-                  placeholder="Optional GUID"
+                  label={t("kpis.areaId")}
+                  placeholder={t("kpis.optionalGuid")}
                   value={areaId}
-                  error={areaInvalid ? "Enter a GUID or leave the field blank." : undefined}
+                  error={areaInvalid ? t("kpis.guidError") : undefined}
                   onChange={(event) => setAreaId(event.target.value)}
                 />
               </div>
@@ -251,80 +255,77 @@ export default function KpiPage() {
 
             {report?.isPlaceholder ? (
               <section className="notice">
-                All KPI sections are computed from the canonical schema: identity,
-                donations, notifications, cases, resources, shelters and AI
-                governance. A dash means there is no value for the selected
-                period; zero is a measured value.
+                {t("kpis.placeholderNotice")}
               </section>
             ) : null}
 
-            <section className="card-grid" aria-label="KPI summary">
+            <section className="card-grid" aria-label={t("kpis.summaryAriaLabel")}>
               {loading ? (
                 <Skeleton rows={4} />
               ) : (
                 <>
                   <div className="card">
-                    <div className="metric__label">Unresolved requests</div>
+                    <div className="metric__label">{t("kpis.unresolvedRequests")}</div>
                     <div className="metric__value">
                       {report?.unresolvedRequestCount ?? "—"}
                     </div>
                   </div>
                   <div className="card">
-                    <div className="metric__label">Average response time</div>
+                    <div className="metric__label">{t("kpis.averageResponseTime")}</div>
                     <div className="metric__value">
                       {formatMetric(report?.averageResponseTimeHours, " h")}
                     </div>
                   </div>
                   <div className="card">
-                    <div className="metric__label">Resource utilisation</div>
+                    <div className="metric__label">{t("kpis.resourceUtilisation")}</div>
                     <div className="metric__value">
                       {formatMetric(report?.resourceUtilisationPercent, "%")}
                     </div>
                   </div>
                   <div className="card">
-                    <div className="metric__label">Reserved / dispatched</div>
+                    <div className="metric__label">{t("kpis.reservedDispatched")}</div>
                     <div className="metric__value">
                       {report?.reservedResources ?? "—"} / {report?.dispatchedResources ?? "—"}
                     </div>
                   </div>
                   <div className="card">
-                    <div className="metric__label">Shelter occupancy</div>
+                    <div className="metric__label">{t("kpis.shelterOccupancy")}</div>
                     <div className="metric__value">
                       {formatMetric(report?.shelterOccupancyPercent, "%")}
                     </div>
                   </div>
                   <div className="card">
-                    <div className="metric__label">Shelters at capacity</div>
+                    <div className="metric__label">{t("kpis.sheltersAtCapacity")}</div>
                     <div className="metric__value">
                       {report?.sheltersAtCapacity ?? "—"}
                     </div>
                   </div>
                   <div className="card">
-                    <div className="metric__label">AI override rate</div>
+                    <div className="metric__label">{t("kpis.aiOverrideRate")}</div>
                     <div className="metric__value">
                       {formatMetric(report?.aiOverrideRatePercent, "%")}
                     </div>
                   </div>
                   <div className="card">
-                    <div className="metric__label">Total notifications</div>
+                    <div className="metric__label">{t("kpis.totalNotifications")}</div>
                     <div className="metric__value">
                       {report?.totalNotificationCount ?? "—"}
                     </div>
                   </div>
                   <div className="card">
-                    <div className="metric__label">Sent notifications</div>
+                    <div className="metric__label">{t("kpis.sentNotifications")}</div>
                     <div className="metric__value">
                       {report?.sentNotificationCount ?? "—"}
                     </div>
                   </div>
                   <div className="card">
-                    <div className="metric__label">Failed notifications</div>
+                    <div className="metric__label">{t("kpis.failedNotifications")}</div>
                     <div className="metric__value">
                       {report?.failedNotifications ?? "—"}
                     </div>
                   </div>
                   <div className="card">
-                    <div className="metric__label">Dead letters</div>
+                    <div className="metric__label">{t("kpis.deadLetters")}</div>
                     <div className="metric__value">
                       {report?.deadLetterCount ?? "—"}
                     </div>
@@ -333,39 +334,39 @@ export default function KpiPage() {
               )}
             </section>
 
-            <section className="card-grid" aria-label="Identity and donation KPIs">
+            <section className="card-grid" aria-label={t("kpis.identityDonationAriaLabel")}>
               {loading ? (
                 <Skeleton rows={3} />
               ) : (
                 <>
                   <div className="card">
-                    <div className="metric__label">Active / total users</div>
+                    <div className="metric__label">{t("kpis.activeTotalUsers")}</div>
                     <div className="metric__value">
                       {report?.activeUserCount ?? "—"} / {report?.totalUserCount ?? "—"}
                     </div>
                   </div>
                   <div className="card">
-                    <div className="metric__label">New registrations</div>
+                    <div className="metric__label">{t("kpis.newRegistrations")}</div>
                     <div className="metric__value">{report?.newUserCount ?? "—"}</div>
                   </div>
                   <div className="card">
-                    <div className="metric__label">Audit events</div>
+                    <div className="metric__label">{t("kpis.auditEvents")}</div>
                     <div className="metric__value">{report?.auditEventCount ?? "—"}</div>
                   </div>
                   <div className="card">
-                    <div className="metric__label">Active campaigns</div>
+                    <div className="metric__label">{t("kpis.activeCampaigns")}</div>
                     <div className="metric__value">
                       {report?.activeCampaignCount ?? "—"}
                     </div>
                   </div>
                   <div className="card">
-                    <div className="metric__label">Flagged donations</div>
+                    <div className="metric__label">{t("kpis.flaggedDonations")}</div>
                     <div className="metric__value">
                       {report?.suspiciousDonationCount ?? "—"}
                     </div>
                   </div>
                   <div className="card">
-                    <div className="metric__label">Flagged allocations</div>
+                    <div className="metric__label">{t("kpis.flaggedAllocations")}</div>
                     <div className="metric__value">
                       {report?.suspiciousAllocationCount ?? "—"}
                     </div>
@@ -375,10 +376,9 @@ export default function KpiPage() {
             </section>
 
             <section className="card">
-              <h2>Donations by currency</h2>
+              <h2>{t("kpis.donationsByCurrency")}</h2>
               <p className="metric__label">
-                Organisation-wide totals for the selected period. Amounts in
-                different currencies are never combined.
+                {t("kpis.donationsHint")}
               </p>
               {loading ? (
                 <Skeleton rows={3} />
@@ -387,14 +387,14 @@ export default function KpiPage() {
                   <table className="table">
                     <thead>
                       <tr>
-                        <th scope="col">Currency</th>
-                        <th scope="col">Monetary</th>
-                        <th scope="col">In-kind value</th>
-                        <th scope="col">Allocated</th>
-                        <th scope="col">Spent</th>
-                        <th scope="col">Donations</th>
-                        <th scope="col">Donors</th>
-                        <th scope="col">Flagged</th>
+                        <th scope="col">{t("kpis.currency")}</th>
+                        <th scope="col">{t("kpis.monetary")}</th>
+                        <th scope="col">{t("kpis.inKindValue")}</th>
+                        <th scope="col">{t("kpis.allocated")}</th>
+                        <th scope="col">{t("kpis.spent")}</th>
+                        <th scope="col">{t("kpis.donations")}</th>
+                        <th scope="col">{t("kpis.donors")}</th>
+                        <th scope="col">{t("kpis.flagged")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -416,12 +416,12 @@ export default function KpiPage() {
                   </table>
                 </div>
               ) : (
-                <p className="metric__label">No donations in this period yet.</p>
+                <p className="metric__label">{t("kpis.noDonations")}</p>
               )}
             </section>
 
             <section className="card">
-              <h2>Accounts by role</h2>
+              <h2>{t("kpis.accountsByRole")}</h2>
               {loading ? (
                 <Skeleton rows={3} />
               ) : report && report.usersByRole.length > 0 ? (
@@ -429,8 +429,8 @@ export default function KpiPage() {
                   <table className="table">
                     <thead>
                       <tr>
-                        <th scope="col">Role</th>
-                        <th scope="col">Accounts</th>
+                        <th scope="col">{t("kpis.role")}</th>
+                        <th scope="col">{t("kpis.accounts")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -444,13 +444,13 @@ export default function KpiPage() {
                   </table>
                 </div>
               ) : (
-                <p className="metric__label">No accounts found.</p>
+                <p className="metric__label">{t("kpis.noAccounts")}</p>
               )}
             </section>
 
-            <section className="card-grid" aria-label="KPI area breakdowns">
+            <section className="card-grid" aria-label={t("kpis.areaAriaLabel")}>
               <div className="card">
-                <h2>Requests by area</h2>
+                <h2>{t("kpis.requestsByArea")}</h2>
                 {loading ? (
                   <Skeleton rows={3} />
                 ) : (
@@ -458,7 +458,7 @@ export default function KpiPage() {
                 )}
               </div>
               <div className="card">
-                <h2>Shelters by area</h2>
+                <h2>{t("kpis.sheltersByArea")}</h2>
                 {loading ? (
                   <Skeleton rows={3} />
                 ) : (
@@ -468,7 +468,7 @@ export default function KpiPage() {
             </section>
 
             <section className="card">
-              <div className="metric__label">Generated at</div>
+              <div className="metric__label">{t("kpis.generatedAt")}</div>
               <div>{formatDate(report?.generatedAt)}</div>
             </section>
           </>

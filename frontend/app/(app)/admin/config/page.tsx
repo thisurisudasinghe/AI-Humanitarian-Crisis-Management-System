@@ -1,25 +1,27 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { localizedErrorMessage } from "@/lib/i18n/errors";
 import { Button, Input, Skeleton, Toast } from "@/components/ui";
 import { AuthGuard } from "@/components/AuthGuard";
 import { AdminNav } from "@/components/safeway/AdminNav";
-import { api, apiJson, errorMessage } from "@/lib/api";
+import { api, apiJson } from "@/lib/api";
 import { ConfigKeys, type SystemSettingDto } from "@/lib/admin";
+import { useT } from "@/lib/i18n";
 import { RoleNames } from "@/lib/roles";
 
 type Notice = { message: string; tone: "error" | "success" } | null;
 
-const keyLabels: Record<string, string> = {
-  SlaHours: "SLA hours",
-  ReorderThreshold: "Resource reorder threshold",
-  ServiceTypes: "Service types",
-  RequestCategories: "Request categories",
-  UrgencyThresholds: "Urgency thresholds",
-  SuspiciousDonationAmount: "Suspicious donation amount"
-};
-
 export default function ConfigPage() {
+  const t = useT();
+  const keyLabels: Record<string, string> = {
+    SlaHours: t("admin.config.keySlaHours"),
+    ReorderThreshold: t("admin.config.keyReorderThreshold"),
+    ServiceTypes: t("admin.config.keyServiceTypes"),
+    RequestCategories: t("admin.config.keyRequestCategories"),
+    UrgencyThresholds: t("admin.config.keyUrgencyThresholds"),
+    SuspiciousDonationAmount: t("admin.config.keySuspiciousDonationAmount")
+  };
   const [settings, setSettings] = useState<SystemSettingDto[]>([]);
   const [values, setValues] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
@@ -47,7 +49,7 @@ export default function ConfigPage() {
       })
       .catch((caught: unknown) => {
         if (!cancelled) {
-          setNotice({ message: errorMessage(caught), tone: "error" });
+          setNotice({ message: localizedErrorMessage(caught, t), tone: "error" });
         }
       })
       .finally(() => {
@@ -71,7 +73,7 @@ export default function ConfigPage() {
     }));
 
     if (entries.length === 0) {
-      setNotice({ message: "Enter at least one setting value.", tone: "error" });
+      setNotice({ message: t("admin.config.validationNoValues"), tone: "error" });
       return;
     }
 
@@ -85,9 +87,9 @@ export default function ConfigPage() {
         { settings: entries }
       );
       setSettings(updated);
-      setNotice({ message: "Configuration saved.", tone: "success" });
+      setNotice({ message: t("admin.config.saved"), tone: "success" });
     } catch (caught) {
-      setNotice({ message: errorMessage(caught), tone: "error" });
+      setNotice({ message: localizedErrorMessage(caught, t), tone: "error" });
     } finally {
       setSaving(false);
     }
@@ -98,11 +100,11 @@ export default function ConfigPage() {
       <div className="page">
         <header className="page__header">
           <div>
-            <h1>Configuration</h1>
-            <p>Runtime thresholds and catalogue values used across modules.</p>
+            <h1>{t("admin.config.title")}</h1>
+            <p>{t("admin.config.subtitle")}</p>
           </div>
           <Button onClick={() => void save()} disabled={saving || loading}>
-            {saving ? "Saving…" : "Save changes"}
+            {saving ? t("admin.config.saving") : t("admin.config.saveChanges")}
           </Button>
         </header>
 

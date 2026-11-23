@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { localizedErrorMessage } from "@/lib/i18n/errors";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { Icon } from "@/components/safeway/Icon";
@@ -11,7 +12,7 @@ import {
   PortalStats,
   PortalState
 } from "@/components/safeway/PortalPrimitives";
-import { errorMessage } from "@/lib/api";
+
 import { useAuth } from "@/lib/auth";
 import {
   RESOLVED_REQUEST_STATUSES,
@@ -23,6 +24,7 @@ import {
 } from "@/lib/crisis";
 import { formatMoney } from "@/lib/donations";
 import { formatShortDate, humanizeRole, initials } from "@/lib/format";
+import { formatDate, useI18n } from "@/lib/i18n";
 import { getInbox, type NotificationInboxDto } from "@/lib/notifications";
 import {
   getDonorDonations,
@@ -46,32 +48,32 @@ const roleCards: {
   purpose: PublicPurpose;
   role: string;
   icon: string;
-  title: string;
-  copy: string;
+  titleKey: string;
+  copyKey: string;
   href: string;
 }[] = [
   {
     purpose: "citizen",
     role: RoleNames.Citizen,
     icon: "file",
-    title: "Citizen",
-    copy: "Submit reports, follow response progress, find assistance and share feedback.",
+    titleKey: "dashboard.role.title.citizen",
+    copyKey: "dashboard.role.copy.citizen",
     href: "/portal/citizen"
   },
   {
     purpose: "volunteer",
     role: RoleNames.Volunteer,
     icon: "users",
-    title: "Volunteer",
-    copy: "Manage your skills and availability, review tasks and see open opportunities.",
+    titleKey: "dashboard.role.title.volunteer",
+    copyKey: "dashboard.role.copy.volunteer",
     href: "/portal/volunteer"
   },
   {
     purpose: "donor",
     role: RoleNames.Donor,
     icon: "heart",
-    title: "Donor",
-    copy: "Record supported donations, review your history and read transparency data.",
+    titleKey: "dashboard.role.title.donor",
+    copyKey: "dashboard.role.copy.donor",
     href: "/portal/donor"
   }
 ];
@@ -82,11 +84,12 @@ function timeValue(value: string): number {
 }
 
 export default function DashboardPage() {
+  const { t, locale } = useI18n();
   const router = useRouter();
   const { user, ready, enroll } = useAuth();
 
   const [today, setToday] = useState("");
-  const [greeting, setGreeting] = useState("Welcome back");
+  const [greeting, setGreeting] = useState(t("dashboard.greeting.default"));
   const [reports, setReports] = useState<CaseRequestListItem[]>([]);
   const [reportTotal, setReportTotal] = useState(0);
   const [reportLoading, setReportLoading] = useState(true);
@@ -117,17 +120,15 @@ export default function DashboardPage() {
   useEffect(() => {
     const now = new Date();
     setToday(
-      now
-        .toLocaleDateString(undefined, {
-          weekday: "long",
-          day: "numeric",
-          month: "long"
-        })
-        .toUpperCase()
+      formatDate(now, locale, {
+        weekday: "long",
+        day: "numeric",
+        month: "long"
+      }).toUpperCase()
     );
     const hour = now.getHours();
-    setGreeting(hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening");
-  }, []);
+    setGreeting(hour < 12 ? t("dashboard.greeting.morning") : hour < 18 ? t("dashboard.greeting.afternoon") : t("dashboard.greeting.evening"));
+  }, [t, locale]);
 
   useEffect(() => {
     if (!ready || !user) {
@@ -147,7 +148,7 @@ export default function DashboardPage() {
         setReportError(null);
       })
       .catch((cause) => {
-        if (active) setReportError(caseRequestErrorMessage(cause, "Reports could not be loaded."));
+        if (active) setReportError(caseRequestErrorMessage(cause, t("dashboard.tracking.loadFailed"), t));
       })
       .finally(() => {
         if (active) setReportLoading(false);
@@ -160,7 +161,7 @@ export default function DashboardPage() {
         setInboxError(null);
       })
       .catch((cause) => {
-        if (active) setInboxError(errorMessage(cause));
+        if (active) setInboxError(localizedErrorMessage(cause, t));
       })
       .finally(() => {
         if (active) setInboxLoading(false);
@@ -202,7 +203,7 @@ export default function DashboardPage() {
     return () => {
       active = false;
     };
-  }, [ready, user, isCitizen, isDonor, isVolunteer]);
+  }, [ready, user, isCitizen, isDonor, isVolunteer, t]);
 
   const activities = useMemo<ActivityItem[]>(() => {
     const rows: ActivityItem[] = [];
@@ -211,7 +212,9 @@ export default function DashboardPage() {
       rows.push({
         id: `report-${report.id}`,
         icon: "file",
-        title: `${report.category} report ${RESOLVED_REQUEST_STATUSES.includes(report.status) ? "resolved" : "updated"}`,
+        title: RESOLVED_REQUEST_STATUSES.includes(report.status)
+          ? t("dashboard.activity.reportResolved", { category: report.category })
+          : t("dashboard.activity.reportUpdated", { category: report.category }),
         detail: `${report.status} · ${report.id.slice(0, 8)}`,
         at: report.submittedAt,
         href: "/portal/citizen",
@@ -224,7 +227,7 @@ export default function DashboardPage() {
         id: `notice-${notification.id}`,
         icon: notification.isRead ? "check" : "bell",
         title: notification.subject ?? notification.templateKey,
-        detail: notification.body ?? "Open the inbox for details.",
+        detail: notification.body ?? t("dashboard.inbox.inboxDetails"),
         at: notification.createdAt,
         href: "/notifications",
         tone: notification.isRead ? "muted" : "green"
@@ -235,7 +238,7 @@ export default function DashboardPage() {
       rows.push({
         id: `donation-${donation.id}`,
         icon: "heart",
-        title: "Donation recorded",
+        title: t("dashboard.activity.donationRecorded"),
         detail: `${donation.reference} · ${formatMoney(donation.amount, donation.currency)}`,
         at: donation.receivedAt,
         href: "/portal/donor",
@@ -247,7 +250,7 @@ export default function DashboardPage() {
       rows.push({
         id: `task-${task.id}`,
         icon: "users",
-        title: `Volunteer task ${task.status.toLowerCase()}`,
+        title: t("dashboard.activity.volunteerTask", { status: task.status.toLowerCase() }),
         detail: task.title,
         at: task.scheduledAt ?? task.completedAt ?? task.id,
         href: "/portal/volunteer",
@@ -259,7 +262,7 @@ export default function DashboardPage() {
       .filter((row) => timeValue(row.at) > 0)
       .sort((a, b) => timeValue(b.at) - timeValue(a.at))
       .slice(0, 6);
-  }, [reports, inbox, donations, tasks]);
+  }, [reports, inbox, donations, tasks, t]);
 
   async function onEnroll(purpose: PublicPurpose, label: string) {
     setEnrolling(purpose);
@@ -268,9 +271,9 @@ export default function DashboardPage() {
 
     try {
       await enroll(purpose);
-      setEnrollSuccess(`${label} access added to your account.`);
+      setEnrollSuccess(t("dashboard.enroll.success", { role: label }));
     } catch (cause) {
-      setEnrollError(errorMessage(cause));
+      setEnrollError(localizedErrorMessage(cause, t));
     } finally {
       setEnrolling(null);
     }
@@ -280,17 +283,17 @@ export default function DashboardPage() {
     return (
       <div className="page">
         <section className="card">
-          <h1>Redirecting to the command centre…</h1>
+          <h1>{t("dashboard.redirect.title")}</h1>
           <p>
-            Staff accounts use the operations dashboard. If nothing happens,{" "}
-            <Link href="/operations">open the command centre</Link>.
+            {t("dashboard.redirect.body")}{" "}
+            <Link href="/operations">{t("dashboard.redirect.link")}</Link>.
           </p>
         </section>
       </div>
     );
   }
 
-  const firstName = user?.fullName?.trim().split(/\s+/)[0] ?? "there";
+  const firstName = user?.fullName?.trim().split(/\s+/)[0] ?? t("dashboard.account.there");
   const activePurposeCount = roleCards.filter((card) => hasRole(roles, card.role)).length;
 
   return (
@@ -298,10 +301,10 @@ export default function DashboardPage() {
       <PortalHeader
         eyebrow={today || "SAFEWAY"}
         title={`${greeting}, ${firstName}.`}
-        description="Your reports, assistance updates and participation in one secure place."
+        description={t("dashboard.header.description")}
         action={
           <Link className="btn btn-primary" href="/report">
-            <Icon name="alert" /> Report a crisis
+            <Icon name="alert" /> {t("dashboard.reportCrisis")}
           </Link>
         }
       />
@@ -309,30 +312,30 @@ export default function DashboardPage() {
       <PortalStats
         items={[
           {
-            label: "My reports",
+            label: t("dashboard.stats.myReports"),
             value: reportLoading ? "—" : reportTotal,
-            hint: "Submitted case requests",
+            hint: t("dashboard.stats.submittedCases"),
             icon: "file",
             tone: "blue"
           },
           {
-            label: "Unread notifications",
+            label: t("dashboard.stats.unreadNotifications"),
             value: inboxLoading ? "—" : (inbox?.unreadCount ?? 0),
-            hint: "Updates waiting for you",
+            hint: t("dashboard.stats.updatesWaiting"),
             icon: "bell",
             tone: "green"
           },
           {
-            label: "Recent activity",
+            label: t("dashboard.stats.recentActivity"),
             value: activities.length,
-            hint: "From your connected records",
+            hint: t("dashboard.stats.fromConnected"),
             icon: "clock",
             tone: "blue"
           },
           {
-            label: "Participation roles",
+            label: t("dashboard.stats.participationRoles"),
             value: activePurposeCount,
-            hint: "Roles set by the server",
+            hint: t("dashboard.stats.serverRoles"),
             icon: "shield",
             tone: "green"
           }
@@ -343,19 +346,19 @@ export default function DashboardPage() {
         <div className="portal-identity">
           <span className="portal-avatar">{initials(user?.fullName)}</span>
           <div>
-            <small>ACCOUNT HOLDER</small>
-            <h2>{user?.fullName ?? "Your account"}</h2>
-            <p>{user?.email ?? "No email on file"}</p>
+            <small>{t("dashboard.account.accountHolder")}</small>
+            <h2>{user?.fullName ?? t("dashboard.account.yourAccount")}</h2>
+            <p>{user?.email ?? t("dashboard.account.noEmail")}</p>
           </div>
         </div>
         <dl>
           <div>
-            <dt>Account roles</dt>
+            <dt>{t("dashboard.account.roles")}</dt>
             <dd className="role-chips">
               {roles.length > 0 ? (
                 roles.map((role) => (
                   <span className="badge blue" key={role}>
-                    {humanizeRole(role)}
+                    {humanizeRole(role, t)}
                   </span>
                 ))
               ) : (
@@ -364,19 +367,21 @@ export default function DashboardPage() {
             </dd>
           </div>
           <div>
-            <dt>Account reference</dt>
+            <dt>{t("dashboard.account.reference")}</dt>
             <dd>{user?.userId ? user.userId.slice(0, 8).toUpperCase() : "—"}</dd>
           </div>
           <div>
-            <dt>Household</dt>
+            <dt>{t("dashboard.account.household")}</dt>
             <dd>
               {!isCitizen
-                ? "Not applicable"
+                ? t("dashboard.household.notApplicable")
                 : !householdLoaded
-                  ? "Loading…"
+                  ? t("dashboard.household.loading")
                   : household
-                    ? `${household.size} ${household.size === 1 ? "person" : "people"}`
-                    : "Not added yet"}
+                    ? household.size === 1
+                      ? t("dashboard.household.person", { count: household.size })
+                      : t("dashboard.household.people", { count: household.size })
+                    : t("dashboard.household.notAdded")}
             </dd>
           </div>
         </dl>
@@ -386,12 +391,14 @@ export default function DashboardPage() {
       {enrollSuccess ? <PortalNotice>{enrollSuccess}</PortalNotice> : null}
 
       <PortalSection
-        title="Ways to take part"
-        description="Each area uses the role on your account. You can add public participation roles here; the server validates every request."
+        title={t("dashboard.roles.title")}
+        description={t("dashboard.roles.description")}
       >
         <div className="portal-role-cards">
           {roleCards.map((card) => {
             const active = hasRole(roles, card.role);
+            const title = t(card.titleKey);
+            const copy = t(card.copyKey);
             return (
               <article className={`portal-role-card ${active ? "active" : ""}`} key={card.purpose}>
                 <i>
@@ -399,23 +406,25 @@ export default function DashboardPage() {
                 </i>
                 <div>
                   <span className={`badge ${active ? "green" : "amber"}`}>
-                    <i /> {active ? "Available" : "Not added"}
+                    <i /> {active ? t("dashboard.roles.available") : t("dashboard.roles.notAdded")}
                   </span>
-                  <h3>{card.title}</h3>
-                  <p>{card.copy}</p>
+                  <h3>{title}</h3>
+                  <p>{copy}</p>
                 </div>
                 {active ? (
                   <Link className="btn btn-outline" href={card.href}>
-                    Open portal <Icon name="arrow" size={16} />
+                    {t("dashboard.roles.openPortal")} <Icon name="arrow" size={16} />
                   </Link>
                 ) : (
                   <button
                     className="btn btn-primary"
                     type="button"
                     disabled={enrolling !== null}
-                    onClick={() => void onEnroll(card.purpose, card.title)}
+                    onClick={() => void onEnroll(card.purpose, title)}
                   >
-                    {enrolling === card.purpose ? "Adding…" : `Add ${card.title.toLowerCase()}`}
+                    {enrolling === card.purpose
+                      ? t("dashboard.roles.adding")
+                      : t("dashboard.roles.add", { role: title.toLowerCase() })}
                     {enrolling === card.purpose ? null : <Icon name="arrow" size={16} />}
                   </button>
                 )}
@@ -427,25 +436,25 @@ export default function DashboardPage() {
 
       <div className="portal-dashboard-grid">
         <PortalSection
-          title="Report tracking"
-          description="The latest status from your submitted case requests."
+          title={t("dashboard.tracking.title")}
+          description={t("dashboard.tracking.description")}
           action={
             <Link href="/portal/citizen" className="portal-text-link">
-              Citizen portal →
+              {t("dashboard.tracking.link")}
             </Link>
           }
         >
           {reportLoading ? (
-            <PortalState kind="loading" title="Loading reports">
-              Reading your submitted case requests.
+            <PortalState kind="loading" title={t("dashboard.tracking.loadingTitle")}>
+              {t("dashboard.tracking.loadingBody")}
             </PortalState>
           ) : reportError ? (
-            <PortalState kind="error" title="Reports could not be loaded">
+            <PortalState kind="error" title={t("dashboard.tracking.errorTitle")}>
               {reportError}
             </PortalState>
           ) : reports.length === 0 ? (
-            <PortalState kind="empty" title="No reports yet" href="/report" linkLabel="Report a crisis">
-              When you submit a report, its reference and review status appear here.
+            <PortalState kind="empty" title={t("dashboard.tracking.emptyTitle")} href="/report" linkLabel={t("dashboard.tracking.emptyLink")}>
+              {t("dashboard.tracking.emptyBody")}
             </PortalState>
           ) : (
             <div className="portal-list">
@@ -455,7 +464,7 @@ export default function DashboardPage() {
                     <Icon name="file" size={18} />
                   </i>
                   <div>
-                    <b>{report.category} report</b>
+                    <b>{t("dashboard.tracking.categoryLabel", { category: report.category })}</b>
                     <p>{report.description}</p>
                     <small>
                       {formatShortDate(report.submittedAt)} · {report.id.slice(0, 8)}
@@ -471,25 +480,25 @@ export default function DashboardPage() {
         </PortalSection>
 
         <PortalSection
-          title="Notification inbox"
-          description="Account messages and updates that need your attention."
+          title={t("dashboard.inbox.title")}
+          description={t("dashboard.inbox.description")}
           action={
             <Link href="/notifications" className="portal-text-link">
-              View all →
+              {t("dashboard.inbox.viewAll")}
             </Link>
           }
         >
           {inboxLoading ? (
-            <PortalState kind="loading" title="Loading notifications">
-              Checking your inbox.
+            <PortalState kind="loading" title={t("dashboard.inbox.loadingTitle")}>
+              {t("dashboard.inbox.loadingBody")}
             </PortalState>
           ) : inboxError ? (
-            <PortalState kind="error" title="Notifications could not be loaded">
+            <PortalState kind="error" title={t("dashboard.inbox.errorTitle")}>
               {inboxError}
             </PortalState>
           ) : !inbox || inbox.items.length === 0 ? (
-            <PortalState kind="empty" title="You’re all caught up">
-              New account and response updates will appear here.
+            <PortalState kind="empty" title={t("dashboard.inbox.emptyTitle")}>
+              {t("dashboard.inbox.emptyBody")}
             </PortalState>
           ) : (
             <div className="portal-list">
@@ -500,12 +509,12 @@ export default function DashboardPage() {
                   </i>
                   <div>
                     <b>{notification.subject ?? notification.templateKey}</b>
-                    <p>{notification.body ?? "Open the inbox for details."}</p>
+                    <p>{notification.body ?? t("dashboard.inbox.inboxDetails")}</p>
                     <small>{formatShortDate(notification.createdAt)}</small>
                   </div>
                   {!notification.isRead ? (
                     <span className="badge green">
-                      <i /> New
+                      <i /> {t("dashboard.inbox.new")}
                     </span>
                   ) : null}
                 </article>
@@ -516,13 +525,12 @@ export default function DashboardPage() {
       </div>
 
       <PortalSection
-        title="Recent activity"
-        description="A combined timeline from records connected to your account."
+        title={t("dashboard.activity.title")}
+        description={t("dashboard.activity.description")}
       >
         {activities.length === 0 ? (
-          <PortalState kind="empty" title="No recent activity">
-            Submit a report, respond to a notification or take part in a portal to build your
-            timeline.
+          <PortalState kind="empty" title={t("dashboard.activity.emptyTitle")}>
+            {t("dashboard.activity.emptyBody")}
           </PortalState>
         ) : (
           <div className="portal-activity">
@@ -548,14 +556,13 @@ export default function DashboardPage() {
           <Icon name="shield" size={27} />
         </div>
         <span>
-          <b>Preparedness reminder</b>
+          <b>{t("dashboard.safety.title")}</b>
           <p>
-            Follow verified local instructions, keep essential documents close and use the report
-            flow only for information response teams need.
+            {t("dashboard.safety.body")}
           </p>
         </span>
         <Link href="/find-assistance">
-          Find assistance <Icon name="arrow" size={16} />
+          {t("dashboard.safety.link")} <Icon name="arrow" size={16} />
         </Link>
       </section>
     </>

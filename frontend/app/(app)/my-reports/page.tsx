@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { formatDate as formatDateForLocale, resolveLocale } from "@/lib/i18n/core";
 import { useEffect, useMemo, useState } from "react";
 import { Icon } from "@/components/safeway/Icon";
 import { EmptyPanel } from "@/components/safeway/IntegrationNotice";
@@ -12,6 +13,7 @@ import {
   submitRequestFeedback,
   type CaseRequestListItem
 } from "@/lib/crisis";
+import { useT } from "@/lib/i18n";
 
 const filters: [string, string][] = [
   ["All reports", "file"],
@@ -20,7 +22,8 @@ const filters: [string, string][] = [
 ];
 
 function formatDate(value: string): string {
-  return new Date(value).toLocaleString();
+  const resolved = typeof document === "undefined" ? "en" : resolveLocale(document.documentElement.lang);
+  return formatDateForLocale(value, resolved);
 }
 
 function urgencyTone(urgency: CaseRequestListItem["urgency"]): string {
@@ -30,6 +33,12 @@ function urgencyTone(urgency: CaseRequestListItem["urgency"]): string {
 }
 
 export default function MyReportsPage() {
+  const t = useT();
+  const filterLabels: Record<string, string> = {
+    "All reports": t("reports.filter.all"),
+    "In progress": t("reports.filter.inProgress"),
+    "Assistance provided": t("reports.filter.assistanceProvided")
+  };
   const [filter, setFilter] = useState("All reports");
   const [reports, setReports] = useState<CaseRequestListItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,7 +57,7 @@ export default function MyReportsPage() {
       })
       .catch((cause: unknown) => {
         if (active) {
-          setError(caseRequestErrorMessage(cause, "Your reports could not be loaded."));
+          setError(caseRequestErrorMessage(cause, t("reports.loadFailed"), t));
         }
       })
       .finally(() => {
@@ -58,7 +67,7 @@ export default function MyReportsPage() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [t]);
 
   const counts = useMemo<Record<string, number>>(() => {
     const inProgress = reports.filter((report) =>
@@ -90,7 +99,7 @@ export default function MyReportsPage() {
     if (comment.length < 2) {
       setFeedbackErrors((current) => ({
         ...current,
-        [reportId]: "Feedback must be at least 2 characters."
+        [reportId]: t("reports.feedback.error")
       }));
       return;
     }
@@ -104,7 +113,7 @@ export default function MyReportsPage() {
     } catch (cause) {
       setFeedbackErrors((current) => ({
         ...current,
-        [reportId]: caseRequestErrorMessage(cause, "Feedback could not be submitted.")
+        [reportId]: caseRequestErrorMessage(cause, t("reports.feedback.submitFailed"), t)
       }));
     } finally {
       setFeedbackBusy((current) => ({ ...current, [reportId]: false }));
@@ -115,12 +124,12 @@ export default function MyReportsPage() {
     <>
       <div className="reports-page-head">
         <div>
-          <p>MY REPORTS</p>
-          <h1>Submitted crisis reports</h1>
-          <span>Follow report status, response progress and important updates.</span>
+          <p>{t("reports.eyebrow")}</p>
+          <h1>{t("reports.title")}</h1>
+          <span>{t("reports.description")}</span>
         </div>
         <Link className="btn btn-primary" href="/report">
-          <Icon name="alert" /> New crisis report
+          <Icon name="alert" /> {t("reports.newReport")}
         </Link>
       </div>
 
@@ -143,7 +152,7 @@ export default function MyReportsPage() {
             </i>
             <span>
               <b>{counts[label]}</b>
-              <small>{label}</small>
+              <small>{filterLabels[label]}</small>
             </span>
           </button>
         ))}
@@ -151,12 +160,12 @@ export default function MyReportsPage() {
 
       <section className="reports-detail-list">
         {loading ? (
-          <EmptyPanel title="Loading reports">Reading your submitted case requests.</EmptyPanel>
+          <EmptyPanel title={t("reports.loadingTitle")}>{t("reports.loadingBody")}</EmptyPanel>
         ) : visibleReports.length === 0 ? (
-          <EmptyPanel title={`No ${filter.toLowerCase()} to show`}>
+          <EmptyPanel title={t("reports.empty.title", { filter: filterLabels[filter].toLowerCase() })}>
             {error
-              ? "Reports could not be loaded. Sign in as a citizen and try again."
-              : "Submit a crisis report to see its reference, review milestone and assistance status here."}
+              ? t("reports.empty.error")
+              : t("reports.empty.default")}
           </EmptyPanel>
         ) : (
           visibleReports.map((report) => (
@@ -166,7 +175,7 @@ export default function MyReportsPage() {
               </span>
               <div className="report-detail-main">
                 <span>
-                  <b>{report.category} report</b>
+                  <b>{t("reports.categoryLabel", { category: report.category })}</b>
                 </span>
                 <p>{report.description}</p>
                 <small>
@@ -178,7 +187,7 @@ export default function MyReportsPage() {
                   <i className="done">
                     <Icon name="check" size={11} />
                   </i>
-                  Submitted
+                  {t("reports.milestone.submitted")}
                 </span>
                 <em />
                 <span>
@@ -189,21 +198,21 @@ export default function MyReportsPage() {
                 </span>
               </div>
               <span className={`badge ${report.isOverdue ? "coral" : "green"}`}>
-                <i /> {report.isOverdue ? "Overdue" : "On track"}
+                <i /> {report.isOverdue ? t("reports.overdue") : t("reports.onTrack")}
               </span>
               {RESOLVED_REQUEST_STATUSES.includes(report.status) ? (
                 <div style={{ gridColumn: "1 / -1", marginTop: 12 }}>
                   {feedbackSent[report.id] ? (
-                    <p className="muted" role="status">Thank you. Your feedback was submitted.</p>
+                    <p className="muted" role="status">{t("reports.feedback.success")}</p>
                   ) : (
                     <div style={{ display: "grid", gap: 8, maxWidth: 640 }}>
                       <label>
-                        <span className="field-label">Feedback after assistance</span>
+                        <span className="field-label">{t("reports.feedback.title")}</span>
                         <textarea
                           className="field-input"
                           value={feedbackDrafts[report.id] ?? ""}
                           maxLength={2000}
-                          placeholder="Share what went well or what could be improved."
+                          placeholder={t("reports.feedback.placeholder")}
                           onChange={(event) =>
                             setFeedbackDrafts((current) => ({
                               ...current,
@@ -222,7 +231,7 @@ export default function MyReportsPage() {
                           disabled={feedbackBusy[report.id]}
                           onClick={() => void onFeedbackSubmit(report.id)}
                         >
-                          {feedbackBusy[report.id] ? "Submitting…" : "Submit feedback"}
+                          {feedbackBusy[report.id] ? t("reports.feedback.submitting") : t("reports.feedback.submit")}
                         </button>
                       </div>
                     </div>
@@ -237,10 +246,9 @@ export default function MyReportsPage() {
       <div className="report-help-note">
         <Icon name="shield" />
         <span>
-          <b>Need to add important information?</b>
+          <b>{t("reports.help.title")}</b>
           <small>
-            This screen shows status only. Use the official citizen portal for detail, timeline
-            and updates rather than creating a duplicate report.
+            {t("reports.help.body")}
           </small>
         </span>
       </div>

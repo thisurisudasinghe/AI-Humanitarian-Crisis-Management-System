@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { localizedErrorMessage } from "@/lib/i18n/errors";
 import {
   Button,
   Input,
@@ -11,12 +12,13 @@ import {
 } from "@/components/ui";
 import { AuthGuard } from "@/components/AuthGuard";
 import { AdminNav } from "@/components/safeway/AdminNav";
-import { api, errorMessage } from "@/lib/api";
+import { api } from "@/lib/api";
 import {
   formatDate,
   type AuditEventDto,
   type PagedResult
 } from "@/lib/admin";
+import { useT } from "@/lib/i18n";
 import { RoleNames } from "@/lib/roles";
 import { useDebouncedValue } from "@/lib/useDebouncedValue";
 
@@ -32,6 +34,7 @@ function toUtcIso(value: string): string | undefined {
 }
 
 export default function AuditPage() {
+  const t = useT();
   const [action, setAction] = useState("");
   const [entityType, setEntityType] = useState("");
   const [entityId, setEntityId] = useState("");
@@ -98,7 +101,7 @@ export default function AuditPage() {
       })
       .catch((caught: unknown) => {
         if (!cancelled) {
-          setNotice({ message: errorMessage(caught), tone: "error" });
+          setNotice({ message: localizedErrorMessage(caught, t), tone: "error" });
         }
       })
       .finally(() => {
@@ -125,17 +128,17 @@ export default function AuditPage() {
   const columns: Column<AuditEventDto>[] = [
     {
       key: "createdAt",
-      header: "When",
+      header: t("admin.audit.colWhen"),
       render: (event) => formatDate(event.createdAt)
     },
     {
       key: "action",
-      header: "Action",
+      header: t("admin.audit.colAction"),
       render: (event) => <strong>{event.action}</strong>
     },
     {
       key: "entity",
-      header: "Entity",
+      header: t("admin.audit.colEntity"),
       render: (event) => (
         <div>
           <div>{event.entityType}</div>
@@ -145,17 +148,17 @@ export default function AuditPage() {
     },
     {
       key: "actor",
-      header: "Actor",
-      render: (event) => event.actorUserId ?? "System"
+      header: t("admin.audit.colActor"),
+      render: (event) => event.actorUserId ?? t("admin.audit.systemActor")
     },
     {
       key: "details",
-      header: "Details (masked)",
+      header: t("admin.audit.colDetails"),
       render: (event) => <code>{event.details ?? "—"}</code>
     },
     {
       key: "ip",
-      header: "IP address",
+      header: t("admin.audit.colIp"),
       render: (event) => event.ipAddress ?? "—"
     }
   ];
@@ -165,11 +168,11 @@ export default function AuditPage() {
       <div className="page">
         <header className="page__header">
           <div>
-            <h1>Audit trail</h1>
-            <p>Read-only, append-only record of security-relevant changes.</p>
+            <h1>{t("admin.audit.title")}</h1>
+            <p>{t("admin.audit.subtitle")}</p>
           </div>
           <Button variant="secondary" onClick={resetFilters}>
-            Clear filters
+            {t("admin.audit.clearFilters")}
           </Button>
         </header>
 
@@ -178,8 +181,8 @@ export default function AuditPage() {
         <section className="card">
           <div className="filters">
             <Input
-              label="Action"
-              placeholder="User.LoggedIn"
+              label={t("admin.audit.fieldAction")}
+              placeholder={t("admin.audit.placeholderAction")}
               value={action}
               onChange={(event) => {
                 setAction(event.target.value);
@@ -187,8 +190,8 @@ export default function AuditPage() {
               }}
             />
             <Input
-              label="Entity type"
-              placeholder="identity.User"
+              label={t("admin.audit.fieldEntityType")}
+              placeholder={t("admin.audit.placeholderEntityType")}
               value={entityType}
               onChange={(event) => {
                 setEntityType(event.target.value);
@@ -196,8 +199,8 @@ export default function AuditPage() {
               }}
             />
             <Input
-              label="Entity ID"
-              placeholder="GUID"
+              label={t("admin.audit.fieldEntityId")}
+              placeholder={t("admin.audit.placeholderGuid")}
               value={entityId}
               onChange={(event) => {
                 setEntityId(event.target.value);
@@ -205,8 +208,8 @@ export default function AuditPage() {
               }}
             />
             <Input
-              label="Actor user ID"
-              placeholder="GUID"
+              label={t("admin.audit.fieldActorUserId")}
+              placeholder={t("admin.audit.placeholderGuid")}
               value={actorUserId}
               onChange={(event) => {
                 setActorUserId(event.target.value);
@@ -214,7 +217,7 @@ export default function AuditPage() {
               }}
             />
             <Input
-              label="From"
+              label={t("admin.audit.fieldFrom")}
               type="datetime-local"
               value={from}
               onChange={(event) => {
@@ -223,7 +226,7 @@ export default function AuditPage() {
               }}
             />
             <Input
-              label="To"
+              label={t("admin.audit.fieldTo")}
               type="datetime-local"
               value={to}
               onChange={(event) => {
@@ -245,7 +248,7 @@ export default function AuditPage() {
               pageSize={result?.pageSize ?? 20}
               totalCount={result?.totalCount ?? 0}
               onPageChange={setPage}
-              emptyMessage="No audit events match the current filters."
+              emptyMessage={t("admin.audit.empty")}
             />
           )}
         </section>
