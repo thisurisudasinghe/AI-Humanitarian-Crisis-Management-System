@@ -123,14 +123,14 @@ export const si: Dictionary = {
     "primaryAria": "ප්‍රධාන සංචාලනය",
     "footerExploreAria": "පාදක ගවේෂණ සබැඳි",
     "footerHelpAria": "පාදක උදව් සබැඳි",
+    "footerLinksAria": "පාදක සබැඳි",
     "explore": "ගවේෂණය",
     "getHelp": "උදව් ලබාගන්න",
     "aboutSafeway": "SAFEWAY ගැන",
     "howItWorksLink": "ක්‍රියා කරන ආකාරය",
     "findAssistance": "සහාය සොයන්න",
-    "contactSupport": "සහාය අමතන්න",
-    "footerTagline": "SAFEWAY උපකාර ඉල්ලන පුද්ගලයින් බලයලත් මානුෂීය ප්‍රතිචාර සහ සම්බන්ධීකරණ සේවාවන් සමඟ සම්බන්ධ කරයි.",
-    "footerCopyright": "© 2026 SAFEWAY. මූලාකෘති අත්දැකීම."
+    "footerTagline": "මානුෂීය ප්‍රතිචාර සහ සම්බන්ධීකරණය — එක්ව.",
+    "footerCopyright": "© 2026 SAFEWAY. Prototype experience."
   },
   "auth": {
     "signIn": "පිවිසෙන්න",
@@ -617,14 +617,9 @@ export const si: Dictionary = {
       "send": "පණිවිඩය යවන්න",
       "infoTitle": "සම්බන්ධතා තොරතුරු",
       "detailsKicker": "සෘජු සම්බන්ධතා",
-      "detailsNotice": "නිල පොදු සම්බන්ධතා තොරතුරු තවම ප්‍රකාශයට පත් කර නැත. පහත ඇති ඒවා පැහැදිලිව සලකුණු කළ ස්ථානගත කිරීම් වේ. ඒවා තහවුරු කරන අතරතුර සෘජු සහාය සබැඳි භාවිත කරන්න.",
+      "emergencyNotice": "ක්ෂණික අනතුරකදී පළමුව දේශීය හදිසි සේවාවන් අමතන්න. SAFEWAY වාර්තා සහ සහාය සඳහා පහත සබැඳි භාවිත කරන්න.",
       "detailEmail": "විද්‍යුත් තැපෑල",
       "detailPhone": "දුරකථනය",
-      "detailAddress": "ලිපිනය",
-      "placeholderEmail": "ස්ථානගත කිරීම: පොදු විද්‍යුත් තැපැල් ලිපිනය තවම ප්‍රකාශයට පත් කර නැත.",
-      "placeholderPhone": "ස්ථානගත කිරීම: පොදු දුරකථන අංකය තවම ප්‍රකාශයට පත් කර නැත.",
-      "placeholderAddress": "ස්ථානගත කිරීම: පොදු කාර්යාල ලිපිනය තවම ප්‍රකාශයට පත් කර නැත.",
-      "notPublishedPlaceholder": "ප්‍රකාශයට පත් කර නැත (ස්ථානගත කිරීම)",
       "quickLinksTitle": "දැනටමත් සහාය අවශ්‍යද?",
       "quickLinksCopy": "පහත සෘජු මාර්ග හරහා අර්බුදයක් වාර්තා කරන්න හෝ සහාය සොයන්න."
     }

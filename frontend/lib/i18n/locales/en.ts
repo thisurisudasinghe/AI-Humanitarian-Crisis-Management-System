@@ -121,13 +121,13 @@ export const en = {
     "primaryAria": "Primary navigation",
     "footerExploreAria": "Footer explore links",
     "footerHelpAria": "Footer help links",
+    "footerLinksAria": "Footer links",
     "explore": "Explore",
     "getHelp": "Get help",
     "aboutSafeway": "About SAFEWAY",
     "howItWorksLink": "How it works",
     "findAssistance": "Find assistance",
-    "contactSupport": "Contact support",
-    "footerTagline": "SAFEWAY connects people requesting assistance with authorized humanitarian response and coordination services.",
+    "footerTagline": "Humanitarian response and coordination, together.",
     "footerCopyright": "© 2026 SAFEWAY. Prototype experience."
   },
   "auth": {
@@ -615,14 +615,9 @@ export const en = {
       "send": "Send message",
       "infoTitle": "Contact information",
       "detailsKicker": "DIRECT CONTACT",
-      "detailsNotice": "Official public contact details have not been published yet. The entries below are clearly marked placeholders; use the direct support links while they are confirmed.",
+      "emergencyNotice": "In immediate danger, contact local emergency services first. For SAFEWAY reporting and assistance, use the links below.",
       "detailEmail": "Email",
       "detailPhone": "Phone",
-      "detailAddress": "Address",
-      "placeholderEmail": "Placeholder: public email address not published yet.",
-      "placeholderPhone": "Placeholder: public phone number not published yet.",
-      "placeholderAddress": "Placeholder: public office address not published yet.",
-      "notPublishedPlaceholder": "Not published (placeholder)",
       "quickLinksTitle": "NEED SUPPORT NOW?",
       "quickLinksCopy": "Report a crisis or find assistance through the direct paths below."
     }

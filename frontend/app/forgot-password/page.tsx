@@ -5,7 +5,6 @@ import { localizedErrorMessage } from "@/lib/i18n/errors";
 import { useState, type FormEvent } from "react";
 import { Brand } from "@/components/safeway/Brand";
 import { Icon } from "@/components/safeway/Icon";
-import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
 import { apiJson } from "@/lib/api";
 import { useT } from "@/lib/i18n";
 
@@ -62,7 +61,6 @@ export default function ForgotPasswordPage() {
       <div className="login-form-panel">
         <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
           <Link className="back-link" href="/login">{t("auth.backToLoginLink")}</Link>
-          <LanguageSwitcher variant="compact" />
         </div>
         <div className="login-form">
           <span className="mobile-brand"><Brand /></span>

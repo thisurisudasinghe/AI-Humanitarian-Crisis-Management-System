@@ -5,7 +5,6 @@ import { localizedErrorMessage } from "@/lib/i18n/errors";
 import { useState, type FormEvent } from "react";
 import { Brand } from "@/components/safeway/Brand";
 import { Icon } from "@/components/safeway/Icon";
-import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
 
 import { useAuth } from "@/lib/auth";
 import { useT } from "@/lib/i18n";
@@ -123,7 +122,6 @@ export default function RegisterPage() {
       <div className="login-form-panel">
         <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
           <Link className="back-link" href="/">{t("common.backToHome")}</Link>
-          <LanguageSwitcher variant="compact" />
         </div>
         <div className="login-form register-form">
           <span className="mobile-brand"><Brand /></span>

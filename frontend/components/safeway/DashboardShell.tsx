@@ -8,7 +8,6 @@ import { useT } from "@/lib/i18n";
 import { initials, humanizeRole } from "@/lib/format";
 import { getInbox } from "@/lib/notifications";
 import { RoleNames, hasAnyRole, hasRole, isStaff } from "@/lib/roles";
-import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
 import { Brand } from "./Brand";
 import { Icon } from "./Icon";
 
@@ -230,7 +229,6 @@ export function DashboardShell({ children }: { children: ReactNode }) {
         </nav>
 
         <div className="side-bottom">
-          <div style={{ padding: "8px 12px" }}><LanguageSwitcher variant="nav" /></div>
           <Link href="/" onClick={() => setMobileNav(false)}>
             <Icon name="home" />
             <span>{t("dashboard.home")}</span>
@@ -295,7 +293,6 @@ export function DashboardShell({ children }: { children: ReactNode }) {
               <Link href="/">{t("dashboard.home")}</Link>
               <Link href="/account">{t("dashboard.profile")}</Link>
             </div>
-            <LanguageSwitcher variant="nav" className="dash-lang-switcher" />
             <Link
               href="/notifications"
               aria-label={bellLabel}
@@ -319,7 +316,6 @@ export function DashboardShell({ children }: { children: ReactNode }) {
                 <Link href="/dashboard">{t("common.backToDashboard")}</Link>
               ) : null}
               <Link href="/account">{t("dashboard.profile")}</Link>
-              <LanguageSwitcher variant="light" className="dash-lang-switcher" />
               <Link
                 href="/notifications"
                 aria-label={bellLabel}
