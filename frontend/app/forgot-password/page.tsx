@@ -4,7 +4,9 @@ import Link from "next/link";
 import { useState, type FormEvent } from "react";
 import { Brand } from "@/components/safeway/Brand";
 import { Icon } from "@/components/safeway/Icon";
+import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
 import { apiJson, errorMessage } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 
 type ForgotPasswordResponse = {
   message: string;
@@ -12,6 +14,7 @@ type ForgotPasswordResponse = {
 };
 
 export default function ForgotPasswordPage() {
+  const t = useT();
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -24,7 +27,7 @@ export default function ForgotPasswordPage() {
 
     const normalized = email.trim();
     if (!normalized) {
-      setError("Enter the email address for your account.");
+      setError(t("auth.emailRequired"));
       return;
     }
 
@@ -48,69 +51,43 @@ export default function ForgotPasswordPage() {
       <div className="login-brand-panel">
         <Brand light />
         <div>
-          <div className="eyebrow">
-            <span /> Account recovery
-          </div>
-          <h1>Reset your password securely.</h1>
-          <p>
-            Enter your account email and we&apos;ll send a secure, time-limited link if an account
-            exists.
-          </p>
+          <div className="eyebrow"><span /> {t("auth.accountRecovery")}</div>
+          <h1>{t("auth.forgotHeroTitle")}</h1>
+          <p>{t("auth.forgotHeroCopy")}</p>
         </div>
-        <blockquote>“Connecting people to help. Coordinating action. Restoring hope.”</blockquote>
+        <blockquote>{t("auth.quote")}</blockquote>
       </div>
 
       <div className="login-form-panel">
-        <Link className="back-link" href="/login">
-          ← Back to login
-        </Link>
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+          <Link className="back-link" href="/login">{t("auth.backToLoginLink")}</Link>
+          <LanguageSwitcher variant="compact" />
+        </div>
         <div className="login-form">
-          <span className="mobile-brand">
-            <Brand />
-          </span>
-          <h2>Forgot your password?</h2>
-          <p>We&apos;ll email you a link to create a new password.</p>
+          <span className="mobile-brand"><Brand /></span>
+          <h2>{t("auth.forgotTitle2")}</h2>
+          <p>{t("auth.forgotSubtitle2")}</p>
 
           <form onSubmit={onSubmit} noValidate>
             <label>
-              <span className="field-label">Email address</span>
-              <input
-                type="email"
-                placeholder="you@example.org"
-                autoComplete="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                required
-              />
+              <span className="field-label">{t("auth.email")}</span>
+              <input type="email" placeholder={t("auth.emailPlaceholder")} autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} required />
             </label>
 
-            {error ? (
-              <div className="form-error" role="alert">
-                {error}
-              </div>
-            ) : null}
-
+            {error ? <div className="form-error" role="alert">{error}</div> : null}
             {result ? (
-              <div
-                className={result.emailDeliveryConfigured ? "form-success" : "form-warning"}
-                role="status"
-              >
+              <div className={result.emailDeliveryConfigured ? "form-success" : "form-warning"} role="status">
                 {result.message}
               </div>
             ) : null}
 
             <button className="btn btn-primary login-submit" type="submit" disabled={busy}>
-              {busy ? "Sending link..." : "Send reset link"} <Icon name="arrow" />
+              {busy ? t("auth.sendingResetLink") : t("auth.sendResetLink")} <Icon name="arrow" />
             </button>
           </form>
 
-          <p className="register">
-            Remembered your password? <Link href="/login">Back to login</Link>
-          </p>
-          <div className="secure-line">
-            <Icon name="shield" size={16} /> For security, we don&apos;t confirm whether an email is
-            registered.
-          </div>
+          <p className="register">{t("auth.remembered")} <Link href="/login">{t("auth.backToLoginLink")}</Link></p>
+          <div className="secure-line"><Icon name="shield" size={16} /> {t("auth.noConfirmEmail")}</div>
         </div>
       </div>
     </div>

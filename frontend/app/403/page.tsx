@@ -1,22 +1,23 @@
+"use client";
+
 import Link from "next/link";
 import { Brand } from "@/components/safeway/Brand";
 import { Icon } from "@/components/safeway/Icon";
+import { useT } from "@/lib/i18n";
 
 export default function ForbiddenPage() {
+  const t = useT();
   return (
     <main className="forbidden-page">
       <div>
         <Brand />
         <span className="badge coral" style={{ marginTop: 26 }}>
-          <i /> 403 · Forbidden
+          <i /> {t("common.forbiddenBadge")}
         </span>
-        <h1>This workspace is not available for your role.</h1>
-        <p>
-          Your account is signed in, but it does not hold one of the roles this page requires. Ask a
-          system administrator if you believe you should have access.
-        </p>
+        <h1>{t("common.forbiddenTitle")}</h1>
+        <p>{t("common.forbiddenCopy")}</p>
         <Link className="btn btn-primary" href="/dashboard">
-          Back to dashboard <Icon name="arrow" />
+          {t("common.backToDashboard")} <Icon name="arrow" />
         </Link>
       </div>
     </main>

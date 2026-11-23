@@ -3,8 +3,10 @@
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useState } from "react";
+import { useT } from "@/lib/i18n";
 import { Brand } from "./Brand";
 import { Icon } from "./Icon";
+import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
 import {
   caseRequestErrorMessage,
   submitCrisisReport,
@@ -44,6 +46,7 @@ function coordinatesAreValid(latText: string, lngText: string): boolean {
 }
 
 export function ReportFlow() {
+  const t = useT();
   const [step, setStep] = useState(1);
   const [category, setCategory] = useState<string>("Food");
   const [severity, setSeverity] = useState<string>("Urgent");
@@ -136,58 +139,55 @@ export function ReportFlow() {
             <Icon name="check" size={42} />
           </div>
           <div className="eyebrow dark">
-            <span /> Report submitted
+            <span /> {t("report.title")}
           </div>
-          <h1>Your report has been received.</h1>
+          <h1>{t("report.submittedTitle")}</h1>
           <p>
-            The report was submitted to the crisis and case service and is linked to your
-            signed-in account. You can follow its status from your reports page.
+            {t("report.submittedCopy")}
           </p>
           <div className="reference-box">
-            <span>Reference</span>
+            <span>{t("report.reference")}</span>
             <strong>{receipt.reference}</strong>
           </div>
           {receipt.evidenceAttached ? (
             <p className="muted">
-              Evidence file attached: {receipt.evidenceFileName ?? "uploaded file"}.
+              {t("report.evidenceAttached", { file: receipt.evidenceFileName ?? "uploaded file" })}
             </p>
           ) : null}
           {receipt.evidenceError ? (
             <div className="form-error" role="alert">
-              <strong>The report was submitted, but its evidence was not attached.</strong>{" "}
-              {receipt.evidenceError} Keep the file and your reference above for a later upload.
+              <strong>{t("report.evidenceErrorTitle")}</strong>{" "}{receipt.evidenceError} {t("report.evidenceErrorCopy")}
             </div>
           ) : null}
           <p className="muted">
-            Submitted reports are not edited here. Create a separate update through your reports page
-            instead of submitting a duplicate.
+            {t("report.noEdit")}
           </p>
           <div className="next-steps">
-            <b>What happens next?</b>
+            <b>{t("report.nextSteps")}</b>
             <div>
               <span>1</span>
               <p>
-                <strong>Review</strong>Your report is checked and prioritized.
+                <strong>{t("report.stepReview")}</strong> {t("report.stepReviewCopy")}
               </p>
             </div>
             <div>
               <span>2</span>
               <p>
-                <strong>Response</strong>A response team coordinates the next action.
+                <strong>{t("report.stepResponse")}</strong> {t("report.stepResponseCopy")}
               </p>
             </div>
             <div>
               <span>3</span>
               <p>
-                <strong>Updates</strong>You can follow progress from your dashboard.
+                <strong>{t("report.stepUpdates")}</strong> {t("report.stepUpdatesCopy")}
               </p>
             </div>
           </div>
           <Link className="btn btn-primary" href="/dashboard">
-            View my reports <Icon name="arrow" />
+            {t("report.viewMyReports")} <Icon name="arrow" />
           </Link>
           <Link className="text-btn" href="/">
-            Return to homepage
+            {t("report.returnHome")}
           </Link>
         </main>
       </div>
@@ -226,11 +226,9 @@ export function ReportFlow() {
         </aside>
 
         <section className="form-panel">
-          <Link className="back-link report-back-link" href="/">
-            ← Back to home
-          </Link>
+          <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"center",flexWrap:"wrap"}}><Link className="back-link report-back-link" href="/">{t("common.backToHome")}</Link><LanguageSwitcher variant="compact" /></div>
           <div className="mobile-progress">
-            Step {step} of 3{" "}
+            {t("report.stepOf", { step: String(step), total: "3" })}{" "}
             <span>
               <i style={{ width: `${step * 33.3}%` }} />
             </span>
