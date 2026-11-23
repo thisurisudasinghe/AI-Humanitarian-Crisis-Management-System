@@ -273,7 +273,7 @@ export function GlobalFloatingChat() {
           <header className="safeway-chat-header">
             <div className="safeway-chat-header__identity">
               <span className="safeway-chat-header__avatar" aria-hidden="true">
-                <Icon name="brain" size={22} />
+                <Icon name="heartHandshake" size={22} />
               </span>
               <div>
                 <strong>{t("chat.title")}</strong>
@@ -360,8 +360,8 @@ export function GlobalFloatingChat() {
         aria-label={open ? t("chat.minimize") : t("chat.open")}
         title={open ? t("chat.minimize") : t("chat.open")}
       >
-        <Icon name={open ? "close" : "brain"} size={26} />
-        {!open ? <span className="safeway-chat-launcher__dot" aria-hidden="true" /> : null}
+        <Icon name="heartHandshake" size={30} stroke={1.9} />
+        <span className="safeway-chat-launcher__label">{t("chat.title")}</span>
       </button>
     </>
   );
