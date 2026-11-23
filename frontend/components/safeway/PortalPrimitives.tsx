@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { formatNumber, resolveLocale } from "@/lib/i18n/core";
 import { Icon } from "./Icon";
 
 export function PortalHeader({
@@ -32,6 +33,8 @@ export function PortalStats({
 }: {
   items: { label: string; value: string | number; hint?: string; icon: string; tone?: string }[];
 }) {
+  const resolvedLocale = typeof document === "undefined" ? "en" : resolveLocale(document.documentElement.lang);
+
   return (
     <div className="portal-stats">
       {items.map((item) => (
@@ -40,7 +43,7 @@ export function PortalStats({
             <Icon name={item.icon} size={18} />
           </i>
           <span>
-            <b>{item.value}</b>
+            <b>{typeof item.value === "number" ? formatNumber(item.value, resolvedLocale) : item.value}</b>
             <small>{item.label}</small>
             {item.hint ? <em>{item.hint}</em> : null}
           </span>

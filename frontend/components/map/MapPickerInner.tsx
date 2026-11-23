@@ -7,7 +7,9 @@
 import { useEffect, useState } from "react";
 import L from "leaflet";
 import { MapContainer, Marker, TileLayer, useMap, useMapEvents } from "react-leaflet";
-import { api, errorMessage } from "@/lib/operations-api";
+import { api } from "@/lib/operations-api";
+import { useT } from "@/lib/i18n";
+import { localizedErrorMessage } from "@/lib/i18n/errors";
 
 export interface MapPoint {
   lat: number;
@@ -32,13 +34,13 @@ const pinIcon = L.divIcon({
   iconAnchor: [12, 12],
 });
 
-function KeyboardPan({ enabled }: { enabled: boolean }) {
+function KeyboardPan({ enabled, ariaLabel }: { enabled: boolean; ariaLabel: string }) {
   const map = useMap();
   useEffect(() => {
     const container = map.getContainer();
     container.tabIndex = 0;
     container.setAttribute("role", "application");
-    container.setAttribute("aria-label", "Location map. Use arrow keys to pan, or the coordinate fields below.");
+    container.setAttribute("aria-label", ariaLabel);
     const onKeyDown = (event: KeyboardEvent) => {
       if (!enabled) return;
       const step = 64;
@@ -56,7 +58,7 @@ function KeyboardPan({ enabled }: { enabled: boolean }) {
     };
     container.addEventListener("keydown", onKeyDown);
     return () => container.removeEventListener("keydown", onKeyDown);
-  }, [map, enabled]);
+  }, [map, enabled, ariaLabel]);
   return null;
 }
 
@@ -86,6 +88,7 @@ export default function MapPickerInner({
   const [manual, setManual] = useState(false);
   const [approximate, setApproximate] = useState(false);
   const [busy, setBusy] = useState(false);
+  const t = useT();
   const [notice, setNotice] = useState("");
 
   useEffect(() => {
@@ -108,7 +111,7 @@ export default function MapPickerInner({
       const found = await api<{ lat: number; lng: number } | null>(
         `/geo/geocode?address=${encodeURIComponent(address.trim())}`,
       );
-      if (!found) throw new Error("No coordinates were found for that address.");
+      if (!found) throw new Error(t("map.noCoordinates"));
       setApproximate(false);
       setManual(false);
       commit({ lat: Number(found.lat), lng: Number(found.lng), address: address.trim() });
@@ -116,7 +119,7 @@ export default function MapPickerInner({
       // Geocoder offline / 404: soft fallback, never throw to the page.
       setApproximate(true);
       setManual(true);
-      setNotice(`${errorMessage(error)} Enter latitude and longitude manually.`);
+      setNotice(`${localizedErrorMessage(error, t)} ${t("map.manualHint")}`);
     } finally {
       setBusy(false);
     }
@@ -134,14 +137,14 @@ export default function MapPickerInner({
   return (
     <div className="map-picker">
       <div className="map-picker-toolbar">
-        <label htmlFor="map-picker-address">Address search</label>
+        <label htmlFor="map-picker-address">{t("map.addressSearch")}</label>
         <div className="inline">
           <input
             id="map-picker-address"
             type="search"
             value={address}
             disabled={disabled || busy}
-            placeholder="e.g. Negombo, Sri Lanka"
+            placeholder={t("map.addressPlaceholder")}
             onChange={(event) => setAddress(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === "Enter") {
@@ -151,14 +154,14 @@ export default function MapPickerInner({
             }}
           />
           <button type="button" onClick={() => void search()} disabled={disabled || busy || !address.trim()}>
-            {busy ? "Searching…" : "Find on map"}
+            {busy ? t("map.searching") : t("map.findOnMap")}
           </button>
           <button type="button" disabled={disabled} onClick={() => setManual((current) => !current)}>
-            {manual ? "Hide coordinates" : "Enter coordinates manually"}
+            {manual ? t("map.hideCoordinates") : t("map.enterCoordinates")}
           </button>
         </div>
         <p className="muted small">
-          Click the map to drop a pin. Focus the map and use arrow keys to pan.
+          {t("map.pinHint")}
         </p>
       </div>
 
@@ -168,7 +171,7 @@ export default function MapPickerInner({
             attribution="&copy; OpenStreetMap contributors"
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
-          <KeyboardPan enabled={!disabled} />
+          <KeyboardPan enabled={!disabled} ariaLabel={t("map.mapAria")} />
           <ClickToPin
             disabled={disabled}
             onPick={(lat, lng) => {
@@ -182,10 +185,10 @@ export default function MapPickerInner({
 
       {(manual || approximate) && (
         <div className="map-picker-manual panel" aria-live="polite">
-          {approximate && <p className="badge badge-warn">Approximate / manually placed point</p>}
+          {approximate && <p className="badge badge-warn">{t("map.approximate")}</p>}
           {notice && <p className="error small">{notice}</p>}
           <div className="inline">
-            <label htmlFor="map-picker-lat">Latitude</label>
+            <label htmlFor="map-picker-lat">{t("map.latitude")}</label>
             <input
               id="map-picker-lat"
               type="number"
@@ -196,7 +199,7 @@ export default function MapPickerInner({
               value={point.lat}
               onChange={(event) => updateManual("lat", event.target.value)}
             />
-            <label htmlFor="map-picker-lng">Longitude</label>
+            <label htmlFor="map-picker-lng">{t("map.longitude")}</label>
             <input
               id="map-picker-lng"
               type="number"

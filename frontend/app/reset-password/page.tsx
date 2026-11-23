@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { localizedErrorMessage } from "@/lib/i18n/errors";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useState, type FormEvent } from "react";
 import { Brand } from "@/components/safeway/Brand";
 import { Icon } from "@/components/safeway/Icon";
 import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
-import { apiJson, errorMessage } from "@/lib/api";
+import { apiJson } from "@/lib/api";
 import { useT } from "@/lib/i18n";
 
 function ResetPasswordForm() {
@@ -49,7 +50,7 @@ function ResetPasswordForm() {
       setNewPassword("");
       setConfirmPassword("");
     } catch (caught) {
-      setError(errorMessage(caught));
+      setError(localizedErrorMessage(caught, t));
     } finally {
       setBusy(false);
     }
@@ -122,8 +123,9 @@ function ResetPasswordForm() {
 }
 
 export default function ResetPasswordPage() {
+  const t = useT();
   return (
-    <Suspense fallback={<div className="login-page"><div className="login-brand-panel"><Brand light /></div><div className="login-form-panel"><div className="login-form"><p>Loading...</p></div></div></div>}>
+    <Suspense fallback={<div className="login-page"><div className="login-brand-panel"><Brand light /></div><div className="login-form-panel"><div className="login-form"><p>{t("feedback.loading")}</p></div></div></div>}>
       <ResetPasswordForm />
     </Suspense>
   );

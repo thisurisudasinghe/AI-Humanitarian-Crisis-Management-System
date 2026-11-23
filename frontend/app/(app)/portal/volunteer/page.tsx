@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { localizedErrorMessage } from "@/lib/i18n/errors";
 import { useEffect, useState, type FormEvent } from "react";
 import { AuthGuard } from "@/components/AuthGuard";
 import { Icon } from "@/components/safeway/Icon";
@@ -11,8 +12,9 @@ import {
   PortalState,
   PortalStats
 } from "@/components/safeway/PortalPrimitives";
-import { errorMessage } from "@/lib/api";
+
 import { formatShortDate } from "@/lib/format";
+import { useT } from "@/lib/i18n";
 import { getInbox, type NotificationInboxDto } from "@/lib/notifications";
 import {
   addVolunteerAvailability,
@@ -62,24 +64,25 @@ function skillList(value: string): string[] {
   return value ? [value] : [];
 }
 
-function optionalNumber(value: string): number | null {
+function optionalNumber(value: string, message: string): number | null {
   if (!value.trim()) return null;
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) {
-    throw new Error("Latitude and longitude must be valid numbers.");
+    throw new Error(message);
   }
   return parsed;
 }
 
-function toIso(value: string): string {
+function toIso(value: string, message: string): string {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) {
-    throw new Error("Enter a valid date and time.");
+    throw new Error(message);
   }
   return parsed.toISOString();
 }
 
 export default function VolunteerPortalPage() {
+  const t = useT();
   const [portal, setPortal] = useState<VolunteerPortalData | null>(null);
   const [tasks, setTasks] = useState<VolunteerTask[]>([]);
   const [inbox, setInbox] = useState<NotificationInboxDto | null>(null);
@@ -111,13 +114,13 @@ export default function VolunteerPortalPage() {
         }
       })
       .catch((cause) => {
-        setLoadError(errorMessage(cause));
+        setLoadError(localizedErrorMessage(cause, t));
       });
 
     const taskRequest = getMyVolunteerTasks()
       .then((result) => setTasks(result.items))
       .catch((cause) => {
-        setLoadError(errorMessage(cause));
+        setLoadError(localizedErrorMessage(cause, t));
       });
 
     const inboxRequest = getInbox({ limit: 5 })
@@ -151,7 +154,7 @@ export default function VolunteerPortalPage() {
       await load(false);
       setNotice(success);
     } catch (cause) {
-      setError(errorMessage(cause));
+      setError(localizedErrorMessage(cause, t));
     } finally {
       setBusy(false);
     }
@@ -160,10 +163,10 @@ export default function VolunteerPortalPage() {
   function onSaveProfile(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     void run(async () => {
-      const latitude = optionalNumber(lat);
-      const longitude = optionalNumber(lng);
+      const latitude = optionalNumber(lat, t("portal.volunteer.validation.coordinates"));
+      const longitude = optionalNumber(lng, t("portal.volunteer.validation.coordinates"));
       if ((latitude === null) !== (longitude === null)) {
-        throw new Error("Enter both latitude and longitude, or leave both blank.");
+        throw new Error(t("portal.volunteer.validation.coordinatesPair"));
       }
 
       await saveVolunteerProfile({
@@ -173,24 +176,24 @@ export default function VolunteerPortalPage() {
         lng: longitude,
         active
       });
-    }, "Your volunteer profile was saved.");
+    }, t("portal.volunteer.validation.profileSaved"));
   }
 
   function onAddAvailability(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     void run(async () => {
       if (!startsAt || !endsAt) {
-        throw new Error("Select a start and end time.");
+        throw new Error(t("portal.volunteer.validation.timeRange"));
       }
-      const from = toIso(startsAt);
-      const to = toIso(endsAt);
+      const from = toIso(startsAt, t("portal.volunteer.validation.validDateTime"));
+      const to = toIso(endsAt, t("portal.volunteer.validation.validDateTime"));
       if (Date.parse(to) <= Date.parse(from)) {
-        throw new Error("The end time must be after the start time.");
+        throw new Error(t("portal.volunteer.validation.endAfterStart"));
       }
       await addVolunteerAvailability({ startsAt: from, endsAt: to });
       setStartsAt("");
       setEndsAt("");
-    }, "Your availability window was added.");
+    }, t("portal.volunteer.validation.availabilityAdded"));
   }
 
   const verification = portal?.profile?.verificationStatus ?? "Not started";
@@ -200,12 +203,12 @@ export default function VolunteerPortalPage() {
   return (
     <AuthGuard allowedRoles={[RoleNames.Volunteer]}>
       <PortalHeader
-        eyebrow="Volunteer portal"
-        title="Your volunteer workspace"
-        description="Keep your profile current, manage availability and respond to coordination tasks."
+        eyebrow={t("portal.volunteer.eyebrow")}
+        title={t("portal.volunteer.title")}
+        description={t("portal.volunteer.description")}
         action={
           <Link className="btn btn-outline" href="/notifications">
-            <Icon name="bell" /> Notifications
+            <Icon name="bell" /> {t("portal.volunteer.notifications")}
           </Link>
         }
       />
@@ -213,26 +216,26 @@ export default function VolunteerPortalPage() {
       <PortalStats
         items={[
           {
-            label: "Verification",
-            value: loading ? "—" : verification,
-            hint: verification === "Verified" ? "Eligible for assignment" : "Coordinator review required",
+            label: t("portal.volunteer.stats.verification"),
+            value: loading ? "—" : verification === "Not started" ? t("portal.volunteer.verification.notStarted") : verification,
+            hint: verification === "Verified" ? t("portal.volunteer.verification.eligible") : t("portal.volunteer.verification.reviewRequired"),
             icon: "shield",
             tone: verificationTone
           },
           {
-            label: "Completed tasks",
+            label: t("portal.volunteer.stats.completedTasks"),
             value: loading ? "—" : (portal?.completedTasks ?? 0),
             icon: "check",
             tone: "green"
           },
           {
-            label: "Open opportunities",
+            label: t("portal.volunteer.stats.openOpportunities"),
             value: loading ? "—" : (portal?.opportunities.length ?? 0),
             icon: "users",
             tone: "blue"
           },
           {
-            label: "Unread messages",
+            label: t("portal.volunteer.stats.unreadMessages"),
             value: loading ? "—" : (inbox?.unreadCount ?? 0),
             icon: "bell",
             tone: "green"
@@ -246,52 +249,52 @@ export default function VolunteerPortalPage() {
 
       <div className="portal-split-grid">
         <PortalSection
-          title="Volunteer profile"
-          description="Skills and languages are shared with coordinators for matching."
+          title={t("portal.volunteer.profile.title")}
+          description={t("portal.volunteer.profile.description")}
         >
           {loading ? (
-            <PortalState kind="loading" title="Loading profile">
-              Reading your volunteer record.
+            <PortalState kind="loading" title={t("portal.volunteer.profile.loadingTitle")}>
+              {t("portal.volunteer.profile.loadingBody")}
             </PortalState>
           ) : (
             <form className="portal-form" onSubmit={onSaveProfile}>
               <label>
-                <span>Skills</span>
+                <span>{t("portal.volunteer.profile.skills")}</span>
                 <input
                   value={skills}
                   onChange={(event) => setSkills(event.target.value)}
-                  placeholder="Food distribution, First aid"
+                  placeholder={t("portal.volunteer.profile.skillsPlaceholder")}
                 />
-                <small>Separate each skill with a comma.</small>
+                <small>{t("portal.volunteer.profile.skillsHelp")}</small>
               </label>
               <label>
-                <span>Languages</span>
+                <span>{t("portal.volunteer.profile.languages")}</span>
                 <input
                   value={languages}
                   onChange={(event) => setLanguages(event.target.value)}
                   placeholder="en, si"
                 />
-                <small>Separate each language with a comma.</small>
+                <small>{t("portal.volunteer.profile.languagesHelp")}</small>
               </label>
               <div className="portal-form-row">
                 <label>
-                  <span>Latitude</span>
+                  <span>{t("portal.volunteer.profile.latitude")}</span>
                   <input
                     type="number"
                     step="any"
                     value={lat}
                     onChange={(event) => setLat(event.target.value)}
-                    placeholder="Optional"
+                    placeholder={t("portal.volunteer.profile.optional")}
                   />
                 </label>
                 <label>
-                  <span>Longitude</span>
+                  <span>{t("portal.volunteer.profile.longitude")}</span>
                   <input
                     type="number"
                     step="any"
                     value={lng}
                     onChange={(event) => setLng(event.target.value)}
-                    placeholder="Optional"
+                    placeholder={t("portal.volunteer.profile.optional")}
                   />
                 </label>
               </div>
@@ -301,10 +304,10 @@ export default function VolunteerPortalPage() {
                   checked={active}
                   onChange={(event) => setActive(event.target.checked)}
                 />
-                <span>Available for task assignments</span>
+                <span>{t("portal.volunteer.profile.available")}</span>
               </label>
               <button className="btn btn-primary" type="submit" disabled={busy}>
-                {busy ? "Saving…" : "Save profile"}
+                {busy ? t("portal.volunteer.profile.saving") : t("portal.volunteer.profile.save")}
                 {busy ? null : <Icon name="arrow" size={16} />}
               </button>
             </form>
@@ -312,12 +315,12 @@ export default function VolunteerPortalPage() {
         </PortalSection>
 
         <PortalSection
-          title="Availability"
-          description="Add windows when coordinators can contact you for support."
+          title={t("portal.volunteer.availability.title")}
+          description={t("portal.volunteer.availability.description")}
         >
           {loading ? (
-            <PortalState kind="loading" title="Loading availability">
-              Checking your saved windows.
+            <PortalState kind="loading" title={t("portal.volunteer.availability.loadingTitle")}>
+              {t("portal.volunteer.availability.loadingBody")}
             </PortalState>
           ) : (
             <>
@@ -330,20 +333,20 @@ export default function VolunteerPortalPage() {
                       </i>
                       <div>
                         <b>{formatShortDate(window.startsAt)}</b>
-                        <p>Until {formatShortDate(window.endsAt)}</p>
+                        <p>{t("portal.volunteer.availability.until", { date: formatShortDate(window.endsAt) })}</p>
                       </div>
                     </article>
                   ))}
                 </div>
               ) : (
-                <PortalState kind="empty" title="No availability saved">
-                  Add a window so coordinators know when you can help.
+                <PortalState kind="empty" title={t("portal.volunteer.availability.emptyTitle")}>
+                  {t("portal.volunteer.availability.emptyBody")}
                 </PortalState>
               )}
 
               <form className="portal-form portal-form--inline" onSubmit={onAddAvailability}>
                 <label>
-                  <span>Starts</span>
+                  <span>{t("portal.volunteer.availability.starts")}</span>
                   <input
                     type="datetime-local"
                     value={startsAt}
@@ -352,7 +355,7 @@ export default function VolunteerPortalPage() {
                   />
                 </label>
                 <label>
-                  <span>Ends</span>
+                  <span>{t("portal.volunteer.availability.ends")}</span>
                   <input
                     type="datetime-local"
                     value={endsAt}
@@ -361,7 +364,7 @@ export default function VolunteerPortalPage() {
                   />
                 </label>
                 <button className="btn btn-outline" type="submit" disabled={busy}>
-                  Add window
+                  {t("portal.volunteer.availability.addWindow")}
                 </button>
               </form>
             </>
@@ -371,16 +374,16 @@ export default function VolunteerPortalPage() {
 
       <div className="portal-split-grid">
         <PortalSection
-          title="Assigned tasks"
-          description="Accept, decline or complete work assigned by a coordinator."
+          title={t("portal.volunteer.tasks.title")}
+          description={t("portal.volunteer.tasks.description")}
         >
           {loading ? (
-            <PortalState kind="loading" title="Loading tasks">
-              Checking your assignments.
+            <PortalState kind="loading" title={t("portal.volunteer.tasks.loadingTitle")}>
+              {t("portal.volunteer.tasks.loadingBody")}
             </PortalState>
           ) : tasks.length === 0 ? (
-            <PortalState kind="empty" title="No assigned tasks">
-              Open opportunities are listed here once a coordinator assigns them to you.
+            <PortalState kind="empty" title={t("portal.volunteer.tasks.emptyTitle")}>
+              {t("portal.volunteer.tasks.emptyBody")}
             </PortalState>
           ) : (
             <div className="portal-list">
@@ -391,7 +394,7 @@ export default function VolunteerPortalPage() {
                   </i>
                   <div>
                     <b>{task.title}</b>
-                    <p>Skills: {skillList(task.requiredSkillsJson).join(", ") || "Not specified"}</p>
+                    <p>{t("portal.volunteer.tasks.skills", { skills: skillList(task.requiredSkillsJson).join(", ") || t("portal.volunteer.tasks.notSpecified") })}</p>
                     <small>
                       {task.status}
                       {task.scheduledAt ? ` · ${formatShortDate(task.scheduledAt)}` : ""}
@@ -404,17 +407,17 @@ export default function VolunteerPortalPage() {
                           className="btn btn-primary btn-small"
                           type="button"
                           disabled={busy}
-                          onClick={() => void run(() => respondToTask(task.id, true), "Task accepted.")}
+                          onClick={() => void run(() => respondToTask(task.id, true), t("portal.volunteer.validation.taskAccepted"))}
                         >
-                          Accept
+                          {t("portal.volunteer.tasks.accept")}
                         </button>
                         <button
                           className="btn btn-outline btn-small"
                           type="button"
                           disabled={busy}
-                          onClick={() => void run(() => respondToTask(task.id, false), "Task declined.")}
+                          onClick={() => void run(() => respondToTask(task.id, false), t("portal.volunteer.validation.taskDeclined"))}
                         >
-                          Decline
+                          {t("portal.volunteer.tasks.decline")}
                         </button>
                       </>
                     ) : null}
@@ -423,9 +426,9 @@ export default function VolunteerPortalPage() {
                         className="btn btn-primary btn-small"
                         type="button"
                         disabled={busy}
-                        onClick={() => void run(() => completeTask(task.id), "Task marked complete.")}
+                        onClick={() => void run(() => completeTask(task.id), t("portal.volunteer.validation.taskComplete"))}
                       >
-                        Complete
+                        {t("portal.volunteer.tasks.complete")}
                       </button>
                     ) : null}
                   </div>
@@ -436,16 +439,16 @@ export default function VolunteerPortalPage() {
         </PortalSection>
 
         <PortalSection
-          title="Open opportunities"
-          description="Unassigned tasks published by response coordinators."
+          title={t("portal.volunteer.opportunities.title")}
+          description={t("portal.volunteer.opportunities.description")}
         >
           {loading ? (
-            <PortalState kind="loading" title="Loading opportunities">
-              Checking available tasks.
+            <PortalState kind="loading" title={t("portal.volunteer.opportunities.loadingTitle")}>
+              {t("portal.volunteer.opportunities.loadingBody")}
             </PortalState>
           ) : !portal || portal.opportunities.length === 0 ? (
-            <PortalState kind="empty" title="No open opportunities">
-              New tasks will appear here when coordinators publish them.
+            <PortalState kind="empty" title={t("portal.volunteer.opportunities.emptyTitle")}>
+              {t("portal.volunteer.opportunities.emptyBody")}
             </PortalState>
           ) : (
             <div className="portal-list">
@@ -456,31 +459,30 @@ export default function VolunteerPortalPage() {
                   </i>
                   <div>
                     <b>{task.title}</b>
-                    <p>Skills: {skillList(task.requiredSkillsJson).join(", ") || "Not specified"}</p>
+                    <p>{t("portal.volunteer.tasks.skills", { skills: skillList(task.requiredSkillsJson).join(", ") || t("portal.volunteer.tasks.notSpecified") })}</p>
                     <small>
-                      {task.scheduledAt ? formatShortDate(task.scheduledAt) : "Schedule to be confirmed"}
+                      {task.scheduledAt ? formatShortDate(task.scheduledAt) : t("portal.volunteer.opportunities.scheduleTbc")}
                     </small>
                   </div>
                   <span className="badge green">
-                    <i /> Open
+                    <i /> {t("portal.volunteer.opportunities.open")}
                   </span>
                 </article>
               ))}
             </div>
           )}
           <p className="portal-subtle">
-            Assignment is controlled by coordinators. This page only shows tasks available for
-            review.
+            {t("portal.volunteer.opportunities.note")}
           </p>
         </PortalSection>
       </div>
 
       <PortalSection
-        title="Activity and notifications"
-        description="Your completed work and the latest account messages."
+        title={t("portal.volunteer.activity.title")}
+        description={t("portal.volunteer.activity.description")}
         action={
           <Link className="portal-text-link" href="/notifications">
-            Open inbox →
+            {t("portal.volunteer.activity.openInbox")}
           </Link>
         }
       >
@@ -489,28 +491,28 @@ export default function VolunteerPortalPage() {
             <Icon name="check" />
             <span>
               <b>{loading ? "—" : (portal?.completedTasks ?? 0)}</b>
-              <small>Completed tasks recorded</small>
+              <small>{t("portal.volunteer.activity.completedTasks")}</small>
             </span>
           </article>
           <article>
             <Icon name="clock" />
             <span>
               <b>{loading ? "—" : (portal?.availability.length ?? 0)}</b>
-              <small>Availability windows</small>
+              <small>{t("portal.volunteer.activity.availabilityWindows")}</small>
             </span>
           </article>
           <article>
             <Icon name="bell" />
             <span>
               <b>{loading ? "—" : (inbox?.totalCount ?? 0)}</b>
-              <small>Messages received</small>
+              <small>{t("portal.volunteer.activity.messagesReceived")}</small>
             </span>
           </article>
         </div>
 
         {!inbox || inbox.items.length === 0 ? (
-          <PortalState kind="empty" title="No messages yet">
-            Updates about assignments and verification will appear here.
+          <PortalState kind="empty" title={t("portal.volunteer.activity.emptyTitle")}>
+            {t("portal.volunteer.activity.emptyBody")}
           </PortalState>
         ) : (
           <div className="portal-list">
@@ -521,7 +523,7 @@ export default function VolunteerPortalPage() {
                 </i>
                 <div>
                   <b>{notification.subject ?? notification.templateKey}</b>
-                  <p>{notification.body ?? "Open the inbox for details."}</p>
+                  <p>{notification.body ?? t("portal.volunteer.activity.inboxDetails")}</p>
                   <small>{formatShortDate(notification.createdAt)}</small>
                 </div>
               </article>

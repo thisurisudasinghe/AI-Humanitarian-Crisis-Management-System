@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { localizedErrorMessage } from "@/lib/i18n/errors";
 import { useState, type FormEvent } from "react";
 import { Brand } from "@/components/safeway/Brand";
 import { Icon } from "@/components/safeway/Icon";
 import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
-import { errorMessage } from "@/lib/api";
+
 import { useAuth } from "@/lib/auth";
 import { useT } from "@/lib/i18n";
 import { type PublicPurpose } from "@/lib/roles";
@@ -96,7 +97,7 @@ export default function RegisterPage() {
       });
       setComplete(true);
     } catch (caught) {
-      setError(errorMessage(caught));
+      setError(localizedErrorMessage(caught, t));
     } finally {
       setBusy(false);
     }

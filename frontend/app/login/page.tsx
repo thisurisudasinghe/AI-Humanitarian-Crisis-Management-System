@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { localizedErrorMessage } from "@/lib/i18n/errors";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 import { Brand } from "@/components/safeway/Brand";
 import { Icon } from "@/components/safeway/Icon";
 import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
-import { errorMessage } from "@/lib/api";
+
 import { useAuth } from "@/lib/auth";
 import { useT } from "@/lib/i18n";
 import { homePathForRoles } from "@/lib/roles";
@@ -37,7 +38,7 @@ export default function LoginPage() {
       const current = await login(email.trim(), password);
       router.replace(homePathForRoles(current.roles));
     } catch (caught) {
-      setError(errorMessage(caught));
+      setError(localizedErrorMessage(caught, t));
     } finally {
       setBusy(false);
     }

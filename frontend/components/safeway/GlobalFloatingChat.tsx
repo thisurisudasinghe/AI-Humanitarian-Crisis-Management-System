@@ -1,7 +1,8 @@
 "use client";
 
 import { useAuth } from "@/lib/auth";
-import { ApiError, errorMessage } from "@/lib/api";
+import { localizedErrorMessage } from "@/lib/i18n/errors";
+import { ApiError } from "@/lib/api";
 import { sendChatMessage } from "@/lib/aiChat";
 import { useI18n } from "@/lib/i18n";
 import { Icon } from "@/components/safeway/Icon";
@@ -167,7 +168,7 @@ export function GlobalFloatingChat() {
       if (error.status === 401) return t("chat.errorExpired");
       if (error.status >= 500) return t("chat.errorServer");
     }
-    const detail = errorMessage(error);
+    const detail = localizedErrorMessage(error, t);
     return detail && detail !== "Something went wrong." ? detail : t("chat.errorConnection");
   }, [t]);
 

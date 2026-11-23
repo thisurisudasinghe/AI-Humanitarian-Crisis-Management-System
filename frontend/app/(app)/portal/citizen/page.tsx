@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { localizedErrorMessage } from "@/lib/i18n/errors";
 import { useEffect, useState, type FormEvent } from "react";
 import { AuthGuard } from "@/components/AuthGuard";
 import { Icon } from "@/components/safeway/Icon";
@@ -11,7 +12,7 @@ import {
   PortalState,
   PortalStats
 } from "@/components/safeway/PortalPrimitives";
-import { api, errorMessage } from "@/lib/api";
+import { api } from "@/lib/api";
 import {
   RESOLVED_REQUEST_STATUSES,
   caseRequestErrorMessage,
@@ -20,6 +21,7 @@ import {
   type CaseRequestListItem
 } from "@/lib/crisis";
 import { formatShortDate } from "@/lib/format";
+import { useT } from "@/lib/i18n";
 import { getInbox, type NotificationInboxDto } from "@/lib/notifications";
 import { RoleNames } from "@/lib/roles";
 
@@ -54,6 +56,7 @@ function jsonList(value?: string | null): string {
 }
 
 export default function CitizenPortalPage() {
+  const t = useT();
   const [reports, setReports] = useState<CaseRequestListItem[]>([]);
   const [inbox, setInbox] = useState<NotificationInboxDto | null>(null);
   const [alerts, setAlerts] = useState<PublicAlert[]>([]);
@@ -80,7 +83,7 @@ export default function CitizenPortalPage() {
         }
       })
       .catch((cause) => {
-        if (active) setReportError(caseRequestErrorMessage(cause, "Reports could not be loaded."));
+        if (active) setReportError(caseRequestErrorMessage(cause, t("portal.citizen.reports.loadFailed"), t));
       });
 
     const inboxRequest = getInbox({ limit: 8 })
@@ -91,7 +94,7 @@ export default function CitizenPortalPage() {
         }
       })
       .catch((cause) => {
-        if (active) setInboxError(errorMessage(cause));
+        if (active) setInboxError(localizedErrorMessage(cause, t));
       });
 
     const alertRequest = api<PublicAlert[]>("/api/v1/public/alerts")
@@ -102,7 +105,7 @@ export default function CitizenPortalPage() {
         }
       })
       .catch((cause) => {
-        if (active) setAlertError(errorMessage(cause));
+        if (active) setAlertError(localizedErrorMessage(cause, t));
       });
 
     const centreRequest = api<PublicServiceCentre[]>("/api/v1/public/service-centres")
@@ -113,7 +116,7 @@ export default function CitizenPortalPage() {
         }
       })
       .catch((cause) => {
-        if (active) setCentreError(errorMessage(cause));
+        if (active) setCentreError(localizedErrorMessage(cause, t));
       });
 
     Promise.all([reportRequest, inboxRequest, alertRequest, centreRequest]).finally(() => {
@@ -123,7 +126,7 @@ export default function CitizenPortalPage() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [t]);
 
   const openReports = reports.filter(
     (report) => !RESOLVED_REQUEST_STATUSES.includes(report.status)
@@ -139,12 +142,12 @@ export default function CitizenPortalPage() {
     setFeedbackError(null);
 
     if (!selectedFeedbackId) {
-      setFeedbackError("Select a completed report before sending feedback.");
+      setFeedbackError(t("portal.citizen.feedback.selectError"));
       return;
     }
 
     if (feedback.trim().length < 2) {
-      setFeedbackError("Enter at least two characters of feedback.");
+      setFeedbackError(t("portal.citizen.feedback.minLengthError"));
       return;
     }
 
@@ -152,9 +155,9 @@ export default function CitizenPortalPage() {
     try {
       await submitRequestFeedback(selectedFeedbackId, feedback);
       setFeedback("");
-      setFeedbackNotice("Thank you. Your feedback was submitted for review.");
+      setFeedbackNotice(t("portal.citizen.feedback.success"));
     } catch (cause) {
-      setFeedbackError(errorMessage(cause));
+      setFeedbackError(localizedErrorMessage(cause, t));
     } finally {
       setFeedbackBusy(false);
     }
@@ -163,55 +166,55 @@ export default function CitizenPortalPage() {
   return (
     <AuthGuard allowedRoles={[RoleNames.Citizen]}>
       <PortalHeader
-        eyebrow="Citizen portal"
-        title="Your reports, assistance and updates"
-        description="Track what you submitted, find verified support and respond to important messages."
+        eyebrow={t("portal.citizen.eyebrow")}
+        title={t("portal.citizen.title")}
+        description={t("portal.citizen.description")}
         action={
           <Link className="btn btn-primary" href="/report">
-            <Icon name="alert" /> New report
+            <Icon name="alert" /> {t("portal.citizen.newReport")}
           </Link>
         }
       />
 
       <PortalStats
         items={[
-          { label: "Open reports", value: loading ? "—" : openReports, icon: "clock", tone: "blue" },
+          { label: t("portal.citizen.stats.openReports"), value: loading ? "—" : openReports, icon: "clock", tone: "blue" },
           {
-            label: "Resolved reports",
+            label: t("portal.citizen.stats.resolvedReports"),
             value: loading ? "—" : resolvedReports.length,
             icon: "check",
             tone: "green"
           },
           {
-            label: "Unread messages",
+            label: t("portal.citizen.stats.unreadMessages"),
             value: loading ? "—" : (inbox?.unreadCount ?? 0),
             icon: "bell",
             tone: "green"
           },
-          { label: "Public alerts", value: loading ? "—" : alerts.length, icon: "alert", tone: "blue" }
+          { label: t("portal.citizen.stats.publicAlerts"), value: loading ? "—" : alerts.length, icon: "alert", tone: "blue" }
         ]}
       />
 
       <PortalSection
-        title="Report and tracking"
-        description="Review status and milestones for the reports connected to your account."
+        title={t("portal.citizen.reports.title")}
+        description={t("portal.citizen.reports.description")}
         action={
           <Link className="portal-text-link" href="/my-reports">
-            Full report history →
+            {t("portal.citizen.reports.fullHistory")}
           </Link>
         }
       >
         {loading ? (
-          <PortalState kind="loading" title="Loading reports">
-            Reading your submitted case requests.
+          <PortalState kind="loading" title={t("portal.citizen.reports.loadingTitle")}>
+            {t("portal.citizen.reports.loadingBody")}
           </PortalState>
         ) : reportError ? (
-          <PortalState kind="error" title="Reports could not be loaded">
+          <PortalState kind="error" title={t("portal.citizen.reports.errorTitle")}>
             {reportError}
           </PortalState>
         ) : reports.length === 0 ? (
-          <PortalState kind="empty" title="No reports submitted" href="/report" linkLabel="Submit a report">
-            Once you report a crisis, its reference and review progress appear here.
+          <PortalState kind="empty" title={t("portal.citizen.reports.emptyTitle")} href="/report" linkLabel={t("portal.citizen.reports.emptyLink")}>
+            {t("portal.citizen.reports.emptyBody")}
           </PortalState>
         ) : (
           <div className="portal-list">
@@ -221,7 +224,7 @@ export default function CitizenPortalPage() {
                   <Icon name="file" size={18} />
                 </i>
                 <div>
-                  <b>{report.category} report</b>
+                  <b>{t("portal.citizen.reports.categoryLabel", { category: report.category })}</b>
                   <p>{report.description}</p>
                   <small>
                     {formatShortDate(report.submittedAt)} · {report.id.slice(0, 8)}
@@ -238,25 +241,25 @@ export default function CitizenPortalPage() {
 
       <div className="portal-split-grid">
         <PortalSection
-          title="Assistance and service centres"
-          description="Approved public support points published by response coordinators."
+          title={t("portal.citizen.centres.title")}
+          description={t("portal.citizen.centres.description")}
           action={
             <Link className="portal-text-link" href="/find-assistance">
-              Find assistance →
+              {t("portal.citizen.centres.findAssistance")}
             </Link>
           }
         >
           {loading ? (
-            <PortalState kind="loading" title="Checking service centres">
-              Loading the published support points.
+            <PortalState kind="loading" title={t("portal.citizen.centres.loadingTitle")}>
+              {t("portal.citizen.centres.loadingBody")}
             </PortalState>
           ) : centreError ? (
-            <PortalState kind="error" title="Service centres could not be loaded">
+            <PortalState kind="error" title={t("portal.citizen.centres.errorTitle")}>
               {centreError}
             </PortalState>
           ) : centres.length === 0 ? (
-            <PortalState kind="empty" title="No service centres published yet">
-              Approved support points will appear here when coordinators publish them.
+            <PortalState kind="empty" title={t("portal.citizen.centres.emptyTitle")}>
+              {t("portal.citizen.centres.emptyBody")}
             </PortalState>
           ) : (
             <div className="portal-list">
@@ -269,11 +272,11 @@ export default function CitizenPortalPage() {
                     <b>{centre.name}</b>
                     <p>{centre.address}</p>
                     <small>
-                      Services: {jsonList(centre.services)} · Hours: {centre.openingHours || "Not published"}
+                      {t("portal.citizen.centres.services")} {jsonList(centre.services)} · {t("portal.citizen.centres.hours")} {centre.openingHours || t("portal.citizen.centres.notPublished")}
                     </small>
                   </div>
                   <span className="badge green">
-                    <i /> Published
+                    <i /> {t("portal.citizen.centres.published")}
                   </span>
                 </article>
               ))}
@@ -282,26 +285,26 @@ export default function CitizenPortalPage() {
         </PortalSection>
 
         <PortalSection
-          title="Alerts and notifications"
-          description="Published coordinator alerts and messages sent to your account."
+          title={t("portal.citizen.alerts.title")}
+          description={t("portal.citizen.alerts.description")}
           action={
             <Link className="portal-text-link" href="/notifications">
-              Open inbox →
+              {t("portal.citizen.alerts.openInbox")}
             </Link>
           }
         >
           {loading ? (
-            <PortalState kind="loading" title="Loading updates">
-              Checking alerts and your inbox.
+            <PortalState kind="loading" title={t("portal.citizen.alerts.loadingTitle")}>
+              {t("portal.citizen.alerts.loadingBody")}
             </PortalState>
           ) : (
             <>
               {alertError ? (
-                <PortalState kind="error" title="Public alerts could not be loaded">
+                <PortalState kind="error" title={t("portal.citizen.alerts.errorTitle")}>
                   {alertError}
                 </PortalState>
               ) : alerts.length === 0 ? (
-                <p className="portal-subtle">No published public alerts right now.</p>
+                <p className="portal-subtle">{t("portal.citizen.alerts.noAlerts")}</p>
               ) : (
                 <div className="portal-list">
                   {alerts.slice(0, 3).map((alert) => (
@@ -320,11 +323,11 @@ export default function CitizenPortalPage() {
               )}
 
               {inboxError ? (
-                <PortalState kind="error" title="Inbox could not be loaded">
+                <PortalState kind="error" title={t("portal.citizen.alerts.inboxErrorTitle")}>
                   {inboxError}
                 </PortalState>
               ) : !inbox || inbox.items.length === 0 ? (
-                <p className="portal-subtle">No personal messages yet.</p>
+                <p className="portal-subtle">{t("portal.citizen.alerts.noMessages")}</p>
               ) : (
                 <div className="portal-list">
                   {inbox.items.slice(0, 3).map((notification) => (
@@ -334,7 +337,7 @@ export default function CitizenPortalPage() {
                       </i>
                       <div>
                         <b>{notification.subject ?? notification.templateKey}</b>
-                        <p>{notification.body ?? "Open the inbox for details."}</p>
+                        <p>{notification.body ?? t("portal.citizen.alerts.inboxDetails")}</p>
                         <small>{formatShortDate(notification.createdAt)}</small>
                       </div>
                     </article>
@@ -347,23 +350,23 @@ export default function CitizenPortalPage() {
       </div>
 
       <PortalSection
-        title="Share feedback"
-        description="Tell the response team how assistance went for a resolved report."
+        title={t("portal.citizen.feedback.title")}
+        description={t("portal.citizen.feedback.description")}
       >
         {feedbackNotice ? <PortalNotice>{feedbackNotice}</PortalNotice> : null}
         {feedbackError ? <PortalNotice tone="error">{feedbackError}</PortalNotice> : null}
         {loading ? (
-          <PortalState kind="loading" title="Loading completed reports">
-            Checking which reports are ready for feedback.
+          <PortalState kind="loading" title={t("portal.citizen.feedback.loadingTitle")}>
+            {t("portal.citizen.feedback.loadingBody")}
           </PortalState>
         ) : resolvedReports.length === 0 ? (
-          <PortalState kind="empty" title="No completed reports yet">
-            Feedback becomes available after a report reaches a resolved status.
+          <PortalState kind="empty" title={t("portal.citizen.feedback.emptyTitle")}>
+            {t("portal.citizen.feedback.emptyBody")}
           </PortalState>
         ) : (
           <form className="portal-feedback-form" onSubmit={(event) => void onFeedbackSubmit(event)}>
             <label>
-              <span>Report</span>
+              <span>{t("portal.citizen.feedback.reportLabel")}</span>
               <select
                 value={selectedFeedbackId}
                 onChange={(event) => setFeedbackReportId(event.target.value)}
@@ -376,16 +379,16 @@ export default function CitizenPortalPage() {
               </select>
             </label>
             <label>
-              <span>Your feedback</span>
+              <span>{t("portal.citizen.feedback.yourFeedback")}</span>
               <textarea
                 value={feedback}
                 onChange={(event) => setFeedback(event.target.value)}
                 maxLength={2000}
-                placeholder="What worked well, and what could be improved?"
+                placeholder={t("portal.citizen.feedback.placeholder")}
               />
             </label>
             <button className="btn btn-primary" type="submit" disabled={feedbackBusy}>
-              {feedbackBusy ? "Submitting…" : "Submit feedback"}
+              {feedbackBusy ? t("portal.citizen.feedback.submitting") : t("portal.citizen.feedback.submit")}
               {feedbackBusy ? null : <Icon name="arrow" size={16} />}
             </button>
           </form>

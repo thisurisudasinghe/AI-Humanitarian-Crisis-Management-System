@@ -8,10 +8,10 @@ import { useT } from "@/lib/i18n";
 export default function FindAssistancePage() {
   const t = useT();
   const assistance: [string, string, string][] = [
-    [t("info.services.s2Title") === "Verified assistance" ? "Emergency shelter" : (t("find.shelter") || "Emergency shelter"), t("find.shelterCopy") || "Verified safe spaces, occupancy and accessibility information.", "home"],
-    [t("find.food") || "Food & water", t("find.foodCopy") || "Distribution points, opening hours and current availability.", "box"],
-    [t("find.medical") || "Medical support", t("find.medicalCopy") || "Clinics, first-aid points and urgent care guidance.", "heart"],
-    [t("find.transport") || "Transport", t("find.transportCopy") || "Safe routes and transport support for evacuation or appointments.", "map"]
+    [t("info.services.s2Title") === t("public.find.verifiedAssistance") ? t("public.find.emergencyShelter") : (t("find.shelter") || t("public.find.emergencyShelter")), t("find.shelterCopy") || t("public.find.shelterCopyFallback"), "home"],
+    [t("find.food") || t("public.find.foodFallback"), t("find.foodCopy") || t("public.find.foodCopyFallback"), "box"],
+    [t("find.medical") || t("public.find.medicalFallback"), t("find.medicalCopy") || t("public.find.medicalCopyFallback"), "heart"],
+    [t("find.transport") || t("public.find.transportFallback"), t("find.transportCopy") || t("public.find.transportCopyFallback"), "map"]
   ];
 
   return (
@@ -19,10 +19,10 @@ export default function FindAssistancePage() {
       <header className="page-hero">
         <div className="page-hero-lines" />
         <div className="eyebrow">
-          <span /> {t("find.eyebrow") || "Nearby support"}
+          <span /> {t("find.eyebrow") || t("public.find.eyebrowFallback")}
         </div>
-        <h1>{t("find.title") || "Find verified assistance near you."}</h1>
-        <p>{t("find.intro") || "Shelters, food, healthcare and essential resources will appear here as live availability becomes connected."}</p>
+        <h1>{t("find.title") || t("public.find.titleFallback")}</h1>
+        <p>{t("find.intro") || t("public.find.introFallback")}</p>
       </header>
 
       <div className="page-body">
@@ -31,12 +31,12 @@ export default function FindAssistancePage() {
             <Icon name="info" size={20} />
           </span>
           <div>
-            <b>{t("find.noteTitle") || "Verified public information"}</b>
-            <p>{t("find.noteCopy") || "Published alerts and active service centres are shown below when available. For individual shelter allocation or case status, use the signed-in citizen portal."}</p>
+            <b>{t("find.noteTitle") || t("public.find.noteTitleFallback")}</b>
+            <p>{t("find.noteCopy") || t("public.find.noteCopyFallback")}</p>
           </div>
         </aside>
 
-        <section className="value-grid" aria-label={t("find.categoriesAria") || "Assistance categories"}>
+        <section className="value-grid" aria-label={t("find.categoriesAria") || t("public.find.categoriesAriaFallback")}>
           {assistance.map(([title, copy, icon]) => (
             <article key={title}>
               <i><Icon name={icon} /></i>
@@ -50,8 +50,8 @@ export default function FindAssistancePage() {
 
         <section className="service-choice public-single-choice">
           <div>
-            <small>{t("find.ctaSmall") || "NEED URGENT HELP?"}</small>
-            <h2>{t("find.ctaTitle") || "Report what is happening so a response team can review it."}</h2>
+            <small>{t("find.ctaSmall") || t("public.find.ctaSmallFallback")}</small>
+            <h2>{t("find.ctaTitle") || t("public.find.ctaTitleFallback")}</h2>
           </div>
           <Link className="btn btn-primary" href="/report">
             {t("nav.reportCrisis")} <Icon name="arrow" />

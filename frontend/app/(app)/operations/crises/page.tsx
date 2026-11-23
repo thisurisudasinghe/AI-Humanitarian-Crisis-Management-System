@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { formatDate as formatDateForLocale, resolveLocale } from "@/lib/i18n/core";
 import { useEffect, useMemo, useState } from "react";
 import { AuthGuard } from "@/components/AuthGuard";
 import { Icon } from "@/components/safeway/Icon";
 import { EmptyPanel } from "@/components/safeway/IntegrationNotice";
+import { useT } from "@/lib/i18n";
 import { StaffRoles } from "@/lib/roles";
 import {
   RESOLVED_REQUEST_STATUSES,
@@ -18,7 +20,8 @@ import {
 } from "@/lib/crisis";
 
 function formatDate(value: string): string {
-  return new Date(value).toLocaleDateString();
+  const resolved = typeof document === "undefined" ? "en" : resolveLocale(document.documentElement.lang);
+  return formatDateForLocale(value, resolved, { dateStyle: "medium" });
 }
 
 function totalByStatus(summary?: CrisisSummaryRecord): number {
@@ -34,11 +37,11 @@ function resolvedByStatus(summary?: CrisisSummaryRecord): number {
   );
 }
 
-function urgencyLabel(summary?: CrisisSummaryRecord): string {
-  if (!summary) return "No data";
+function urgencyLabel(summary: CrisisSummaryRecord | undefined, t: (key: string) => string): string {
+  if (!summary) return t("operations.crises.noData");
   const order = ["Critical", "High", "Medium", "Low"] as const;
   const highest = order.find((level) => (summary.byUrgency[level] ?? 0) > 0);
-  return highest ? `${highest} · ${summary.byUrgency[highest]}` : "No open";
+  return highest ? `${highest} · ${summary.byUrgency[highest]}` : t("operations.crises.noOpen");
 }
 
 function urgencyTone(label: string): string {
@@ -48,6 +51,7 @@ function urgencyTone(label: string): string {
 }
 
 export default function CrisesPage() {
+  const t = useT();
   const [query, setQuery] = useState("");
   const [crises, setCrises] = useState<CrisisRecord[]>([]);
   const [summaries, setSummaries] = useState<Record<string, CrisisSummaryRecord>>({});
@@ -95,7 +99,7 @@ export default function CrisesPage() {
         }
       } catch (cause) {
         if (active) {
-          setError(caseRequestErrorMessage(cause, "The incident queue could not be loaded."));
+          setError(caseRequestErrorMessage(cause, t("operations.crises.loadError"), t));
         }
       } finally {
         if (active) setLoading(false);
@@ -136,54 +140,54 @@ export default function CrisesPage() {
 
     return [
       {
-        title: "Active crises",
+        title: t("operations.crises.metricActiveCrises"),
         icon: "alert",
         tone: "blue",
         value: crises.filter((crisis) => crisis.status === "Active").length,
-        detail: `${crises.length} recorded`
+        detail: t("operations.crises.recorded", { count: crises.length })
       },
       {
-        title: "Pending verification",
+        title: t("operations.crises.metricPendingVerification"),
         icon: "clock",
         tone: "amber",
         value: requests.filter((request) => request.status === "Submitted").length,
-        detail: "Unresolved queue"
+        detail: t("operations.crises.unresolvedQueue")
       },
       {
-        title: "Critical incidents",
+        title: t("operations.crises.metricCriticalIncidents"),
         icon: "shield",
         tone: "coral",
         value: requests.filter((request) => request.urgency === "Critical").length,
-        detail: "Unresolved queue"
+        detail: t("operations.crises.unresolvedQueue")
       },
       {
-        title: "Response progress",
+        title: t("operations.crises.metricResponseProgress"),
         icon: "chart",
         tone: "green",
         value: `${total ? Math.round((resolved / total) * 100) : 0}%`,
-        detail: `${resolved} of ${total} requests resolved`
+        detail: t("operations.crises.resolvedOf", { resolved, total })
       }
     ];
-  }, [crises, requests, summaries]);
+  }, [crises, requests, summaries, t]);
 
   return (
     <AuthGuard allowedRoles={StaffRoles}>
       <div className="ops-title">
         <div>
-          <p>CRISES &amp; CASES</p>
-          <h1>Incident queue</h1>
+          <p>{t("operations.crises.eyebrow")}</p>
+          <h1>{t("operations.crises.incidentQueue")}</h1>
           <span>
             {query
-              ? `Showing matches for “${query}”`
-              : "Every reported incident, its severity and coordination state."}
+              ? t("operations.crises.showingMatches", { query })
+              : t("operations.crises.subtitle")}
           </span>
         </div>
         <div>
           <Link className="btn btn-outline" href="/operations/map">
-            <Icon name="map" /> Open live map
+            <Icon name="map" /> {t("operations.overview.openLiveMap")}
           </Link>
           <Link className="btn btn-primary" href="/report">
-            <Icon name="alert" /> New public report
+            <Icon name="alert" /> {t("operations.crises.newPublicReport")}
           </Link>
         </div>
       </div>
@@ -212,36 +216,36 @@ export default function CrisesPage() {
       <section className="ops-card crisis-table-card">
         <div className="card-heading">
           <div>
-            <h3>All incidents</h3>
-            <p>Priority incidents requiring coordination</p>
+            <h3>{t("operations.crises.allIncidents")}</h3>
+            <p>{t("operations.shared.priorityIncidents")}</p>
           </div>
           <div className="table-actions">
             <span className="badge green">
-              <i /> Live case data
+              <i /> {t("operations.crises.liveCaseData")}
             </span>
           </div>
         </div>
         <div className="crisis-table">
           <div className="table-head">
-            <span>INCIDENT</span>
-            <span>SEVERITY</span>
-            <span>ASSIGNED</span>
-            <span>PROGRESS</span>
-            <span>UPDATED</span>
+            <span>{t("operations.shared.incident")}</span>
+            <span>{t("operations.shared.severity")}</span>
+            <span>{t("operations.shared.assigned")}</span>
+            <span>{t("operations.shared.progress")}</span>
+            <span>{t("operations.shared.updated")}</span>
             <span />
           </div>
           {loading ? (
-            <EmptyPanel title="Loading incident queue">Reading crises and case summaries.</EmptyPanel>
+            <EmptyPanel title={t("operations.crises.loadingQueue")}>{t("operations.crises.loadingQueueBody")}</EmptyPanel>
           ) : visibleCrises.length === 0 ? (
-            <EmptyPanel title="No incidents to display">
+            <EmptyPanel title={t("operations.crises.noIncidents")}>
               {normalizedQuery
-                ? "No crisis matches the current search."
-                : "No crises have been recorded in the case service yet."}
+                ? t("operations.crises.noCrisisMatch")
+                : t("operations.crises.noCrisisRecorded")}
             </EmptyPanel>
           ) : (
             visibleCrises.map((crisis) => {
               const summary = summaries[crisis.id];
-              const severity = urgencyLabel(summary);
+              const severity = urgencyLabel(summary, t);
               const total = totalByStatus(summary);
               const open = summary?.openTotal ?? 0;
               const progress = total ? Math.round(((total - open) / total) * 100) : 0;
@@ -266,8 +270,8 @@ export default function CrisesPage() {
                   </span>
                   <span>—</span>
                   <span>
-                    {open} open
-                    <small>{total} reported</small>
+                    {t("operations.crises.openCount", { count: open })}
+                    <small>{t("operations.crises.reportedCount", { count: total })}</small>
                     <span className="progress">
                       <em style={{ width: `${progress}%` }} />
                     </span>
@@ -286,26 +290,26 @@ export default function CrisesPage() {
       <section className="ops-card" style={{ marginTop: 16 }}>
         <div className="card-heading">
           <div>
-            <h3>Case management</h3>
-            <p>Unresolved requests requiring assignment or review</p>
+            <h3>{t("operations.crises.caseManagement")}</h3>
+            <p>{t("operations.crises.caseSubtitle")}</p>
           </div>
         </div>
         {loading ? (
-          <EmptyPanel title="Loading case queue">Reading unresolved case requests.</EmptyPanel>
+          <EmptyPanel title={t("operations.crises.loadingCases")}>{t("operations.crises.loadingCasesBody")}</EmptyPanel>
         ) : visibleRequests.length === 0 ? (
-          <EmptyPanel title="No unresolved requests">
+          <EmptyPanel title={t("operations.crises.noUnresolved")}>
             {normalizedQuery
-              ? "No unresolved request matches the current search."
-              : "Every known request is currently resolved."}
+              ? t("operations.crises.noUnresolvedMatch")
+              : t("operations.crises.allResolved")}
           </EmptyPanel>
         ) : (
           <div className="crisis-table">
             <div className="table-head">
-              <span>REQUEST</span>
-              <span>URGENCY</span>
-              <span>STATUS</span>
-              <span>AGE</span>
-              <span>SUBMITTED</span>
+              <span>{t("operations.crises.requestHeader")}</span>
+              <span>{t("operations.crises.urgencyHeader")}</span>
+              <span>{t("operations.crises.statusHeader")}</span>
+              <span>{t("operations.crises.ageHeader")}</span>
+              <span>{t("operations.crises.submittedHeader")}</span>
               <span />
             </div>
             {visibleRequests.slice(0, 10).map((request) => (

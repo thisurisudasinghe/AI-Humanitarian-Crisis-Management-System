@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { localizedErrorMessage } from "@/lib/i18n/errors";
 import { useEffect, useState, type FormEvent } from "react";
 import { AuthGuard } from "@/components/AuthGuard";
 import { Icon } from "@/components/safeway/Icon";
@@ -11,10 +12,11 @@ import {
   PortalState,
   PortalStats
 } from "@/components/safeway/PortalPrimitives";
-import { errorMessage } from "@/lib/api";
+
 import { toDateInputValue } from "@/lib/dates";
 import { formatMoney } from "@/lib/donations";
 import { formatShortDate } from "@/lib/format";
+import { formatNumber, useI18n } from "@/lib/i18n";
 import { getInbox, type NotificationInboxDto } from "@/lib/notifications";
 import {
   getDonorCampaigns,
@@ -31,13 +33,13 @@ import { RoleNames } from "@/lib/roles";
 
 type DonationType = "Monetary" | "Material";
 
-function numberOrNull(value: string): number | null {
+function numberOrNull(value: string, message: string): number | null {
   if (!value.trim()) {
     return null;
   }
   const parsed = Number(value);
   if (!Number.isFinite(parsed) || parsed < 0) {
-    throw new Error("Enter a valid non-negative number.");
+    throw new Error(message);
   }
   return parsed;
 }
@@ -51,6 +53,7 @@ function donationValue(donation: DonationDto): number | null {
 }
 
 export default function DonorPortalPage() {
+  const { t, locale } = useI18n();
   const [profile, setProfile] = useState<DonorDto | null>(null);
   const [campaigns, setCampaigns] = useState<CampaignDto[]>([]);
   const [donations, setDonations] = useState<DonationDto[]>([]);
@@ -94,7 +97,7 @@ export default function DonorPortalPage() {
         setLoadError(null);
       })
       .catch((cause) => {
-        setLoadError(errorMessage(cause));
+        setLoadError(localizedErrorMessage(cause, t));
       });
 
     const campaignRequest = getDonorCampaigns()
@@ -139,7 +142,7 @@ export default function DonorPortalPage() {
         }
       })
       .catch((cause) => {
-        if (active) setReportError(errorMessage(cause));
+        if (active) setReportError(localizedErrorMessage(cause, t));
       })
       .finally(() => {
         if (active) setReportLoading(false);
@@ -153,11 +156,11 @@ export default function DonorPortalPage() {
   function onRangeSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!draftRange.from || !draftRange.to) {
-      setReportError("Select both a start and end date.");
+      setReportError(t("portal.donor.validation.rangeDates"));
       return;
     }
     if (Date.parse(draftRange.to) < Date.parse(draftRange.from)) {
-      setReportError("The end date must be on or after the start date.");
+      setReportError(t("portal.donor.validation.endAfterStart"));
       return;
     }
     setReportError(null);
@@ -173,7 +176,7 @@ export default function DonorPortalPage() {
     try {
       const code = currency.trim().toUpperCase();
       if (!/^[A-Z]{3}$/.test(code)) {
-        throw new Error("Currency must be a three-letter code, such as USD.");
+        throw new Error(t("portal.donor.validation.currencyCode"));
       }
 
       const common = {
@@ -183,19 +186,19 @@ export default function DonorPortalPage() {
       };
 
       if (donationType === "Monetary") {
-        const value = numberOrNull(amount);
+        const value = numberOrNull(amount, t("portal.donor.validation.nonNegative"));
         if (value === null || value <= 0) {
-          throw new Error("Enter a monetary amount greater than zero.");
+          throw new Error(t("portal.donor.validation.positiveAmount"));
         }
         await recordDonation({ ...common, amount: value });
       } else {
         if (!itemDescription.trim()) {
-          throw new Error("Describe the goods being contributed.");
+          throw new Error(t("portal.donor.validation.describeGoods"));
         }
-        const value = numberOrNull(estimatedValue);
-        const count = numberOrNull(quantity);
+        const value = numberOrNull(estimatedValue, t("portal.donor.validation.nonNegative"));
+        const count = numberOrNull(quantity, t("portal.donor.validation.nonNegative"));
         if (count !== null && !Number.isInteger(count)) {
-          throw new Error("Quantity must be a whole number.");
+          throw new Error(t("portal.donor.validation.wholeNumber"));
         }
         await recordDonation({
           ...common,
@@ -211,29 +214,27 @@ export default function DonorPortalPage() {
       setEstimatedValue("");
       setNotes("");
       await load();
-      setNotice("Your contribution was recorded. Its reference appears in your history.");
+      setNotice(t("portal.donor.validation.saved"));
     } catch (cause) {
-      setError(errorMessage(cause));
+      setError(localizedErrorMessage(cause, t));
     } finally {
       setBusy(false);
     }
   }
 
   const totalCurrency = profile
-    ? new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(
-        profile.totalContributed
-      )
+    ? formatNumber(profile.totalContributed, locale, { maximumFractionDigits: 2 })
     : "—";
 
   return (
     <AuthGuard allowedRoles={[RoleNames.Donor]}>
       <PortalHeader
-        eyebrow="Donor portal"
-        title="Your contributions and their impact"
-        description="Review active appeals, keep a reliable giving history and see aggregated allocation data."
+        eyebrow={t("portal.donor.eyebrow")}
+        title={t("portal.donor.title")}
+        description={t("portal.donor.description")}
         action={
           <Link className="btn btn-outline" href="/notifications">
-            <Icon name="bell" /> Notifications
+            <Icon name="bell" /> {t("portal.donor.notifications")}
           </Link>
         }
       />
@@ -241,28 +242,28 @@ export default function DonorPortalPage() {
       <PortalStats
         items={[
           {
-            label: "Recorded contributions",
+            label: t("portal.donor.stats.recordedContributions"),
             value: loading ? "—" : (profile?.donationCount ?? 0),
-            hint: "Not cancelled",
+            hint: t("portal.donor.stats.notCancelled"),
             icon: "heart",
             tone: "green"
           },
           {
-            label: "Recorded value",
+            label: t("portal.donor.stats.recordedValue"),
             value: loading ? "—" : totalCurrency,
-            hint: "Across recorded gifts",
+            hint: t("portal.donor.stats.acrossGifts"),
             icon: "chart",
             tone: "blue"
           },
           {
-            label: "Active appeals",
+            label: t("portal.donor.stats.activeAppeals"),
             value: loading ? "—" : campaigns.length,
-            hint: "Open for support",
+            hint: t("portal.donor.stats.openForSupport"),
             icon: "box",
             tone: "blue"
           },
           {
-            label: "Unread messages",
+            label: t("portal.donor.stats.unreadMessages"),
             value: loading ? "—" : (inbox?.unreadCount ?? 0),
             icon: "bell",
             tone: "green"
@@ -275,16 +276,16 @@ export default function DonorPortalPage() {
       {error ? <PortalNotice tone="error">{error}</PortalNotice> : null}
 
       <PortalSection
-        title="Donor profile"
-        description="This record links your account to the contributions you submit."
+        title={t("portal.donor.profile.title")}
+        description={t("portal.donor.profile.description")}
       >
         {loading ? (
-          <PortalState kind="loading" title="Loading donor profile">
-            Reading the profile linked to your account.
+          <PortalState kind="loading" title={t("portal.donor.profile.loadingTitle")}>
+            {t("portal.donor.profile.loadingBody")}
           </PortalState>
         ) : !profile ? (
-          <PortalState kind="error" title="Donor profile unavailable">
-            A donor profile is not linked to this account. Contact support to have it connected.
+          <PortalState kind="error" title={t("portal.donor.profile.errorTitle")}>
+            {t("portal.donor.profile.errorBody")}
           </PortalState>
         ) : (
           <div className="portal-donor-profile">
@@ -293,30 +294,30 @@ export default function DonorPortalPage() {
                 <Icon name="heart" size={22} />
               </span>
               <div>
-                <small>REGISTERED DONOR</small>
+                <small>{t("portal.donor.profile.registered")}</small>
                 <h3>{profile.name}</h3>
-                <p>{profile.contactEmail || "No contact email provided"}</p>
+                <p>{profile.contactEmail || t("portal.donor.profile.noContactEmail")}</p>
               </div>
             </div>
             <dl>
               <div>
-                <dt>Donor type</dt>
+                <dt>{t("portal.donor.profile.donorType")}</dt>
                 <dd>{profile.donorType}</dd>
               </div>
               <div>
-                <dt>Profile status</dt>
+                <dt>{t("portal.donor.profile.status")}</dt>
                 <dd>
                   <span className={`badge ${profile.isActive ? "green" : "amber"}`}>
-                    <i /> {profile.isActive ? "Active" : "Inactive"}
+                    <i /> {profile.isActive ? t("portal.donor.profile.active") : t("portal.donor.profile.inactive")}
                   </span>
                 </dd>
               </div>
               <div>
-                <dt>Visibility</dt>
-                <dd>{profile.isAnonymous ? "Anonymous" : "Named"}</dd>
+                <dt>{t("portal.donor.profile.visibility")}</dt>
+                <dd>{profile.isAnonymous ? t("portal.donor.profile.anonymous") : t("portal.donor.profile.named")}</dd>
               </div>
               <div>
-                <dt>Profile reference</dt>
+                <dt>{t("portal.donor.profile.reference")}</dt>
                 <dd>{profile.id.slice(0, 8).toUpperCase()}</dd>
               </div>
             </dl>
@@ -326,12 +327,12 @@ export default function DonorPortalPage() {
 
       <div className="portal-split-grid">
         <PortalSection
-          title="Record a contribution"
-          description="Add a gift or material donation that has already been received."
+          title={t("portal.donor.record.title")}
+          description={t("portal.donor.record.description")}
         >
           <form className="portal-form" onSubmit={(event) => void onDonationSubmit(event)}>
             <label>
-              <span>Contribution type</span>
+              <span>{t("portal.donor.record.type")}</span>
               <select
                 value={donationType}
                 onChange={(event) => {
@@ -339,15 +340,15 @@ export default function DonorPortalPage() {
                   setError(null);
                 }}
               >
-                <option value="Monetary">Monetary</option>
-                <option value="Material">Goods or materials</option>
+                <option value="Monetary">{t("portal.donor.record.monetary")}</option>
+                <option value="Material">{t("portal.donor.record.goods")}</option>
               </select>
             </label>
 
             {donationType === "Monetary" ? (
               <div className="portal-form-row">
                 <label>
-                  <span>Amount</span>
+                  <span>{t("portal.donor.record.amount")}</span>
                   <input
                     type="number"
                     min="0.01"
@@ -359,7 +360,7 @@ export default function DonorPortalPage() {
                   />
                 </label>
                 <label>
-                  <span>Currency</span>
+                  <span>{t("portal.donor.record.currency")}</span>
                   <input
                     value={currency}
                     onChange={(event) => setCurrency(event.target.value)}
@@ -372,41 +373,41 @@ export default function DonorPortalPage() {
             ) : (
               <>
                 <label>
-                  <span>Item description</span>
+                  <span>{t("portal.donor.record.itemDescription")}</span>
                   <input
                     value={itemDescription}
                     onChange={(event) => setItemDescription(event.target.value)}
-                    placeholder="Blankets, food parcels, medical supplies"
+                    placeholder={t("portal.donor.record.itemPlaceholder")}
                     maxLength={500}
                     required
                   />
                 </label>
                 <div className="portal-form-row">
                   <label>
-                    <span>Quantity</span>
+                    <span>{t("portal.donor.record.quantity")}</span>
                     <input
                       type="number"
                       min="1"
                       step="1"
                       value={quantity}
                       onChange={(event) => setQuantity(event.target.value)}
-                      placeholder="Optional"
+                      placeholder={t("portal.donor.record.optional")}
                     />
                   </label>
                   <label>
-                    <span>Estimated value ({currency || "currency"})</span>
+                    <span>{t("portal.donor.record.estimatedValue", { currency: currency || t("portal.donor.record.currencyFallback") })}</span>
                     <input
                       type="number"
                       min="0"
                       step="0.01"
                       value={estimatedValue}
                       onChange={(event) => setEstimatedValue(event.target.value)}
-                      placeholder="Optional"
+                      placeholder={t("portal.donor.record.optional")}
                     />
                   </label>
                 </div>
                 <label>
-                  <span>Currency for estimated value</span>
+                  <span>{t("portal.donor.record.currencyForEstimated")}</span>
                   <input
                     value={currency}
                     onChange={(event) => setCurrency(event.target.value)}
@@ -419,38 +420,37 @@ export default function DonorPortalPage() {
             )}
 
             <label>
-              <span>Notes</span>
+              <span>{t("portal.donor.record.notes")}</span>
               <textarea
                 value={notes}
                 onChange={(event) => setNotes(event.target.value)}
                 maxLength={1000}
-                placeholder="Delivery or receipt details for your records"
+                placeholder={t("portal.donor.record.notesPlaceholder")}
               />
             </label>
 
             <p className="portal-form-help">
-              <Icon name="info" size={15} /> Recording only. Confirm the funds or goods were
-              received before submitting; no payment is taken here.
+              <Icon name="info" size={15} /> {t("portal.donor.record.help")}
             </p>
 
             <button className="btn btn-primary" type="submit" disabled={busy || !profile?.isActive}>
-              {busy ? "Recording…" : "Record contribution"}
+              {busy ? t("portal.donor.record.recording") : t("portal.donor.record.submit")}
               {busy ? null : <Icon name="arrow" size={16} />}
             </button>
           </form>
         </PortalSection>
 
         <PortalSection
-          title="Active appeals"
-          description="Campaigns currently open for support, with progress published by the response team."
+          title={t("portal.donor.appeals.title")}
+          description={t("portal.donor.appeals.description")}
         >
           {loading ? (
-            <PortalState kind="loading" title="Loading appeals">
-              Checking active campaigns.
+            <PortalState kind="loading" title={t("portal.donor.appeals.loadingTitle")}>
+              {t("portal.donor.appeals.loadingBody")}
             </PortalState>
           ) : campaigns.length === 0 ? (
-            <PortalState kind="empty" title="No active appeals">
-              New appeals will appear here when a response team publishes them.
+            <PortalState kind="empty" title={t("portal.donor.appeals.emptyTitle")}>
+              {t("portal.donor.appeals.emptyBody")}
             </PortalState>
           ) : (
             <div className="portal-campaign-grid">
@@ -466,21 +466,21 @@ export default function DonorPortalPage() {
                   <div className="portal-campaign-amounts">
                     <span>
                       <b>{formatMoney(campaign.raisedAmount, campaign.currency)}</b>
-                      <small>raised</small>
+                      <small>{t("portal.donor.appeals.raised")}</small>
                     </span>
                     <span>
                       <b>{formatMoney(campaign.goalAmount, campaign.currency)}</b>
-                      <small>goal</small>
+                      <small>{t("portal.donor.appeals.goal")}</small>
                     </span>
                     <span>
                       <b>{campaign.donationCount}</b>
-                      <small>contributions</small>
+                      <small>{t("portal.donor.appeals.contributions")}</small>
                     </span>
                   </div>
                   <div
                     className="portal-progress"
                     role="progressbar"
-                    aria-label={`${campaign.name} progress`}
+                    aria-label={t("portal.donor.appeals.progressAria", { name: campaign.name })}
                     aria-valuenow={Math.round(campaign.progressPercent)}
                     aria-valuemin={0}
                     aria-valuemax={100}
@@ -492,8 +492,8 @@ export default function DonorPortalPage() {
                     />
                   </div>
                   <small>
-                    {Math.round(campaign.progressPercent)}% of goal
-                    {campaign.endsAt ? ` · Ends ${formatShortDate(campaign.endsAt)}` : ""}
+                    {t("portal.donor.appeals.percentOfGoal", { percent: Math.round(campaign.progressPercent) })}
+                    {campaign.endsAt ? ` · ${t("portal.donor.appeals.ends", { date: formatShortDate(campaign.endsAt) })}` : ""}
                   </small>
                 </article>
               ))}
@@ -503,16 +503,16 @@ export default function DonorPortalPage() {
       </div>
 
       <PortalSection
-        title="Contribution history"
-        description="Only contributions linked to your donor profile are shown."
+        title={t("portal.donor.history.title")}
+        description={t("portal.donor.history.description")}
       >
         {loading ? (
-          <PortalState kind="loading" title="Loading history">
-            Reading your recorded contributions.
+          <PortalState kind="loading" title={t("portal.donor.history.loadingTitle")}>
+            {t("portal.donor.history.loadingBody")}
           </PortalState>
         ) : donations.length === 0 ? (
-          <PortalState kind="empty" title="No contributions recorded yet">
-            Once a contribution is recorded, its reference and allocation status appear here.
+          <PortalState kind="empty" title={t("portal.donor.history.emptyTitle")}>
+            {t("portal.donor.history.emptyBody")}
           </PortalState>
         ) : (
           <div className="portal-list">
@@ -525,25 +525,25 @@ export default function DonorPortalPage() {
                   <b>
                     {donation.donationType === "Monetary"
                       ? formatMoney(donation.amount, donation.currency)
-                      : donation.itemDescription ?? "Material contribution"}
+                      : donation.itemDescription ?? t("portal.donor.history.materialContribution")}
                   </b>
                   <p>
                     {donation.reference} · {donation.donationType} · {formatShortDate(donation.receivedAt)}
                   </p>
                   {donation.allocations.length > 0 ? (
                     <small>
-                      Allocated to:{" "}
+                      {t("portal.donor.history.allocatedTo")}{" "}
                       {donation.allocations
                         .map((allocation) => allocation.campaignName)
                         .join(", ")}
                     </small>
                   ) : (
-                    <small>Not yet allocated to an appeal</small>
+                    <small>{t("portal.donor.history.notAllocated")}</small>
                   )}
                 </div>
                 <div className="portal-row-actions">
                   <span className={`badge ${donation.isSuspicious ? "amber" : "green"}`}>
-                    <i /> {donation.isSuspicious ? "Under review" : donation.status}
+                    <i /> {donation.isSuspicious ? t("portal.donor.history.underReview") : donation.status}
                   </span>
                   <small className="portal-recorded-value">
                     {donationValue(donation) === null
@@ -558,12 +558,12 @@ export default function DonorPortalPage() {
       </PortalSection>
 
       <PortalSection
-        title="Transparency and allocation"
-        description="Aggregated campaign and expenditure data. Individual donor identities are never published."
+        title={t("portal.donor.transparency.title")}
+        description={t("portal.donor.transparency.description")}
       >
         <form className="portal-range-form" onSubmit={onRangeSubmit}>
           <label>
-            <span>From</span>
+            <span>{t("portal.donor.transparency.from")}</span>
             <input
               type="date"
               value={draftRange.from}
@@ -572,7 +572,7 @@ export default function DonorPortalPage() {
             />
           </label>
           <label>
-            <span>To</span>
+            <span>{t("portal.donor.transparency.to")}</span>
             <input
               type="date"
               value={draftRange.to}
@@ -581,18 +581,18 @@ export default function DonorPortalPage() {
             />
           </label>
           <button className="btn btn-outline" type="submit" disabled={reportLoading}>
-            {reportLoading ? "Updating…" : "Update report"}
+            {reportLoading ? t("portal.donor.transparency.updating") : t("portal.donor.transparency.update")}
           </button>
         </form>
 
         {reportError ? <PortalNotice tone="error">{reportError}</PortalNotice> : null}
         {reportLoading ? (
-          <PortalState kind="loading" title="Preparing transparency report">
-            Summarising allocation data for the selected period.
+          <PortalState kind="loading" title={t("portal.donor.transparency.loadingTitle")}>
+            {t("portal.donor.transparency.loadingBody")}
           </PortalState>
         ) : !report ? (
-          <PortalState kind="empty" title="No report data">
-            Select a date range to view aggregated figures.
+          <PortalState kind="empty" title={t("portal.donor.transparency.emptyTitle")}>
+            {t("portal.donor.transparency.emptyBody")}
           </PortalState>
         ) : (
           <>
@@ -601,28 +601,28 @@ export default function DonorPortalPage() {
                 <Icon name="heart" />
                 <span>
                   <b>{report.totalDonationCount}</b>
-                  <small>Contributions</small>
+                  <small>{t("portal.donor.transparency.contributions")}</small>
                 </span>
               </article>
               <article>
                 <Icon name="users" />
                 <span>
                   <b>{report.totalDonorCount}</b>
-                  <small>Supporting donors</small>
+                  <small>{t("portal.donor.transparency.donors")}</small>
                 </span>
               </article>
               <article>
                 <Icon name="shield" />
                 <span>
                   <b>{report.suspiciousDonationCount + report.suspiciousAllocationCount}</b>
-                  <small>Records awaiting review</small>
+                  <small>{t("portal.donor.transparency.awaitingReview")}</small>
                 </span>
               </article>
             </div>
 
             {report.currencyTotals.length === 0 ? (
-              <PortalState kind="empty" title="No allocations in this period">
-                Contributions outside this date range are not included in the figures above.
+              <PortalState kind="empty" title={t("portal.donor.transparency.noAllocationsTitle")}>
+                {t("portal.donor.transparency.noAllocationsBody")}
               </PortalState>
             ) : (
               <div className="portal-list">
@@ -634,12 +634,16 @@ export default function DonorPortalPage() {
                     <div>
                       <b>{total.currency}</b>
                       <p>
-                        Received {formatMoney(total.monetaryTotal, total.currency)} · Materials{" "}
-                        {formatMoney(total.materialEstimatedTotal, total.currency)}
+                        {t("portal.donor.transparency.receivedMaterials", {
+                          received: formatMoney(total.monetaryTotal, total.currency),
+                          materials: formatMoney(total.materialEstimatedTotal, total.currency)
+                        })}
                       </p>
                       <small>
-                        Allocated {formatMoney(total.allocatedTotal, total.currency)} · Spent{" "}
-                        {formatMoney(total.spentTotal, total.currency)}
+                        {t("portal.donor.transparency.allocatedSpent", {
+                          allocated: formatMoney(total.allocatedTotal, total.currency),
+                          spent: formatMoney(total.spentTotal, total.currency)
+                        })}
                       </small>
                     </div>
                   </article>
@@ -657,12 +661,16 @@ export default function DonorPortalPage() {
                     <div>
                       <b>{campaign.name}</b>
                       <p>
-                        Raised {formatMoney(campaign.raisedAmount, campaign.currency)} of{" "}
-                        {formatMoney(campaign.goalAmount, campaign.currency)}
+                        {t("portal.donor.transparency.raisedOf", {
+                          raised: formatMoney(campaign.raisedAmount, campaign.currency),
+                          goal: formatMoney(campaign.goalAmount, campaign.currency)
+                        })}
                       </p>
                       <small>
-                        Spent {formatMoney(campaign.spentAmount, campaign.currency)} ·{" "}
-                        {Math.round(campaign.progressPercent)}% of goal
+                        {t("portal.donor.transparency.spentOfGoal", {
+                          spent: formatMoney(campaign.spentAmount, campaign.currency),
+                          percent: Math.round(campaign.progressPercent)
+                        })}
                       </small>
                     </div>
                     <span className={`badge ${campaign.status === "Active" ? "green" : "muted"}`}>
@@ -677,17 +685,17 @@ export default function DonorPortalPage() {
       </PortalSection>
 
       <PortalSection
-        title="Messages"
-        description="Updates about campaigns and recorded contributions."
+        title={t("portal.donor.messages.title")}
+        description={t("portal.donor.messages.description")}
         action={
           <Link className="portal-text-link" href="/notifications">
-            Open inbox →
+            {t("portal.donor.messages.openInbox")}
           </Link>
         }
       >
         {!inbox || inbox.items.length === 0 ? (
-          <PortalState kind="empty" title="No messages yet">
-            Donation and campaign updates will appear here.
+          <PortalState kind="empty" title={t("portal.donor.messages.emptyTitle")}>
+            {t("portal.donor.messages.emptyBody")}
           </PortalState>
         ) : (
           <div className="portal-list">
@@ -698,7 +706,7 @@ export default function DonorPortalPage() {
                 </i>
                 <div>
                   <b>{notification.subject ?? notification.templateKey}</b>
-                  <p>{notification.body ?? "Open the inbox for details."}</p>
+                  <p>{notification.body ?? t("portal.donor.messages.inboxDetails")}</p>
                   <small>{formatShortDate(notification.createdAt)}</small>
                 </div>
               </article>

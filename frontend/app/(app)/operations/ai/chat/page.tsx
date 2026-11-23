@@ -1,12 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import { localizedErrorMessage } from "@/lib/i18n/errors";
 import { useRef, useState, type FormEvent } from "react";
 import { AuthGuard } from "@/components/AuthGuard";
 import { Icon } from "@/components/safeway/Icon";
 import { Button, Skeleton, Toast } from "@/components/ui";
 import { FaqExamples, sendChatMessage } from "@/lib/aiChat";
-import { errorMessage } from "@/lib/api";
+
+import { useT } from "@/lib/i18n";
 import { StaffRoles } from "@/lib/roles";
 
 type ChatEntry = {
@@ -19,6 +21,7 @@ type ChatEntry = {
 type Notice = { message: string; tone: "error" | "success" } | null;
 
 export default function AiFaqChatPage() {
+  const t = useT();
   const [question, setQuestion] = useState("");
   const [entries, setEntries] = useState<ChatEntry[]>([]);
   const [suggestions, setSuggestions] = useState<string[]>([]);
@@ -54,7 +57,7 @@ export default function AiFaqChatPage() {
       ]);
       setSuggestions(answer.suggestions);
     } catch (error) {
-      setNotice({ message: errorMessage(error), tone: "error" });
+      setNotice({ message: localizedErrorMessage(error, t), tone: "error" });
     } finally {
       setSending(false);
     }
@@ -69,13 +72,13 @@ export default function AiFaqChatPage() {
     <AuthGuard allowedRoles={StaffRoles}>
       <div className="ops-title">
         <div>
-          <p>AI FAQ CHAT</p>
-          <h1>Ask about the crisis workflow</h1>
-          <span>Answers explain how the platform works. A person still makes every decision.</span>
+          <p>{t("operations.chat.eyebrow")}</p>
+          <h1>{t("operations.chat.title")}</h1>
+          <span>{t("operations.chat.subtitle")}</span>
         </div>
         <div>
           <Link className="btn btn-outline" href="/operations/ai">
-            <Icon name="brain" /> Recommendation queue
+            <Icon name="brain" /> {t("operations.shared.recommendationQueue")}
           </Link>
         </div>
       </div>
@@ -94,14 +97,14 @@ export default function AiFaqChatPage() {
         >
           <Icon name="shield" size={16} />
           <span>
-            <b>Information only - this chat does not make or approve decisions.</b>
+            <b>{t("operations.chat.noticeTitle")}</b>
             <br />
-            Only authorized human roles can record a decision or approve a critical action.
+            {t("operations.chat.noticeBody")}
           </span>
         </div>
 
         <div style={{ padding: 20 }}>
-          <b>Example questions</b>
+          <b>{t("operations.chat.examples")}</b>
           <div className="actions" style={{ marginTop: 10 }}>
             {FaqExamples.map((example) => (
               <Button
@@ -120,16 +123,15 @@ export default function AiFaqChatPage() {
       <section className="ops-card">
         <div className="card-heading">
           <div>
-            <h3>Conversation</h3>
-            <p>Fixed-FAQ answers with an optional language-model upgrade</p>
+            <h3>{t("operations.chat.conversation")}</h3>
+            <p>{t("operations.chat.conversationSubtitle")}</p>
           </div>
         </div>
 
         <div style={{ padding: "0 20px 8px" }}>
           {entries.length === 0 ? (
             <div className="empty-state">
-              Choose an example question or type your own to start. The chat explains procedures
-              only; it never changes a request or a decision.
+              {t("operations.chat.empty")}
             </div>
           ) : (
             <div style={{ display: "grid", gap: 12 }}>
@@ -137,10 +139,10 @@ export default function AiFaqChatPage() {
                 <article className="notice" key={entry.id}>
                   <i style={{ background: entry.role === "user" ? "var(--blue)" : "var(--line)" }} />
                   <span style={{ flex: 1 }}>
-                    <b>{entry.role === "user" ? "You" : "FAQ assistant"}</b>
+                    <b>{entry.role === "user" ? t("operations.chat.you") : t("operations.chat.assistant")}</b>
                     <p>{entry.text}</p>
                     {entry.role === "assistant" && entry.source ? (
-                      <small>Source: {entry.source}</small>
+                      <small>{t("operations.shared.source", { source: entry.source })}</small>
                     ) : null}
                   </span>
                 </article>
@@ -156,7 +158,7 @@ export default function AiFaqChatPage() {
 
         {suggestions.length > 0 ? (
           <div style={{ padding: "8px 20px" }}>
-            <b>Follow-ups</b>
+            <b>{t("operations.chat.followUps")}</b>
             <div className="actions" style={{ marginTop: 8 }}>
               {suggestions.map((suggestion, index) => (
                 <Button
@@ -174,17 +176,17 @@ export default function AiFaqChatPage() {
 
         <form className="filters" onSubmit={submit} style={{ padding: 20 }}>
           <label className="field" style={{ flex: 1 }}>
-            <span className="field__label">Question</span>
+            <span className="field__label">{t("operations.chat.questionLabel")}</span>
             <textarea
               className="input"
               rows={3}
               value={question}
               onChange={(event) => setQuestion(event.target.value)}
-              placeholder="Ask an FAQ question about the workflow"
+              placeholder={t("operations.chat.questionPlaceholder")}
             />
           </label>
           <Button type="submit" disabled={sending || !question.trim()}>
-            {sending ? "Sending…" : "Ask"}
+            {sending ? t("operations.chat.sending") : t("operations.chat.ask")}
           </Button>
         </form>
       </section>

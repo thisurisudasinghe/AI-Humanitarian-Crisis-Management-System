@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { localizedErrorMessage } from "@/lib/i18n/errors";
 import {
   Badge,
   Button,
@@ -12,18 +13,20 @@ import {
 } from "@/components/ui";
 import { AuthGuard } from "@/components/AuthGuard";
 import { AdminNav } from "@/components/safeway/AdminNav";
-import { api, apiJson, errorMessage } from "@/lib/api";
+import { api, apiJson } from "@/lib/api";
 import {
   formatDate,
   type OutboxMessageDto,
   type PagedResult
 } from "@/lib/admin";
+import { useT } from "@/lib/i18n";
 import { RoleNames } from "@/lib/roles";
 import { useDebouncedValue } from "@/lib/useDebouncedValue";
 
 type Notice = { message: string; tone: "error" | "success" } | null;
 
 export default function OutboxPage() {
+  const t = useT();
   const [type, setType] = useState("");
   const [page, setPage] = useState(1);
   const [result, setResult] = useState<PagedResult<OutboxMessageDto> | null>(null);
@@ -60,7 +63,7 @@ export default function OutboxPage() {
       })
       .catch((caught: unknown) => {
         if (!cancelled) {
-          setNotice({ message: errorMessage(caught), tone: "error" });
+          setNotice({ message: localizedErrorMessage(caught, t), tone: "error" });
         }
       })
       .finally(() => {
@@ -89,14 +92,14 @@ export default function OutboxPage() {
         "POST",
         {}
       );
-      setNotice({ message: "Message queued for retry.", tone: "success" });
+      setNotice({ message: t("admin.outbox.retryQueued"), tone: "success" });
       await load()
         .then(setResult)
         .catch((caught: unknown) =>
-          setNotice({ message: errorMessage(caught), tone: "error" })
+          setNotice({ message: localizedErrorMessage(caught, t), tone: "error" })
         );
     } catch (caught) {
-      setNotice({ message: errorMessage(caught), tone: "error" });
+      setNotice({ message: localizedErrorMessage(caught, t), tone: "error" });
     } finally {
       setRetryingId(null);
     }
@@ -105,48 +108,48 @@ export default function OutboxPage() {
   const columns: Column<OutboxMessageDto>[] = [
     {
       key: "when",
-      header: "Failed at",
+      header: t("admin.outbox.colFailedAt"),
       render: (message) => (
         <div>
           <div>{formatDate(message.updatedAt ?? message.createdAt)}</div>
           <div className="metric__label">
-            Created {formatDate(message.createdAt)}
+            {t("admin.outbox.createdAt", { date: formatDate(message.createdAt) })}
           </div>
         </div>
       )
     },
     {
       key: "type",
-      header: "Message type",
+      header: t("admin.outbox.colType"),
       render: (message) => <strong>{message.type}</strong>
     },
     {
       key: "entity",
-      header: "Entity",
+      header: t("admin.outbox.colEntity"),
       render: (message) => <code>{message.entityId}</code>
     },
     {
       key: "status",
-      header: "Status",
+      header: t("admin.outbox.colStatus"),
       render: (message) => <Badge>{message.status}</Badge>
     },
     {
       key: "retries",
-      header: "Retries",
+      header: t("admin.outbox.colRetries"),
       render: (message) => (
         <div>
           <div>{message.retryCount}</div>
           <div className="metric__label">
             {message.nextRetryAt
-              ? `Next ${formatDate(message.nextRetryAt)}`
-              : "No retry scheduled"}
+              ? t("admin.outbox.nextRetry", { date: formatDate(message.nextRetryAt) })
+              : t("admin.outbox.noRetryScheduled")}
           </div>
         </div>
       )
     },
     {
       key: "error",
-      header: "Last error",
+      header: t("admin.outbox.colError"),
       render: (message) =>
         message.errorMessage ? (
           <code title={message.errorMessage}>{message.errorMessage}</code>
@@ -156,14 +159,14 @@ export default function OutboxPage() {
     },
     {
       key: "actions",
-      header: "Actions",
+      header: t("admin.outbox.colActions"),
       render: (message) => (
         <Button
           variant="secondary"
           disabled={retryingId !== null}
           onClick={() => void retry(message.id)}
         >
-          {retryingId === message.id ? "Retrying…" : "Retry"}
+          {retryingId === message.id ? t("admin.outbox.retrying") : t("admin.outbox.retry")}
         </Button>
       )
     }
@@ -174,15 +177,11 @@ export default function OutboxPage() {
       <div className="page">
         <header className="page__header">
           <div>
-            <h1>Outbox dead letters</h1>
-            <p>
-              Messages that exhausted their retries and were removed from the
-              delivery queue. Retrying requeues a message for another delivery
-              attempt.
-            </p>
+            <h1>{t("admin.outbox.title")}</h1>
+            <p>{t("admin.outbox.subtitle")}</p>
           </div>
           <Button variant="secondary" onClick={resetFilters}>
-            Clear filters
+            {t("admin.outbox.clearFilters")}
           </Button>
         </header>
 
@@ -191,8 +190,8 @@ export default function OutboxPage() {
         <section className="card">
           <div className="filters">
             <Input
-              label="Message type"
-              placeholder="e.g. DonationRecorded"
+              label={t("admin.outbox.fieldType")}
+              placeholder={t("admin.outbox.placeholderType")}
               value={type}
               onChange={(event) => {
                 setType(event.target.value);
@@ -213,7 +212,7 @@ export default function OutboxPage() {
               pageSize={result?.pageSize ?? 20}
               totalCount={result?.totalCount ?? 0}
               onPageChange={setPage}
-              emptyMessage="No dead-lettered messages. The outbox is healthy."
+              emptyMessage={t("admin.outbox.empty")}
             />
           )}
         </section>

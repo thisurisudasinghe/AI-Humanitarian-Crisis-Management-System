@@ -60,7 +60,7 @@ export default function HomePage() {
         <div><p>{t("home.sectionCopy")}</p></div>
       </section>
 
-      <section className="home-pathways" aria-label="Who SAFEWAY serves">
+      <section className="home-pathways" aria-label={t("public.home.pathwaysAria")}>
         <article className="pathway pathway-public">
           <span>{t("home.forCommunities")}</span>
           <i><Icon name="heart" /></i>
@@ -90,7 +90,7 @@ export default function HomePage() {
         ))}
       </section>
 
-      <section className="home-cta public-guidance" aria-label="Emergency guidance">
+      <section className="home-cta public-guidance" aria-label={t("public.home.guidanceAria")}>
         <span><Icon name="info" size={26} /></span>
         <div>
           <small>{t("home.guidanceSmall")}</small>
