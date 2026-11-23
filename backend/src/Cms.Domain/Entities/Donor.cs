@@ -19,6 +19,9 @@ public class Donor : BaseEntity
 
     public bool IsActive { get; set; } = true;
 
+    /// <summary>Linked public user account, when this donor enrolled through the portal.</summary>
+    public Guid? UserId { get; set; }
+
     public Guid? CreatedByUserId { get; set; }
 
     public ICollection<Donation> Donations { get; set; } = new List<Donation>();

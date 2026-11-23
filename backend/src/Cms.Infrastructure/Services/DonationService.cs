@@ -577,6 +577,66 @@ public sealed class DonationService : IDonationService
     }
 
     // -----------------------------------------------------------------------
+    // Public donor portal (caller-scoped views)
+    // -----------------------------------------------------------------------
+
+    public async Task<DonorDto?> GetDonorForUserAsync(
+        Guid userId,
+        CancellationToken cancellationToken = default)
+    {
+        var donor = await _db.Donors
+            .AsNoTracking()
+            .SingleOrDefaultAsync(candidate => candidate.UserId == userId, cancellationToken);
+
+        return donor is null ? null : await GetDonorAsync(donor.Id, cancellationToken);
+    }
+
+    public async Task<PagedResultDto<DonationDto>> GetDonationsForUserAsync(
+        Guid userId,
+        DonationQueryDto query,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(query);
+
+        var donor = await _db.Donors
+            .AsNoTracking()
+            .SingleOrDefaultAsync(candidate => candidate.UserId == userId, cancellationToken);
+
+        if (donor is null)
+        {
+            return new PagedResultDto<DonationDto>
+            {
+                Page = Math.Max(1, query.Page),
+                PageSize = Math.Clamp(query.PageSize, 1, MaxPageSize)
+            };
+        }
+
+        // The caller's donor id is always enforced server-side. Any donor id
+        // supplied by the client is ignored so portal users cannot read or
+        // write another donor's contribution history.
+        query.DonorId = donor.Id;
+        return await GetDonationsAsync(query, cancellationToken);
+    }
+
+    public async Task<DonationDto> CreateDonationForUserAsync(
+        Guid userId,
+        CreateDonationRequestDto request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        var donor = await _db.Donors
+            .AsNoTracking()
+            .SingleOrDefaultAsync(candidate => candidate.UserId == userId, cancellationToken)
+            ?? throw new NotFoundException(
+                "A donor profile is not linked to this account.",
+                "DONOR_PROFILE_NOT_FOUND");
+
+        request.DonorId = donor.Id;
+        return await CreateDonationAsync(request, cancellationToken);
+    }
+
+    // -----------------------------------------------------------------------
     // Donations
     // -----------------------------------------------------------------------
 

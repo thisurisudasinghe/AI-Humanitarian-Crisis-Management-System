@@ -8,6 +8,28 @@ import { PublicFooter } from "@/components/safeway/PublicFooter";
 import { PublicNav } from "@/components/safeway/PublicNav";
 import { errorMessage } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { type PublicPurpose } from "@/lib/roles";
+
+const purposes: { value: PublicPurpose; icon: string; title: string; copy: string }[] = [
+  {
+    value: "citizen",
+    icon: "file",
+    title: "Get help",
+    copy: "Report a crisis and track the response."
+  },
+  {
+    value: "volunteer",
+    icon: "users",
+    title: "Volunteer",
+    copy: "Offer skills, availability and support."
+  },
+  {
+    value: "donor",
+    icon: "heart",
+    title: "Support relief",
+    copy: "Record donations and follow their impact."
+  }
+];
 
 const benefits: [string, string, string][] = [
   ["file", "Track every report", "See review and response updates clearly."],
@@ -23,6 +45,7 @@ export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [purpose, setPurpose] = useState<PublicPurpose>("citizen");
   const [consent, setConsent] = useState(false);
   const [complete, setComplete] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -53,7 +76,8 @@ export default function RegisterPage() {
       await register({
         fullName: `${firstName.trim()} ${lastName.trim()}`.trim(),
         email: email.trim(),
-        password
+        password,
+        accountPurpose: purpose
       });
       setComplete(true);
     } catch (caught) {
@@ -99,7 +123,10 @@ export default function RegisterPage() {
               </i>
               <div className="section-kicker">Account ready</div>
               <h2>Welcome to SAFEWAY.</h2>
-              <p>Your citizen account has been created and you are signed in.</p>
+              <p>
+                Your {purpose === "citizen" ? "citizen" : purpose} account has been created and you
+                are signed in.
+              </p>
               <Link className="btn btn-primary" href="/dashboard">
                 Continue to dashboard <Icon name="arrow" />
               </Link>
@@ -143,6 +170,36 @@ export default function RegisterPage() {
                 />
               </label>
 
+              <fieldset className="portal-purpose">
+                <legend>
+                  <span className="field-label">How will you use SAFEWAY?</span>
+                </legend>
+                <div className="portal-purpose-grid">
+                  {purposes.map((option) => (
+                    <label
+                      key={option.value}
+                      className={purpose === option.value ? "active" : ""}
+                    >
+                      <input
+                        type="radio"
+                        name="accountPurpose"
+                        value={option.value}
+                        checked={purpose === option.value}
+                        onChange={() => setPurpose(option.value)}
+                      />
+                      <i>
+                        <Icon name={option.icon} size={18} />
+                      </i>
+                      <span>
+                        <b>{option.title}</b>
+                        <small>{option.copy}</small>
+                      </span>
+                    </label>
+                  ))}
+                </div>
+                <small>Your selection is a request. Your account roles are set by the server.</small>
+              </fieldset>
+
               <label>
                 <span className="field-label">Create password</span>
                 <input
@@ -173,7 +230,7 @@ export default function RegisterPage() {
                   checked={consent}
                   onChange={(event) => setConsent(event.target.checked)}
                 />
-                <span>I agree to the SAFEWAY privacy and account terms for this prototype.</span>
+                <span>I agree to the SAFEWAY privacy notice and account terms.</span>
               </label>
 
               {error ? (

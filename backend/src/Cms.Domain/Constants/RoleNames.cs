@@ -1,8 +1,8 @@
 namespace Cms.Domain.Constants;
 
 /// <summary>
-/// The ten system roles frozen by the shared contract (Block S).
-/// Never use raw role strings anywhere else in the codebase.
+/// System roles used by the shared contract. Public self-registration may only
+/// assign safe public-participation roles through server-side policy.
 /// </summary>
 public static class RoleNames
 {
@@ -16,6 +16,7 @@ public static class RoleNames
     public const string DonorOfficer = "DonorOfficer";
     public const string PartnerOfficer = "PartnerOfficer";
     public const string SystemAdmin = "SystemAdmin";
+    public const string Donor = "Donor";
 
     public static readonly IReadOnlyList<string> All =
     [
@@ -28,6 +29,18 @@ public static class RoleNames
         Volunteer,
         DonorOfficer,
         PartnerOfficer,
-        SystemAdmin
+        SystemAdmin,
+        Donor
+    ];
+
+    /// <summary>
+    /// Roles that may be granted through the public self-registration flow.
+    /// Privileged/staff roles must never be assigned by public registration.
+    /// </summary>
+    public static readonly IReadOnlyList<string> PublicSelfRegistrationRoles =
+    [
+        Citizen,
+        Volunteer,
+        Donor
     ];
 }

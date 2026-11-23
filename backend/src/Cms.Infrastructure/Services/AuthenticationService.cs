@@ -77,6 +77,13 @@ public sealed class AuthenticationService : IAuthenticationService
             errors[nameof(request.Password)] = ["Password must be between 8 and 128 characters."];
         }
 
+        var requestedPurpose = NormalizeAccountPurpose(request.AccountPurpose);
+        if (requestedPurpose is not null && !IsAllowedPublicPurpose(requestedPurpose))
+        {
+            errors[nameof(request.AccountPurpose)] =
+                ["Select a valid public account purpose."];
+        }
+
         if (errors.Count > 0)
         {
             throw new ValidationException("Registration details are invalid.", errors);
@@ -91,11 +98,18 @@ public sealed class AuthenticationService : IAuthenticationService
                 "EMAIL_ALREADY_EXISTS");
         }
 
-        var citizenRole = await _db.Roles
-            .SingleOrDefaultAsync(role => role.Name == RoleNames.Citizen, cancellationToken)
-            ?? throw new DomainException(
-                "The Citizen role has not been seeded.",
+        var roleNames = ResolvePublicRegistrationRoles(requestedPurpose);
+        var roles = await _db.Roles
+            .Where(role => roleNames.Contains(role.Name))
+            .ToListAsync(cancellationToken);
+
+        var missingRole = roleNames.FirstOrDefault(name => roles.All(role => role.Name != name));
+        if (missingRole is not null)
+        {
+            throw new DomainException(
+                $"The {missingRole} role has not been seeded.",
                 "ROLE_NOT_CONFIGURED");
+        }
 
         var now = _dateTimeService.UtcNow;
         var (firstName, lastName) = SplitName(fullName);
@@ -110,18 +124,20 @@ public sealed class AuthenticationService : IAuthenticationService
             IsEmailVerified = false,
             Status = UserStatus.Active,
             CreatedAt = now,
-            UserRoles =
-            [
-                new UserRole
-                {
-                    RoleId = citizenRole.Id,
-                    AssignedAt = now
-                }
-            ]
+            UserRoles = roles.Select(role => new UserRole
+            {
+                RoleId = role.Id,
+                AssignedAt = now
+            }).ToList()
         };
 
         _db.Users.Add(user);
         await _db.SaveChangesAsync(cancellationToken);
+
+        if (roleNames.Contains(RoleNames.Donor))
+        {
+            await EnsureDonorProfileAsync(user, email, cancellationToken);
+        }
 
         var response = await IssueTokensAsync(user, email, cancellationToken);
 
@@ -130,7 +146,7 @@ public sealed class AuthenticationService : IAuthenticationService
             AuditActions.UserRegistered,
             "identity.User",
             user.Id.ToString(),
-            new { email },
+            new { email, accountPurpose = requestedPurpose ?? RoleNames.Citizen, roles = roleNames },
             cancellationToken);
 
         return response;
@@ -366,6 +382,80 @@ public sealed class AuthenticationService : IAuthenticationService
         };
     }
 
+    public async Task<AuthResponseDto> EnrollPublicRoleAsync(
+        string purpose,
+        CancellationToken cancellationToken = default)
+    {
+        var userId = _currentUser.UserId
+            ?? throw new UnauthorizedAccessException("Authentication is required.");
+
+        var normalized = NormalizeAccountPurpose(purpose);
+        if (normalized is null || !IsAllowedPublicPurpose(normalized))
+        {
+            throw new ValidationException(
+                "Only public participation roles can be added to an existing account.",
+                new Dictionary<string, string[]>
+                {
+                    [nameof(purpose)] = ["Select a valid public participation role."]
+                });
+        }
+
+        var user = await _db.Users
+            .Include(candidate => candidate.UserRoles)
+                .ThenInclude(userRole => userRole.Role)
+            .SingleOrDefaultAsync(candidate => candidate.Id == userId, cancellationToken)
+            ?? throw new UnauthorizedAccessException("The authenticated user no longer exists.");
+
+        if (user.Status != UserStatus.Active)
+        {
+            throw new UnauthorizedAccessException("This account is not active.");
+        }
+
+        var email = DecryptEmail(user.EmailEncrypted);
+
+        // Idempotent: re-selecting an existing participation role changes no
+        // role, but still returns fresh tokens so the caller sees the role
+        // immediately in the current session.
+        if (user.UserRoles.Any(userRole =>
+                userRole.Role is not null && userRole.Role.Name == normalized))
+        {
+            return await IssueTokensAsync(user, email, cancellationToken);
+        }
+
+        var role = await _db.Roles
+            .SingleOrDefaultAsync(candidate => candidate.Name == normalized, cancellationToken)
+            ?? throw new DomainException(
+                $"The {normalized} role has not been seeded.",
+                "ROLE_NOT_CONFIGURED");
+
+        user.UserRoles.Add(new UserRole
+        {
+            RoleId = role.Id,
+            Role = role,
+            UserId = user.Id,
+            AssignedAt = _dateTimeService.UtcNow
+        });
+
+        await _db.SaveChangesAsync(cancellationToken);
+
+        if (normalized == RoleNames.Donor)
+        {
+            await EnsureDonorProfileAsync(user, email, cancellationToken);
+        }
+
+        await _auditLogger.LogAsync(
+            user.Id,
+            AuditActions.UserRoleChanged,
+            "identity.User",
+            user.Id.ToString(),
+            new { role = normalized, source = "PublicPortal" },
+            cancellationToken);
+
+        // Access-token claims are immutable, so the enrolment response must
+        // carry a freshly signed token for the new role to take effect.
+        return await IssueTokensAsync(user, email, cancellationToken);
+    }
+
     private async Task<AuthResponseDto> IssueTokensAsync(
         User user,
         string email,
@@ -468,6 +558,67 @@ public sealed class AuthenticationService : IAuthenticationService
         {
             return string.Empty;
         }
+    }
+
+    private static string? NormalizeAccountPurpose(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        return value.Trim().ToLowerInvariant() switch
+        {
+            "citizen" or "request-assistance" or "requestassistance" => RoleNames.Citizen,
+            "volunteer" or "offer-help" or "offerhelp" => RoleNames.Volunteer,
+            "donor" or "support-relief" or "supportrelief" or "support-relief-efforts" => RoleNames.Donor,
+            _ => value.Trim()
+        };
+    }
+
+    private static bool IsAllowedPublicPurpose(string purpose) =>
+        RoleNames.PublicSelfRegistrationRoles.Contains(purpose, StringComparer.Ordinal);
+
+    private static IReadOnlyCollection<string> ResolvePublicRegistrationRoles(string? purpose)
+    {
+        // Citizen remains the baseline public account role so existing case,
+        // notification, household and public-assistance workflows keep working.
+        var roles = new List<string> { RoleNames.Citizen };
+        if (purpose is RoleNames.Volunteer or RoleNames.Donor && !roles.Contains(purpose))
+        {
+            roles.Add(purpose);
+        }
+
+        return roles;
+    }
+
+    private async Task EnsureDonorProfileAsync(
+        User user,
+        string email,
+        CancellationToken cancellationToken)
+    {
+        var exists = await _db.Donors
+            .AnyAsync(donor => donor.UserId == user.Id, cancellationToken);
+
+        if (exists)
+        {
+            return;
+        }
+
+        _db.Donors.Add(new Donor
+        {
+            Id = Guid.NewGuid(),
+            Name = $"{user.FirstName} {user.LastName}".Trim(),
+            DonorType = DonorType.Individual,
+            ContactEmail = email,
+            IsAnonymous = false,
+            IsActive = true,
+            UserId = user.Id,
+            CreatedByUserId = user.Id,
+            CreatedAt = _dateTimeService.UtcNow
+        });
+
+        await _db.SaveChangesAsync(cancellationToken);
     }
 
     private static IReadOnlyCollection<string> GetRoleNames(User user) =>

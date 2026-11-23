@@ -6,7 +6,7 @@ import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from
 import { useAuth } from "@/lib/auth";
 import { initials, humanizeRole } from "@/lib/format";
 import { getInbox } from "@/lib/notifications";
-import { RoleNames, hasAnyRole, isStaff } from "@/lib/roles";
+import { RoleNames, hasAnyRole, hasRole, isStaff } from "@/lib/roles";
 import { Brand } from "./Brand";
 import { Icon } from "./Icon";
 
@@ -18,11 +18,23 @@ type NavItem = {
 
 const publicNav: NavItem[] = [
   { href: "/dashboard", icon: "grid", label: "Dashboard" },
+  { href: "/portal/citizen", icon: "file", label: "Citizen portal" },
   { href: "/my-reports", icon: "file", label: "My reports" },
   { href: "/find-assistance", icon: "search", label: "Find assistance" },
   { href: "/notifications", icon: "bell", label: "Notifications" },
   { href: "/account", icon: "user", label: "Account settings" }
 ];
+
+const portalSectionLabels: Record<string, string> = {
+  "/dashboard": "Public dashboard",
+  "/portal/citizen": "Citizen portal",
+  "/portal/volunteer": "Volunteer portal",
+  "/portal/donor": "Donor portal",
+  "/my-reports": "My reports",
+  "/find-assistance": "Find assistance",
+  "/notifications": "Notifications",
+  "/account": "Account settings"
+};
 
 const opsNav: NavItem[] = [
   { href: "/operations", icon: "grid", label: "Overview" },
@@ -38,6 +50,7 @@ const opsNav: NavItem[] = [
 ];
 
 const publicOnlyPaths = ["/dashboard", "/my-reports", "/account"];
+const publicOnlyPrefixes = ["/portal"];
 
 const kpiRoles = [
   RoleNames.SystemAdmin,
@@ -53,7 +66,10 @@ const donationRoles = [
 ];
 
 function isOpsPath(pathname: string, roles: readonly string[]): boolean {
-  if (publicOnlyPaths.includes(pathname)) {
+  if (
+    publicOnlyPaths.includes(pathname) ||
+    publicOnlyPrefixes.some((prefix) => pathname.startsWith(prefix))
+  ) {
     return false;
   }
 
@@ -80,6 +96,10 @@ function isActive(pathname: string, href: string): boolean {
   }
 
   return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+function sectionLabel(pathname: string): string {
+  return portalSectionLabels[pathname] ?? "Public account";
 }
 
 export function DashboardShell({ children }: { children: ReactNode }) {
@@ -134,12 +154,21 @@ export function DashboardShell({ children }: { children: ReactNode }) {
   const admin = roles.includes(RoleNames.SystemAdmin);
   const donations = hasAnyRole(roles, donationRoles);
 
-  const navItems =
+  const navItems: NavItem[] =
     mode === "ops"
       ? opsNav.filter(
           (item) => item.href !== "/kpis" || hasAnyRole(roles, kpiRoles)
         )
-      : publicNav;
+      : [
+          publicNav[0],
+          ...(hasRole(roles, RoleNames.Volunteer)
+            ? [{ href: "/portal/volunteer", icon: "users", label: "Volunteer portal" }]
+            : []),
+          ...(hasRole(roles, RoleNames.Donor)
+            ? [{ href: "/portal/donor", icon: "heart", label: "Donor portal" }]
+            : []),
+          ...publicNav.slice(1)
+        ];
   const displayName = user?.fullName ?? "Signed in";
   const roleLabel = mode === "ops" ? humanizeRole(roles[0]) : "Public account";
 
@@ -201,6 +230,14 @@ export function DashboardShell({ children }: { children: ReactNode }) {
         </nav>
 
         <div className="side-bottom">
+          <Link href="/" onClick={() => setMobileNav(false)}>
+            <Icon name="home" />
+            <span>Home</span>
+          </Link>
+          <Link href="/account" onClick={() => setMobileNav(false)}>
+            <Icon name="user" />
+            <span>Profile</span>
+          </Link>
           {mode === "ops" && admin ? (
             <Link href="/admin/users" onClick={() => setMobileNav(false)}>
               <Icon name="shield" />
@@ -209,16 +246,16 @@ export function DashboardShell({ children }: { children: ReactNode }) {
           ) : null}
           <button type="button" onClick={() => void onLogout()}>
             <Icon name="logout" />
-            <span>Sign out</span>
+            <span>Log out</span>
           </button>
-          <div className="profile">
+          <Link className="profile" href="/account" onClick={() => setMobileNav(false)}>
             <span>{initials(displayName)}</span>
             <div>
               <b>{displayName}</b>
               <small>{roleLabel}</small>
             </div>
             <Icon name="chevron" size={16} />
-          </div>
+          </Link>
         </div>
       </aside>
 
@@ -253,6 +290,10 @@ export function DashboardShell({ children }: { children: ReactNode }) {
                 />
               </label>
             </form>
+            <div className="ops-header-links">
+              <Link href="/">Home</Link>
+              <Link href="/account">Profile</Link>
+            </div>
             <Link
               href="/notifications"
               aria-label={bellLabel}
@@ -261,6 +302,32 @@ export function DashboardShell({ children }: { children: ReactNode }) {
               {bell}
             </Link>
             <div className="profile-mini">{initials(displayName)}</div>
+          </header>
+        ) : null}
+
+        {mode === "public" ? (
+          <header className="public-topbar">
+            <div className="public-topbar-title">
+              <small>SAFEWAY PUBLIC PORTAL</small>
+              <b>{sectionLabel(pathname)}</b>
+            </div>
+            <nav aria-label="Account navigation">
+              <Link href="/">Home</Link>
+              {pathname !== "/dashboard" ? (
+                <Link href="/dashboard">Back to dashboard</Link>
+              ) : null}
+              <Link href="/account">Profile</Link>
+              <Link
+                href="/notifications"
+                aria-label={bellLabel}
+                onClick={() => void loadUnreadCount()}
+              >
+                {bell}
+              </Link>
+              <button type="button" onClick={() => void onLogout()}>
+                <Icon name="logout" size={16} /> Log out
+              </button>
+            </nav>
           </header>
         ) : null}
 
