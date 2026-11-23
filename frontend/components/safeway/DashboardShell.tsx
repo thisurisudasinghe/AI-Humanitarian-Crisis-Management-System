@@ -7,7 +7,7 @@ import { useAuth } from "@/lib/auth";
 import { useT } from "@/lib/i18n";
 import { initials, humanizeRole } from "@/lib/format";
 import { getInbox } from "@/lib/notifications";
-import { RoleNames, hasAnyRole, hasRole, isStaff } from "@/lib/roles";
+import { RoleNames, hasAnyRole, isStaff } from "@/lib/roles";
 import { Brand } from "./Brand";
 import { Icon } from "./Icon";
 
@@ -15,26 +15,6 @@ type NavItem = {
   href: string;
   icon: string;
   labelKey: string;
-};
-
-const publicNav: NavItem[] = [
-  { href: "/dashboard", icon: "grid", labelKey: "dashboard.dashboard" },
-  { href: "/portal/citizen", icon: "file", labelKey: "dashboard.citizenPortal" },
-  { href: "/my-reports", icon: "file", labelKey: "dashboard.myReports" },
-  { href: "/find-assistance", icon: "search", labelKey: "dashboard.findAssistance" },
-  { href: "/notifications", icon: "bell", labelKey: "dashboard.notifications" },
-  { href: "/account", icon: "user", labelKey: "dashboard.accountSettings" }
-];
-
-const portalSectionLabels: Record<string, string> = {
-  "/dashboard": "dashboard.dashboard",
-  "/portal/citizen": "dashboard.citizenPortal",
-  "/portal/volunteer": "dashboard.volunteerPortal",
-  "/portal/donor": "dashboard.donorPortal",
-  "/my-reports": "dashboard.myReports",
-  "/find-assistance": "dashboard.findAssistance",
-  "/notifications": "dashboard.notifications",
-  "/account": "dashboard.accountSettings"
 };
 
 const opsNav: NavItem[] = [
@@ -151,23 +131,11 @@ export function DashboardShell({ children }: { children: ReactNode }) {
   const admin = roles.includes(RoleNames.SystemAdmin);
   const donations = hasAnyRole(roles, donationRoles);
 
-  const navItems: NavItem[] =
-    mode === "ops"
-      ? opsNav.filter(
-          (item) => item.href !== "/kpis" || hasAnyRole(roles, kpiRoles)
-        )
-      : [
-          publicNav[0],
-          ...(hasRole(roles, RoleNames.Volunteer)
-            ? [{ href: "/portal/volunteer", icon: "users", labelKey: "dashboard.volunteerPortal" }]
-            : []),
-          ...(hasRole(roles, RoleNames.Donor)
-            ? [{ href: "/portal/donor", icon: "heart", labelKey: "dashboard.donorPortal" }]
-            : []),
-          ...publicNav.slice(1)
-        ];
+  const navItems: NavItem[] = opsNav.filter(
+    (item) => item.href !== "/kpis" || hasAnyRole(roles, kpiRoles)
+  );
   const displayName = user?.fullName ?? t("common.loading");
-  const roleLabel = mode === "ops" ? humanizeRole(roles[0], t) : t("dashboard.publicAccount");
+  const roleLabel = humanizeRole(roles[0], t);
 
   async function onLogout() {
     await logout();
@@ -181,141 +149,127 @@ export function DashboardShell({ children }: { children: ReactNode }) {
     setMobileNav(false);
   }
 
-  const sectionLabelKey = portalSectionLabels[pathname] ?? "dashboard.publicAccount";
-
   return (
     <div className={`dashboard-shell ${mode}`}>
       <a className="skip-link" href="#main-content">
         {t("common.skipToMain")}
       </a>
 
-      <aside className={`sidebar ${mobileNav ? "open" : ""}`}>
-        <div className="sidebar-brand">
-          <Brand light />
-          <button type="button" onClick={() => setMobileNav(false)} aria-label={t("common.closeNavigation")}>
-            <Icon name="close" />
-          </button>
-        </div>
-
-        {mode === "ops" ? (
-          <div className="command-label">
-            <span>{t("dashboard.commandCentre")}</span>
-            <small>{t("dashboard.regionalOps")}</small>
-          </div>
-        ) : null}
-
-        <nav aria-label={t("dashboard.mainNav")}>
-          {navItems.map((item) => (
-            <Link
-              key={`${item.href}-${item.labelKey}`}
-              href={item.href}
-              className={isActive(pathname, item.href) ? "active" : ""}
-              onClick={() => setMobileNav(false)}
-            >
-              <Icon name={item.icon} />
-              <span>{t(item.labelKey)}</span>
-            </Link>
-          ))}
-          {mode === "ops" && donations ? (
-            <Link
-              href="/donations"
-              className={isActive(pathname, "/donations") ? "active" : ""}
-              onClick={() => setMobileNav(false)}
-            >
-              <Icon name="heart" />
-              <span>{t("dashboard.donations")}</span>
-            </Link>
-          ) : null}
-        </nav>
-
-        <div className="side-bottom">
-          <Link href="/" onClick={() => setMobileNav(false)}>
-            <Icon name="home" />
-            <span>{t("dashboard.home")}</span>
-          </Link>
-          <Link href="/account" onClick={() => setMobileNav(false)}>
-            <Icon name="user" />
-            <span>{t("dashboard.profile")}</span>
-          </Link>
-          {mode === "ops" && admin ? (
-            <Link href="/admin/users" onClick={() => setMobileNav(false)}>
-              <Icon name="shield" />
-              <span>{t("dashboard.administration")}</span>
-            </Link>
-          ) : null}
-          <button type="button" onClick={() => void onLogout()}>
-            <Icon name="logout" />
-            <span>{t("common.logout")}</span>
-          </button>
-          <Link className="profile" href="/account" onClick={() => setMobileNav(false)}>
-            <span>{initials(displayName)}</span>
-            <div>
-              <b>{displayName}</b>
-              <small>{roleLabel}</small>
-            </div>
-            <Icon name="chevron" size={16} />
-          </Link>
-        </div>
-      </aside>
-
-      <div className="dash-content">
-        <header className="dash-mobile-header">
-          <button type="button" onClick={() => setMobileNav(true)} aria-label={t("common.openNavigation")}>
-            <Icon name="menu" />
-          </button>
-          <Brand />
-          <Link
-            href="/notifications"
-            aria-label={bellLabel}
-            onClick={() => void loadUnreadCount()}
-          >
-            {bell}
-          </Link>
-        </header>
-
-        {mode === "ops" ? (
-          <header className="ops-header">
-            <div>
-              <span className="status-dot" /> {t("dashboard.systemsOperational")}
-            </div>
-            <form onSubmit={onSearch}>
-              <label>
-                <Icon name="search" />
-                <input
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  placeholder={t("dashboard.searchPlaceholder")}
-                  aria-label={t("dashboard.searchAria")}
-                />
-              </label>
-            </form>
-            <div className="ops-header-links">
-              <Link href="/">{t("dashboard.home")}</Link>
-              <Link href="/account">{t("dashboard.profile")}</Link>
-            </div>
-            <Link
-              href="/notifications"
-              aria-label={bellLabel}
-              onClick={() => void loadUnreadCount()}
-            >
-              {bell}
-            </Link>
-            <div className="profile-mini">{initials(displayName)}</div>
-          </header>
-        ) : null}
-
-        {mode === "public" ? (
+      {mode === "public" ? (
+        <>
           <header className="public-topbar">
-            <div className="public-topbar-title">
-              <small>{t("dashboard.publicPortal")}</small>
-              <b>{t(sectionLabelKey)}</b>
-            </div>
+            <Brand
+              href="/dashboard"
+              className="public-topbar-brand"
+              ariaLabel={t("portalLanding.brandAria")}
+            />
+
             <nav aria-label={t("dashboard.accountNav")}>
-              <Link href="/">{t("dashboard.home")}</Link>
-              {pathname !== "/dashboard" ? (
-                <Link href="/dashboard">{t("common.backToDashboard")}</Link>
+              {pathname === "/dashboard" ? (
+                <Link href="/" className="public-topbar-link">
+                  <Icon name="home" size={17} /> {t("dashboard.home")}
+                </Link>
+              ) : (
+                <Link href="/dashboard" className="public-topbar-link public-topbar-link--back">
+                  <Icon name="arrowLeft" size={17} /> {t("common.backToPortals")}
+                </Link>
+              )}
+              <Link href="/account" className="public-topbar-link">
+                <Icon name="user" size={17} /> {t("dashboard.profile")}
+              </Link>
+              <Link
+                href="/notifications"
+                className="public-topbar-link"
+                aria-label={bellLabel}
+                onClick={() => void loadUnreadCount()}
+              >
+                {bell} {t("dashboard.notifications")}
+              </Link>
+              <button type="button" className="public-topbar-link" onClick={() => void onLogout()}>
+                <Icon name="logout" size={17} /> {t("common.logout")}
+              </button>
+            </nav>
+          </header>
+
+          <main className="dashboard-main dashboard-main--public" id="main-content">
+            {children}
+          </main>
+        </>
+      ) : (
+        <>
+          <aside className={`sidebar ${mobileNav ? "open" : ""}`}>
+            <div className="sidebar-brand">
+              <Brand light />
+              <button type="button" onClick={() => setMobileNav(false)} aria-label={t("common.closeNavigation")}>
+                <Icon name="close" />
+              </button>
+            </div>
+
+            <div className="command-label">
+              <span>{t("dashboard.commandCentre")}</span>
+              <small>{t("dashboard.regionalOps")}</small>
+            </div>
+
+            <nav aria-label={t("dashboard.mainNav")}>
+              {navItems.map((item) => (
+                <Link
+                  key={`${item.href}-${item.labelKey}`}
+                  href={item.href}
+                  className={isActive(pathname, item.href) ? "active" : ""}
+                  onClick={() => setMobileNav(false)}
+                >
+                  <Icon name={item.icon} />
+                  <span>{t(item.labelKey)}</span>
+                </Link>
+              ))}
+              {donations ? (
+                <Link
+                  href="/donations"
+                  className={isActive(pathname, "/donations") ? "active" : ""}
+                  onClick={() => setMobileNav(false)}
+                >
+                  <Icon name="heart" />
+                  <span>{t("dashboard.donations")}</span>
+                </Link>
               ) : null}
-              <Link href="/account">{t("dashboard.profile")}</Link>
+            </nav>
+
+            <div className="side-bottom">
+              <Link href="/" onClick={() => setMobileNav(false)}>
+                <Icon name="home" />
+                <span>{t("dashboard.home")}</span>
+              </Link>
+              <Link href="/account" onClick={() => setMobileNav(false)}>
+                <Icon name="user" />
+                <span>{t("dashboard.profile")}</span>
+              </Link>
+              {admin ? (
+                <Link href="/admin/users" onClick={() => setMobileNav(false)}>
+                  <Icon name="shield" />
+                  <span>{t("dashboard.administration")}</span>
+                </Link>
+              ) : null}
+              <button type="button" onClick={() => void onLogout()}>
+                <Icon name="logout" />
+                <span>{t("common.logout")}</span>
+              </button>
+              <Link className="profile" href="/account" onClick={() => setMobileNav(false)}>
+                <span>{initials(displayName)}</span>
+                <div>
+                  <b>{displayName}</b>
+                  <small>{roleLabel}</small>
+                </div>
+                <Icon name="chevron" size={16} />
+              </Link>
+            </div>
+          </aside>
+
+          <div className="dash-content">
+            <header className="dash-mobile-header">
+              <button type="button" onClick={() => setMobileNav(true)} aria-label={t("common.openNavigation")}>
+                <Icon name="menu" />
+              </button>
+              <Brand />
               <Link
                 href="/notifications"
                 aria-label={bellLabel}
@@ -323,17 +277,43 @@ export function DashboardShell({ children }: { children: ReactNode }) {
               >
                 {bell}
               </Link>
-              <button type="button" onClick={() => void onLogout()}>
-                <Icon name="logout" size={16} /> {t("common.logout")}
-              </button>
-            </nav>
-          </header>
-        ) : null}
+            </header>
 
-        <main className="dashboard-main" id="main-content">
-          {children}
-        </main>
-      </div>
+            <header className="ops-header">
+              <div>
+                <span className="status-dot" /> {t("dashboard.systemsOperational")}
+              </div>
+              <form onSubmit={onSearch}>
+                <label>
+                  <Icon name="search" />
+                  <input
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                    placeholder={t("dashboard.searchPlaceholder")}
+                    aria-label={t("dashboard.searchAria")}
+                  />
+                </label>
+              </form>
+              <div className="ops-header-links">
+                <Link href="/">{t("dashboard.home")}</Link>
+                <Link href="/account">{t("dashboard.profile")}</Link>
+              </div>
+              <Link
+                href="/notifications"
+                aria-label={bellLabel}
+                onClick={() => void loadUnreadCount()}
+              >
+                {bell}
+              </Link>
+              <div className="profile-mini">{initials(displayName)}</div>
+            </header>
+
+            <main className="dashboard-main" id="main-content">
+              {children}
+            </main>
+          </div>
+        </>
+      )}
     </div>
   );
 }
