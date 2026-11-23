@@ -173,9 +173,7 @@ function ContactBody() {
             <span>
               <small>{t("info.contact.detailsKicker")}</small>
               <h3>{t(channel.labelKey)}</h3>
-              <p className={channel.value ? undefined : "contact-placeholder"}>
-                {channel.value ?? t(channel.placeholderKey)}
-              </p>
+              <a className="contact-value-link" href={channel.href}>{channel.displayValue}</a>
             </span>
           </article>
         ))}
@@ -184,7 +182,7 @@ function ContactBody() {
       <section className="contact-info-card">
         <div className="section-kicker">{t("info.contact.quickLinksTitle")}</div>
         <h2>{t("info.contact.infoTitle")}</h2>
-        {publicContact.verified ? null : <p>{t("info.contact.detailsNotice")}</p>}
+        <p>{t("info.contact.emergencyNotice")}</p>
         <div className="contact-info-links">
           <Link className="btn btn-primary" href="/report">
             <Icon name="alert" size={17} /> {t("nav.reportCrisis")}

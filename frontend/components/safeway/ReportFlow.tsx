@@ -6,7 +6,6 @@ import { useEffect, useState } from "react";
 import { useI18n, useT } from "@/lib/i18n";
 import { Brand } from "./Brand";
 import { Icon } from "./Icon";
-import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
 import {
   caseRequestErrorMessage,
   submitCrisisReport,
@@ -236,7 +235,7 @@ export function ReportFlow() {
         </aside>
 
         <section className="form-panel">
-          <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"center",flexWrap:"wrap"}}><Link className="back-link report-back-link" href="/">{t("common.backToHome")}</Link><LanguageSwitcher variant="compact" /></div>
+          <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"center",flexWrap:"wrap"}}><Link className="back-link report-back-link" href="/">{t("common.backToHome")}</Link></div>
           <div className="mobile-progress">
             {t("report.stepOf", { step: String(step), total: "3" })}{" "}
             <span>

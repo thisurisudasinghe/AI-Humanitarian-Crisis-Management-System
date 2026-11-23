@@ -1,45 +1,37 @@
 /**
- * Single editable source for public contact information.
- *
- * No verified public phone number, email address, or office address exists in
- * the repository yet. Keep `verified` false and `value` null until a real
- * detail has been confirmed. The placeholders below are shown explicitly in
- * every locale so they are never mistaken for real contact details.
+ * Single source of truth for SAFEWAY public contact information.
+ * Labels stay in the locale dictionaries; contact values and links live here.
  */
 export type PublicContactChannel = {
-  id: "email" | "phone" | "address";
-  icon: "mail" | "phone" | "pin";
+  id: "email" | "phone";
+  icon: "mail" | "phone";
   labelKey: string;
-  value: string | null;
-  placeholderKey: string;
+  value: string;
+  displayValue: string;
+  href: string;
 };
 
 export const publicContact: {
   verified: boolean;
   channels: PublicContactChannel[];
 } = {
-  verified: false,
+  verified: true,
   channels: [
     {
       id: "email",
       icon: "mail",
       labelKey: "info.contact.detailEmail",
-      value: null,
-      placeholderKey: "info.contact.placeholderEmail"
+      value: "safeway@gmail.com",
+      displayValue: "safeway@gmail.com",
+      href: "mailto:safeway@gmail.com"
     },
     {
       id: "phone",
       icon: "phone",
       labelKey: "info.contact.detailPhone",
-      value: null,
-      placeholderKey: "info.contact.placeholderPhone"
-    },
-    {
-      id: "address",
-      icon: "pin",
-      labelKey: "info.contact.detailAddress",
-      value: null,
-      placeholderKey: "info.contact.placeholderAddress"
+      value: "0112191919",
+      displayValue: "011 219 1919",
+      href: "tel:0112191919"
     }
   ]
 };
