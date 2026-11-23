@@ -612,7 +612,19 @@ export const en = {
       "topicAccount": "Account access",
       "messageLabel": "Message",
       "messagePh": "Tell us how we can help...",
-      "send": "Send message"
+      "send": "Send message",
+      "infoTitle": "Contact information",
+      "detailsKicker": "DIRECT CONTACT",
+      "detailsNotice": "Official public contact details have not been published yet. The entries below are clearly marked placeholders; use the direct support links while they are confirmed.",
+      "detailEmail": "Email",
+      "detailPhone": "Phone",
+      "detailAddress": "Address",
+      "placeholderEmail": "Placeholder: public email address not published yet.",
+      "placeholderPhone": "Placeholder: public phone number not published yet.",
+      "placeholderAddress": "Placeholder: public office address not published yet.",
+      "notPublishedPlaceholder": "Not published (placeholder)",
+      "quickLinksTitle": "NEED SUPPORT NOW?",
+      "quickLinksCopy": "Report a crisis or find assistance through the direct paths below."
     }
   },
   "find": {

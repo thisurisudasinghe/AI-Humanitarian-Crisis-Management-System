@@ -14,9 +14,7 @@ const publicLinks = [
   { key: "nav.home", href: "/", icon: "home" },
   { key: "nav.about", href: "/about", icon: "info" },
   { key: "nav.services", href: "/services", icon: "layers" },
-  { key: "nav.howItWorks", href: "/how-it-works", icon: "route" },
-  { key: "nav.contact", href: "/contact", icon: "mail" },
-  { key: "nav.help", href: "/find-assistance", icon: "help-circle" }
+  { key: "nav.howItWorks", href: "/how-it-works", icon: "route" }
 ] as const;
 
 export function PublicNav() {
@@ -84,7 +82,7 @@ export function PublicNav() {
         </nav>
 
         <div className="public-nav__actions">
-          <LanguageSwitcher variant="nav" />
+          <LanguageSwitcher variant="nav" dropdown />
           <Link className="platform-login public-action public-action--login" href={workspaceHref}>
             <Icon name="user" size={17} />
             <span>{workspaceLabel}</span>

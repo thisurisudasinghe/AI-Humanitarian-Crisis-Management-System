@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useT } from "@/lib/i18n";
+import { publicContact } from "@/lib/publicContact";
 import { PublicBrand } from "./PublicBrand";
 
 export function PublicFooter() {
@@ -12,6 +13,15 @@ export function PublicFooter() {
         <div className="public-footer__brand">
           <PublicBrand light />
           <p>{t("nav.footerTagline")}</p>
+          <section className="public-footer__contact" aria-label={t("info.contact.infoTitle")}>
+            <b>{t("info.contact.infoTitle")}</b>
+            {publicContact.channels.map((channel) => (
+              <span key={channel.id}>
+                {t(channel.labelKey)}: {channel.value ?? t("info.contact.notPublishedPlaceholder")}
+              </span>
+            ))}
+            <Link href="/contact">{t("nav.contact")}</Link>
+          </section>
         </div>
 
         <nav aria-label={t("nav.footerExploreAria")}>
