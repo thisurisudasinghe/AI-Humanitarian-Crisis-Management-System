@@ -131,7 +131,6 @@ export function ReportFlow() {
   if (receipt) {
     return (
       <div className="form-shell">
-        <SimpleHeader />
         <main className="success-page">
           <div className="success-check">
             <Icon name="check" size={42} />
@@ -197,7 +196,6 @@ export function ReportFlow() {
 
   return (
     <div className="form-shell">
-      <SimpleHeader />
       <main className="report-layout">
         <aside className="form-aside">
           <Brand light />
@@ -451,12 +449,4 @@ export function ReportFlow() {
   );
 }
 
-function SimpleHeader() {
-  return (
-    <header className="simple-header">
-      <Brand />
-      <span>Need assistance?</span>
-      <Link href="/find-assistance">Find help</Link>
-    </header>
-  );
-}
+

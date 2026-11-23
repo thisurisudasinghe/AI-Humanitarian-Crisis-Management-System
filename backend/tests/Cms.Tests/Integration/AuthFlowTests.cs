@@ -6,6 +6,9 @@ using System.Text.Json;
 using Cms.Application.DTOs;
 using Cms.Application.DTOs.Authentication;
 using Cms.Domain.Constants;
+using Cms.Infrastructure.Data;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 
 namespace Cms.Tests.Integration;
@@ -29,6 +32,7 @@ public sealed class AuthFlowTests : IClassFixture<CmsWebApplicationFactory>
         {
             fullName = "New Citizen",
             email = "new.citizen@tests.local",
+            phoneNumber = "0771234567",
             password = TestSecrets.Password
         });
 
@@ -55,6 +59,7 @@ public sealed class AuthFlowTests : IClassFixture<CmsWebApplicationFactory>
         {
             fullName = "Duplicate Citizen",
             email = "CITIZEN@TESTS.LOCAL",
+            phoneNumber = "0771234567",
             password = TestSecrets.Password
         });
 
@@ -229,6 +234,68 @@ public sealed class AuthFlowTests : IClassFixture<CmsWebApplicationFactory>
         var response = await client.GetAsync("/api/v1/auth/me");
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Register_rejects_missing_phone_number()
+    {
+        await _factory.EnsureSeededAsync();
+        using var client = _factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync("/api/v1/auth/register", new
+        {
+            fullName = "No Phone",
+            email = $"nophone.{Guid.NewGuid():N}@tests.local",
+            password = TestSecrets.Password
+        });
+
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Register_rejects_invalid_phone_number()
+    {
+        await _factory.EnsureSeededAsync();
+        using var client = _factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync("/api/v1/auth/register", new
+        {
+            fullName = "Bad Phone",
+            email = $"badphone.{Guid.NewGuid():N}@tests.local",
+            phoneNumber = "12345",
+            password = TestSecrets.Password
+        });
+
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+    }
+
+    [Theory]
+    [InlineData("0771234567", "+94771234567")]
+    [InlineData("+94771234567", "+94771234567")]
+    [InlineData("077-123 4567", "+94771234567")]
+    [InlineData("+94 77 123 4567", "+94771234567")]
+    public async Task Register_normalizes_valid_sri_lankan_phone_numbers(string input, string expected)
+    {
+        await _factory.EnsureSeededAsync();
+        using var client = _factory.CreateClient();
+        var email = $"phone.{Guid.NewGuid():N}@tests.local";
+
+        var response = await client.PostAsJsonAsync("/api/v1/auth/register", new
+        {
+            fullName = "Phone User",
+            email,
+            phoneNumber = input,
+            password = TestSecrets.Password
+        });
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var auth = await response.Content.ReadFromJsonAsync<AuthResponseDto>();
+        Assert.NotNull(auth);
+
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<CmsDbContext>();
+        var user = await db.Users.AsNoTracking().SingleAsync(u => u.Id == auth!.UserId);
+        Assert.Equal(expected, user.PhoneNumber);
     }
 
     private static async Task<string?> GetErrorCodeAsync(HttpResponseMessage response)
