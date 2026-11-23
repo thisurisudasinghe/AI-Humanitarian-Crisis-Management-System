@@ -140,6 +140,14 @@ var allowedOrigins = builder.Configuration
     .Get<string[]>()
     ?? ["http://localhost:3000"];
 
+if (isDevelopment)
+{
+    allowedOrigins = allowedOrigins
+        .Concat(["http://localhost:3000", "http://localhost:3001"])
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .ToArray();
+}
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("Default", policy =>
