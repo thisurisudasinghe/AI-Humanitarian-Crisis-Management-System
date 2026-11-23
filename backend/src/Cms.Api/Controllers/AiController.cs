@@ -3,6 +3,7 @@ using Cms.Application.DTOs.AI;
 using Cms.Application.Interfaces.AI;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace Cms.Api.Controllers;
 
@@ -22,7 +23,13 @@ public sealed class AiController : ControllerBase
         _chat = chat;
     }
 
+    /// <summary>
+    /// Answers informational SAFEWAY questions for guests and signed-in users.
+    /// The endpoint never submits, approves, rejects or changes a request.
+    /// </summary>
     [HttpPost("chat")]
+    [AllowAnonymous]
+    [EnableRateLimiting("public")]
     public async Task<IActionResult> Chat(
         [FromBody] AiChatRequestDto request,
         CancellationToken cancellationToken = default)

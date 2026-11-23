@@ -37,7 +37,41 @@ public class AiChatServiceTests
 
         Assert.Equal(RecommendationSources.Rule, result.Source);
         Assert.True(result.DecidesNothing);
-        Assert.Contains("citizen portal", result.Answer, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Use Report to submit a request", result.Answer, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Theory]
+    [InlineData("How do I report an emergency?", "local emergency services")]
+    [InlineData("How do I find a shelter?", "Shelters page")]
+    [InlineData("What resources are available?", "Resources page")]
+    [InlineData("How do I volunteer?", "Volunteers page")]
+    [InlineData("How can I donate?", "Donations page")]
+    [InlineData("How does the workflow work?", "Submitted")]
+    [InlineData("How do I use SAFEWAY?", "SAFEWAY helps")]
+    public async Task GlobalFaq_CoversAssistantTopicsOffline(string question, string expected)
+    {
+        var service = CreateService(null);
+
+        var result = await service.AnswerAsync(new AiChatRequestDto { Message = question });
+
+        Assert.Equal(RecommendationSources.Rule, result.Source);
+        Assert.Contains(expected, result.Answer, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("does not provide live shelter availability", result.Answer);
+    }
+
+    [Fact]
+    public async Task MissingAiProvider_ReturnsClearConfigurationNotice()
+    {
+        var service = CreateService(null);
+
+        var result = await service.AnswerAsync(new AiChatRequestDto
+        {
+            Message = "How can I donate?"
+        });
+
+        Assert.Equal(RecommendationSources.Rule, result.Source);
+        Assert.Contains("not configured", result.Notice, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("verified FAQ", result.Notice, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -55,6 +89,7 @@ public class AiChatServiceTests
 
         Assert.Equal(RecommendationSources.Ai, result.Source);
         Assert.True(result.DecidesNothing);
+        Assert.Equal(string.Empty, result.Notice);
         Assert.Contains("does not submit, approve, reject or change any request", result.Answer);
     }
 
