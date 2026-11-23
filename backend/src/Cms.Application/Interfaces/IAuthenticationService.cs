@@ -40,4 +40,12 @@ public interface IAuthenticationService
     Task ResetPasswordAsync(
         ResetPasswordRequestDto request,
         CancellationToken cancellationToken = default);
+
+    Task<EmailVerificationResponseDto> VerifyEmailAsync(
+        VerifyEmailRequestDto request,
+        CancellationToken cancellationToken = default);
+
+    Task<EmailVerificationResponseDto> ResendVerificationAsync(
+        ResendVerificationRequestDto request,
+        CancellationToken cancellationToken = default);
 }

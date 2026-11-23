@@ -15,4 +15,6 @@ public class AuthResponseDto
     public string Email { get; set; } = string.Empty;
 
     public IReadOnlyCollection<string> Roles { get; set; } = Array.Empty<string>();
+
+    public bool IsEmailVerified { get; set; }
 }

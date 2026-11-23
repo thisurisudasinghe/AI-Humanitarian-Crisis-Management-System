@@ -1,0 +1,19 @@
+SAFEWAY · HUMANITARIAN ASSISTANCE COORDINATION
+
+Welcome to Safeway, {{FIRST_NAME}}.
+
+Your Safeway account has been created. We are glad you are here.
+
+Please verify your email address to activate your account and keep your reports and assistance updates secure.
+
+Verify My Email:
+{{VERIFICATION_URL}}
+
+This link expires after 30 minutes. For your security, do not share this email or its link with anyone.
+
+If you did not create a Safeway account, you can safely ignore this email. Your email address will not be verified.
+
+— Safeway
+Blue for Trust. White for Clarity. Green for Hope.
+
+This is an automated account security message. Please do not reply.

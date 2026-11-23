@@ -30,6 +30,8 @@ public class CmsDbContext : DbContext
 
     public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
 
+    public DbSet<EmailVerificationToken> EmailVerificationTokens => Set<EmailVerificationToken>();
+
     public DbSet<AuditEvent> AuditEvents => Set<AuditEvent>();
 
     public DbSet<SystemSetting> SystemSettings => Set<SystemSetting>();

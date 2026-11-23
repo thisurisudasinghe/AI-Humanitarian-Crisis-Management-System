@@ -24,7 +24,9 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (ready && user) {
-      router.replace(homePathForRoles(user.roles));
+      router.replace(
+        user.isEmailVerified ? homePathForRoles(user.roles) : "/verify-email"
+      );
     }
   }, [ready, user, router]);
 
@@ -35,7 +37,9 @@ export default function LoginPage() {
 
     try {
       const current = await login(email.trim(), password);
-      router.replace(homePathForRoles(current.roles));
+      router.replace(
+        current.isEmailVerified ? homePathForRoles(current.roles) : "/verify-email"
+      );
     } catch (caught) {
       setError(localizedErrorMessage(caught, t));
     } finally {

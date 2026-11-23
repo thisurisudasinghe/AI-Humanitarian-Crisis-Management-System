@@ -136,6 +136,13 @@ public sealed class ExceptionHandlingMiddleware
                 "UNAUTHORIZED",
                 null),
 
+            EmailDeliveryException => (
+                StatusCodes.Status503ServiceUnavailable,
+                "Email delivery unavailable",
+                "The verification email could not be sent. Please try again shortly.",
+                "EMAIL_DELIVERY_FAILED",
+                null),
+
             BadHttpRequestException badRequest => (
                 StatusCodes.Status400BadRequest,
                 "Bad request",

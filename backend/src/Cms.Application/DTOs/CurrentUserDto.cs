@@ -11,4 +11,6 @@ public class CurrentUserDto
 
     public IReadOnlyCollection<string> Roles { get; set; }
         = Array.Empty<string>();
+
+    public bool IsEmailVerified { get; set; }
 }

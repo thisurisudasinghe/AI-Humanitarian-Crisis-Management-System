@@ -21,8 +21,19 @@ export function AuthGuard({
   const router = useRouter();
 
   useEffect(() => {
-    if (ready && !user) {
+    if (!ready) {
+      return;
+    }
+
+    if (!user) {
       router.replace("/login");
+      return;
+    }
+
+    // The backend issues a restricted session to unverified accounts. Keep the
+    // UI consistent: only the public verification routes can resolve it.
+    if (!user.isEmailVerified) {
+      router.replace("/verify-email");
     }
   }, [ready, user, router]);
 
@@ -33,6 +44,18 @@ export function AuthGuard({
           <Brand />
           <div className="skeleton-block" style={{ marginTop: 24 }} />
           <p>{t("authGuard.checking")}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user.isEmailVerified) {
+    return (
+      <div className="loading-screen">
+        <div>
+          <Brand />
+          <div className="skeleton-block" style={{ marginTop: 24 }} />
+          <p>Email verification required. Taking you to verification…</p>
         </div>
       </div>
     );
