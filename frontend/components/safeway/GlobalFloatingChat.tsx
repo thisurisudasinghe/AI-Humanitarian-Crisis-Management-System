@@ -4,6 +4,7 @@ import { useAuth } from "@/lib/auth";
 import { ApiError, errorMessage } from "@/lib/api";
 import {
   GlobalChatSuggestions,
+  MAX_CHAT_MESSAGE_LENGTH,
   sendChatMessage
 } from "@/lib/aiChat";
 import { Icon } from "@/components/safeway/Icon";
@@ -35,9 +36,9 @@ const DEDICATED_CHAT_ROUTES = new Set([
 
 const WELCOME_TEXT =
   "Hi! I'm the SAFEWAY assistant. I can explain how to report an incident, find help, " +
-  "understand shelters and resources, volunteer, donate and how human decisions work. " +
-  "I don't provide live shelter availability or emergency status. If anyone is in " +
-  "immediate danger, contact local emergency services now.";
+  "understand shelters, resources, notifications, volunteering, donating and how human decisions work. " +
+  "I provide guidance only - I cannot submit requests, make decisions, or confirm live operational status. " +
+  "If anyone is in immediate danger, contact local emergency services now.";
 
 function createWelcome(): ChatMessage {
   return {
@@ -106,10 +107,10 @@ function friendlyError(error: unknown): string {
       return "Too many messages right now. Please wait a minute and try again.";
     }
     if (error.status === 401) {
-      return "Your session has expired. Sign in again to continue.";
+      return "Your session has expired. Sign in again to continue using account-specific features.";
     }
     if (error.status >= 500) {
-      return "The SAFEWAY assistant is temporarily unavailable.";
+      return "The SAFEWAY assistant is temporarily unavailable. Please try again shortly.";
     }
   }
 
@@ -244,6 +245,19 @@ export function GlobalFloatingChat() {
     async (rawQuestion: string) => {
       const question = rawQuestion.trim();
       if (!question || sending) {
+        return;
+      }
+      if (question.length > MAX_CHAT_MESSAGE_LENGTH) {
+        const tooLongMessage: ChatMessage = {
+          id: createId(),
+          role: "assistant",
+          text: `Please shorten your question to ${MAX_CHAT_MESSAGE_LENGTH} characters or fewer.`,
+          source: "Error",
+          createdAt: Date.now()
+        };
+        setMessages((current) =>
+          [...current, tooLongMessage].slice(-MAX_STORED_MESSAGES)
+        );
         return;
       }
 
@@ -407,8 +421,8 @@ export function GlobalFloatingChat() {
           <div className="safeway-chat-safety" role="note">
             <Icon name="shield" size={15} />
             <span>
-              Information only. For immediate danger, contact local emergency
-              services.
+              Information only - no decisions or live status. For immediate danger, contact local emergency services.
+              Avoid sharing sensitive personal details in chat.
             </span>
           </div>
 
@@ -484,9 +498,10 @@ export function GlobalFloatingChat() {
               id="safeway-chat-input"
               ref={inputRef}
               rows={2}
-              maxLength={2000}
+              maxLength={MAX_CHAT_MESSAGE_LENGTH}
               value={draft}
               placeholder="Ask about reports, shelters, resources, volunteering…"
+              aria-describedby="safeway-chat-input-help"
               onChange={(event) => setDraft(event.target.value)}
               onKeyDown={(event) => {
                 if (event.key === "Enter" && !event.shiftKey) {
@@ -495,6 +510,9 @@ export function GlobalFloatingChat() {
                 }
               }}
             />
+            <span id="safeway-chat-input-help" className="safeway-chat-sr-only">
+              Informational questions only. Do not include sensitive personal details. Maximum {MAX_CHAT_MESSAGE_LENGTH} characters.
+            </span>
             <button
               type="submit"
               className="safeway-chat-send"
@@ -507,7 +525,7 @@ export function GlobalFloatingChat() {
           </form>
 
           <footer className="safeway-chat-footer">
-            No account needed. Please do not share sensitive personal details.
+            Guidance only. Human staff make operational decisions. Avoid sharing sensitive personal details.
           </footer>
         </section>
       ) : null}

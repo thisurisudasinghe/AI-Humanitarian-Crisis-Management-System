@@ -23,21 +23,34 @@ public sealed class AiChatService : IAiChatService
         "AI provider is not configured. Showing SAFEWAY's verified FAQ guidance.";
     private const string ProviderUnavailableNotice =
         "The AI provider is temporarily unavailable. Showing SAFEWAY's verified FAQ guidance.";
+    private const string InputRequiredAnswer =
+        "Please enter a question about reporting an incident, finding assistance, shelters, " +
+        "resources, volunteering, donations, notifications or human decisions.";
+    private const string EmergencyAnswer =
+        "If anyone is in immediate danger, contact your local emergency services immediately. " +
+        "SAFEWAY can help coordinate aid after people are safe, but it is not an emergency call service.";
     private const string LlmInstruction =
         "You are the SAFEWAY informational assistant. Answer only general questions about how " +
         "the platform works. Never claim live emergency information, shelter availability, " +
         "inventory quantities or operational status. Never submit, approve, reject or change a " +
-        "request, resource, shelter or decision. For immediate danger, tell the user to contact " +
-        "local emergency services. Direct operational decisions to authorised human staff.";
+        "request, resource, shelter, volunteer assignment or decision. Never provide medical, legal, " +
+        "or financial instructions beyond general SAFEWAY guidance. For immediate danger, tell the " +
+        "user to contact local emergency services. Direct operational decisions to authorised human staff.";
+
+    private static readonly string[] EmergencyKeywords =
+    {
+        "emergency", "ambulance", "fire", "police", "danger", "immediate", "life threatening",
+        "life-threatening", "trapped", "bleeding", "unconscious", "collapsed", "call 911",
+        "call 999", "call 119"
+    };
 
     private static readonly IReadOnlyList<FaqEntry> Faq =
         new[]
         {
             new FaqEntry(
-                new[] { "emergency", "ambulance", "fire", "police", "danger", "immediate", "urgent", "life threatening" },
-                "If anyone is in immediate danger, contact your local emergency services first. " +
-                "SAFEWAY is for coordinating aid and is not an emergency call service. " +
-                "After everyone is safe, you can report the incident for human triage.",
+                EmergencyKeywords,
+                EmergencyAnswer +
+                " After everyone is safe, you can report the incident for human triage.",
                 new[] { "How do I report an incident?", "How do I find assistance?" }),
             new FaqEntry(
                 new[] { "report", "incident", "submit", "request", "start", "new" },
@@ -143,19 +156,24 @@ public sealed class AiChatService : IAiChatService
         var providerConfigured = !string.IsNullOrWhiteSpace(endpoint);
         var notice = providerConfigured ? string.Empty : NotConfiguredNotice;
 
-        var question = RuleBasedProvider.ScrubPii(request.Message?.Trim() ?? string.Empty);
+        var rawQuestion = request.Message?.Trim() ?? string.Empty;
+        var question = RuleBasedProvider.ScrubPii(rawQuestion);
         if (question.Length == 0)
         {
-            return RuleAnswer(
-                "Please enter a question about reporting an incident, finding assistance, " +
-                "shelters, resources, volunteering, donations or human decisions.",
-                Array.Empty<string>(),
-                notice);
+            return RuleAnswer(InputRequiredAnswer, Array.Empty<string>(), notice);
         }
 
         if (question.Length > MaxMessageLength)
         {
             question = question[..MaxMessageLength];
+        }
+
+        if (IsImmediateDanger(question))
+        {
+            return RuleAnswer(
+                EmergencyAnswer,
+                new[] { "How do I report an incident?", "How do I find assistance?" },
+                notice);
         }
 
         if (providerConfigured)
@@ -172,12 +190,10 @@ public sealed class AiChatService : IAiChatService
             }
             catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
             {
-                // Optional informational upgrade timed out; FAQ still answers.
                 notice = ProviderUnavailableNotice;
             }
             catch (Exception)
             {
-                // A chat outage must never break the citizen portal.
                 notice = ProviderUnavailableNotice;
             }
         }
@@ -196,9 +212,9 @@ public sealed class AiChatService : IAiChatService
         return match == null
             ? RuleAnswer(
                 "I can explain how to report an incident, find assistance and shelters, " +
-                "understand resources and the response workflow, volunteer, donate, and " +
-                "how authorised people make decisions.",
-                new[] { "How do I report an incident?", "How do I find assistance?" },
+                "understand resources and the response workflow, volunteer, donate, notifications, " +
+                "and how authorised people make decisions. I cannot provide live operational status.",
+                new[] { "How do I report an incident?", "How do I find assistance?", "Who makes the final decision?" },
                 notice)
             : RuleAnswer(match.Entry.Answer, match.Entry.Suggestions, notice);
     }
@@ -250,7 +266,7 @@ public sealed class AiChatService : IAiChatService
 
         return new AiChatResponseDto
         {
-            Answer = Truncate(answer) + " " + Disclaimer,
+            Answer = NormalizeAnswer(answer) + " " + Disclaimer,
             Source = Cms.Domain.Constants.RecommendationSources.Ai,
             Suggestions = suggestions,
             DecidesNothing = true,
@@ -264,12 +280,40 @@ public sealed class AiChatService : IAiChatService
         string notice) =>
         new()
         {
-            Answer = answer + " " + Disclaimer,
+            Answer = NormalizeAnswer(answer) + " " + Disclaimer,
             Source = Cms.Domain.Constants.RecommendationSources.Rule,
             Suggestions = suggestions,
             DecidesNothing = true,
             Notice = notice
         };
+
+    private static bool IsImmediateDanger(string question) =>
+        EmergencyKeywords.Any(keyword =>
+            question.Contains(keyword, StringComparison.OrdinalIgnoreCase));
+
+    private static string NormalizeAnswer(string answer)
+    {
+        var text = Truncate(answer.Trim());
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return "I can provide general SAFEWAY guidance only.";
+        }
+
+        // Defensive guard: never allow provider text to imply autonomous critical actions.
+        foreach (var forbidden in new[]
+                 {
+                     "I have approved", "I approved", "I rejected", "I dispatched",
+                     "I allocated", "I submitted", "I closed the request"
+                 })
+        {
+            if (text.Contains(forbidden, StringComparison.OrdinalIgnoreCase))
+            {
+                return "I can provide informational guidance only. Authorised human staff must review and record any decision or operational action.";
+            }
+        }
+
+        return text;
+    }
 
     private static string Truncate(string value) =>
         value.Length <= 4000 ? value : value[..4000];

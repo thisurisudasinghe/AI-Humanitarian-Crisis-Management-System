@@ -5,7 +5,7 @@ import { useRef, useState, type FormEvent } from "react";
 import { AuthGuard } from "@/components/AuthGuard";
 import { Icon } from "@/components/safeway/Icon";
 import { Button, Skeleton, Toast } from "@/components/ui";
-import { FaqExamples, sendChatMessage } from "@/lib/aiChat";
+import { FaqExamples, MAX_CHAT_MESSAGE_LENGTH, sendChatMessage } from "@/lib/aiChat";
 import { errorMessage } from "@/lib/api";
 import { StaffRoles } from "@/lib/roles";
 
@@ -53,6 +53,9 @@ export default function AiFaqChatPage() {
         }
       ]);
       setSuggestions(answer.suggestions);
+      if (answer.notice) {
+        setNotice({ message: answer.notice, tone: "success" });
+      }
     } catch (error) {
       setNotice({ message: errorMessage(error), tone: "error" });
     } finally {
@@ -96,7 +99,7 @@ export default function AiFaqChatPage() {
           <span>
             <b>Information only - this chat does not make or approve decisions.</b>
             <br />
-            Only authorized human roles can record a decision or approve a critical action.
+            It cannot confirm live shelter availability, inventory, or operational status. Only authorized human roles can record a decision or approve a critical action.
           </span>
         </div>
 
@@ -178,10 +181,12 @@ export default function AiFaqChatPage() {
             <textarea
               className="input"
               rows={3}
+              maxLength={MAX_CHAT_MESSAGE_LENGTH}
               value={question}
               onChange={(event) => setQuestion(event.target.value)}
               placeholder="Ask an FAQ question about the workflow"
             />
+            <span className="field__help">Do not share sensitive personal details. Max {MAX_CHAT_MESSAGE_LENGTH} characters.</span>
           </label>
           <Button type="submit" disabled={sending || !question.trim()}>
             {sending ? "Sending…" : "Ask"}
