@@ -18,4 +18,10 @@ public sealed class AiChatResponseDto
     public IReadOnlyList<string> Suggestions { get; set; } = Array.Empty<string>();
 
     public bool DecidesNothing { get; set; } = true;
+
+    /// <summary>
+    /// Clear provider/configuration or fallback notice for the UI. Empty when
+    /// the configured AI provider answered successfully.
+    /// </summary>
+    public string Notice { get; set; } = string.Empty;
 }

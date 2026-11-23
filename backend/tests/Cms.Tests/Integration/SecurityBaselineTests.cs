@@ -29,6 +29,29 @@ public sealed class SecurityBaselineTests : IClassFixture<CmsWebApplicationFacto
     }
 
     [Fact]
+    public async Task Informational_chat_is_available_to_guests_but_decision_routes_are_not()
+    {
+        await _factory.EnsureSeededAsync();
+        using var client = _factory.CreateClient();
+
+        var chatResponse = await client.PostAsJsonAsync("/api/v1/ai/chat", new
+        {
+            message = "How do I report an emergency?"
+        });
+
+        Assert.Equal(HttpStatusCode.OK, chatResponse.StatusCode);
+
+        using var document = JsonDocument.Parse(await chatResponse.Content.ReadAsStringAsync());
+        var answer = document.RootElement.GetProperty("answer").GetString();
+
+        Assert.Contains("local emergency services", answer ?? string.Empty, StringComparison.OrdinalIgnoreCase);
+        Assert.True(document.RootElement.GetProperty("decidesNothing").GetBoolean());
+
+        var decisionResponse = await client.GetAsync("/api/v1/recommendations");
+        Assert.Equal(HttpStatusCode.Unauthorized, decisionResponse.StatusCode);
+    }
+
+    [Fact]
     public async Task Validation_failure_returns_422_with_stable_code()
     {
         await _factory.EnsureSeededAsync();

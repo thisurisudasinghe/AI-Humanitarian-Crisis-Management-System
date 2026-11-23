@@ -1,0 +1,426 @@
+/* ------------------------------------------------------------------
+   Global floating SAFEWAY assistant
+   Additive styles only; scoped to the global chatbot component.
+   ------------------------------------------------------------------ */
+
+.safeway-chat-launcher {
+    position: fixed;
+    right: 1.5rem;
+    bottom: 1.5rem;
+    z-index: 1100;
+    width: 3.75rem;
+    height: 3.75rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: 50%;
+    color: #fff;
+    background: linear-gradient(145deg, #438fc5 0%, #17364f 100%);
+    box-shadow: 0 14px 32px rgba(23, 54, 79, 0.32);
+    cursor: pointer;
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.safeway-chat-launcher:hover,
+.safeway-chat-launcher:focus-visible {
+    transform: translateY(-2px);
+    box-shadow: 0 18px 38px rgba(23, 54, 79, 0.38);
+    outline: 3px solid rgba(67, 143, 197, 0.3);
+    outline-offset: 3px;
+}
+
+.safeway-chat-launcher--open {
+    background: #17364f;
+}
+
+.safeway-chat-launcher__dot {
+    position: absolute;
+    top: 0.4rem;
+    right: 0.45rem;
+    width: 0.65rem;
+    height: 0.65rem;
+    border-radius: 50%;
+    background: #66c6a4;
+    border: 2px solid #fff;
+}
+
+.safeway-chat-panel {
+    position: fixed;
+    right: 1.5rem;
+    bottom: 5.75rem;
+    z-index: 1100;
+    width: min(23.75rem, calc(100vw - 3rem));
+    max-height: min(40rem, calc(100dvh - 7.5rem));
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: #fff;
+    border: 1px solid var(--line, #dbe7ee);
+    border-radius: 1.1rem;
+    box-shadow: 0 24px 64px rgba(23, 54, 79, 0.28);
+    font-family: "DM Sans", sans-serif;
+}
+
+.safeway-chat-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 1rem 1rem 0.85rem;
+    color: #fff;
+    background: var(--midnight, #17364f);
+}
+
+.safeway-chat-header__identity {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    min-width: 0;
+}
+
+.safeway-chat-header__identity > div {
+    display: grid;
+    gap: 0.1rem;
+    min-width: 0;
+}
+
+.safeway-chat-header__identity strong {
+    font-size: 0.98rem;
+    line-height: 1.2;
+}
+
+.safeway-chat-header__identity span {
+    font-size: 0.72rem;
+    color: #cce0ec;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.safeway-chat-header__avatar {
+    width: 2.25rem;
+    height: 2.25rem;
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.14);
+    color: #fff;
+}
+
+.safeway-chat-header__actions {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    flex: 0 0 auto;
+}
+
+.safeway-chat-icon-button,
+.safeway-chat-text-button {
+    border: 0;
+    color: #fff;
+    background: transparent;
+    cursor: pointer;
+    border-radius: 0.45rem;
+}
+
+.safeway-chat-icon-button {
+    width: 2rem;
+    height: 2rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.safeway-chat-text-button {
+    padding: 0.35rem 0.5rem;
+    font-size: 0.76rem;
+    font-weight: 700;
+}
+
+.safeway-chat-icon-button:hover,
+.safeway-chat-text-button:hover,
+.safeway-chat-icon-button:focus-visible,
+.safeway-chat-text-button:focus-visible {
+    background: rgba(255, 255, 255, 0.16);
+    outline: none;
+}
+
+.safeway-chat-icon-button:focus-visible,
+.safeway-chat-text-button:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: 1px;
+}
+
+.safeway-chat-safety {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.45rem;
+    padding: 0.65rem 0.9rem;
+    color: #7a4a47;
+    background: #fff5f3;
+    border-bottom: 1px solid #f0d9d5;
+    font-size: 0.73rem;
+    line-height: 1.4;
+}
+
+.safeway-chat-safety svg {
+    flex: 0 0 auto;
+    margin-top: 0.05rem;
+    color: #bf625e;
+}
+
+.safeway-chat-log {
+    flex: 1 1 auto;
+    min-height: 8rem;
+    overflow-y: auto;
+    display: grid;
+    align-content: start;
+    gap: 0.75rem;
+    padding: 0.9rem;
+    background: #f7fafc;
+}
+
+.safeway-chat-message {
+    max-width: 92%;
+    padding: 0.75rem 0.85rem;
+    border-radius: 0.85rem;
+    font-size: 0.84rem;
+    line-height: 1.5;
+    word-break: break-word;
+}
+
+.safeway-chat-message--assistant {
+    justify-self: start;
+    background: #fff;
+    border: 1px solid var(--line, #dbe7ee);
+    border-bottom-left-radius: 0.25rem;
+}
+
+.safeway-chat-message--user {
+    justify-self: end;
+    color: #fff;
+    background: var(--blue, #438fc5);
+    border-bottom-right-radius: 0.25rem;
+}
+
+.safeway-chat-message__meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.3rem;
+    font-size: 0.68rem;
+    letter-spacing: 0.01em;
+}
+
+.safeway-chat-message__meta b {
+    font-weight: 800;
+}
+
+.safeway-chat-message__meta span {
+    opacity: 0.72;
+    text-align: right;
+}
+
+.safeway-chat-message p {
+    margin: 0;
+}
+
+.safeway-chat-message__notice {
+    display: block;
+    margin-top: 0.55rem;
+    padding-top: 0.5rem;
+    border-top: 1px dashed var(--line, #dbe7ee);
+    color: #6d5a25;
+    font-size: 0.7rem;
+    line-height: 1.4;
+}
+
+.safeway-chat-typing {
+    justify-self: start;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.28rem;
+    padding: 0.65rem 0.8rem;
+    background: #fff;
+    border: 1px solid var(--line, #dbe7ee);
+    border-radius: 0.85rem;
+    border-bottom-left-radius: 0.25rem;
+}
+
+.safeway-chat-typing span:not(.safeway-chat-sr-only) {
+    width: 0.42rem;
+    height: 0.42rem;
+    border-radius: 50%;
+    background: var(--blue, #438fc5);
+    animation: safeway-chat-bounce 1s infinite ease-in-out;
+}
+
+.safeway-chat-typing span:nth-child(2) {
+    animation-delay: 0.15s;
+}
+
+.safeway-chat-typing span:nth-child(3) {
+    animation-delay: 0.3s;
+}
+
+@keyframes safeway-chat-bounce {
+    0%,
+    80%,
+    100% {
+        transform: translateY(0);
+        opacity: 0.45;
+    }
+    40% {
+        transform: translateY(-4px);
+        opacity: 1;
+    }
+}
+
+.safeway-chat-suggestions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    padding: 0.7rem 0.9rem 0;
+    background: #f7fafc;
+}
+
+.safeway-chat-suggestion {
+    padding: 0.42rem 0.65rem;
+    border: 1px solid #bcd7e8;
+    border-radius: 999px;
+    background: #fff;
+    color: #174b78;
+    font-size: 0.72rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.safeway-chat-suggestion:hover,
+.safeway-chat-suggestion:focus-visible {
+    background: #eaf4fa;
+    outline: 2px solid var(--blue, #438fc5);
+    outline-offset: 1px;
+}
+
+.safeway-chat-suggestion:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.safeway-chat-form {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.5rem;
+    padding: 0.75rem 0.9rem;
+    background: #fff;
+    border-top: 1px solid var(--line, #dbe7ee);
+}
+
+.safeway-chat-form textarea {
+    flex: 1 1 auto;
+    min-width: 0;
+    resize: none;
+    padding: 0.65rem 0.75rem;
+    border: 1px solid #bcd7e8;
+    border-radius: 0.65rem;
+    color: var(--ink, #17364f);
+    background: #fff;
+    font: inherit;
+    font-size: 0.84rem;
+    line-height: 1.4;
+}
+
+.safeway-chat-form textarea:focus {
+    outline: 2px solid var(--blue, #438fc5);
+    outline-offset: 1px;
+    border-color: var(--blue, #438fc5);
+}
+
+.safeway-chat-send {
+    width: 2.5rem;
+    height: 2.5rem;
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: 0.65rem;
+    color: #fff;
+    background: var(--blue, #438fc5);
+    cursor: pointer;
+}
+
+.safeway-chat-send:hover:not(:disabled),
+.safeway-chat-send:focus-visible {
+    background: #2f79a9;
+    outline: 2px solid #17364f;
+    outline-offset: 2px;
+}
+
+.safeway-chat-send:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.safeway-chat-footer {
+    padding: 0.5rem 0.9rem 0.7rem;
+    color: #6a7d8b;
+    background: #fff;
+    font-size: 0.68rem;
+    text-align: center;
+}
+
+.safeway-chat-sr-only {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
+}
+
+@media (max-width: 640px) {
+    .safeway-chat-launcher {
+        right: 0.85rem;
+        bottom: 0.85rem;
+        width: 3.4rem;
+        height: 3.4rem;
+    }
+
+    .safeway-chat-panel {
+        inset: auto 0.65rem 4.75rem 0.65rem;
+        width: auto;
+        max-height: calc(100dvh - 5.6rem);
+        border-radius: 0.9rem;
+    }
+
+    .safeway-chat-message {
+        max-width: 96%;
+    }
+
+    .safeway-chat-suggestions {
+        max-height: 4.5rem;
+        overflow-y: auto;
+        flex-wrap: nowrap;
+    }
+
+    .safeway-chat-suggestion {
+        flex: 0 0 auto;
+        white-space: nowrap;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .safeway-chat-launcher,
+    .safeway-chat-typing span:not(.safeway-chat-sr-only) {
+        transition: none;
+        animation: none;
+    }
+}
