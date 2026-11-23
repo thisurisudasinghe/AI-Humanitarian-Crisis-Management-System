@@ -118,6 +118,12 @@ public static class JwtAuthenticationExtensions
                     RoleNames.EmergencyCoordinator,
                     RoleNames.PartnerOfficer));
 
+            // Restricted verification-only sessions can authenticate and resend,
+            // but cannot use features that require a confirmed email address.
+            options.AddPolicy("VerifiedOnly", policy =>
+                policy.RequireAuthenticatedUser()
+                    .RequireClaim("email_verified", "true"));
+
             // Endpoints must opt in to being public with [AllowAnonymous].
             options.FallbackPolicy = new AuthorizationPolicyBuilder()
                 .RequireAuthenticatedUser()

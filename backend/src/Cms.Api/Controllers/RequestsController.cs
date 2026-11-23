@@ -30,8 +30,9 @@ public class RequestsController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = CasesRoles.Citizen)]
+    [Authorize(Roles = CasesRoles.Citizen, Policy = "VerifiedOnly")]
     [ProducesResponseType(StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
     public async Task<IActionResult> Submit([FromBody] CreateRequestDto request, CancellationToken cancellationToken)
     {

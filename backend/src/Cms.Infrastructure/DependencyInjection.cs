@@ -84,6 +84,16 @@ public static class DependencyInjection
 
         services.AddCmsHttpClient();
 
+        // Safeway email verification uses a dedicated Resend sender. It never
+        // writes rendered HTML (or the one-time link) into the notification store.
+        services.Configure<ResendOptions>(configuration.GetSection(ResendOptions.SectionName));
+        services.Configure<EmailVerificationOptions>(
+            configuration.GetSection(EmailVerificationOptions.SectionName));
+        services.AddCmsHttpClient(
+            ResendEmailVerificationSender.HttpClientName,
+            configuration[$"{ResendOptions.SectionName}:ApiBaseUrl"] ?? "https://api.resend.com/");
+        services.TryAddScoped<IEmailVerificationEmailSender, ResendEmailVerificationSender>();
+
         // M9 notification delivery. The SMTP sender is used only when a host is
         // configured; otherwise the log sender keeps a fresh checkout working.
         services.Configure<SmtpOptions>(configuration.GetSection("Smtp"));

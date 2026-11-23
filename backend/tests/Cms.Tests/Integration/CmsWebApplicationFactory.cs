@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Security.Cryptography;
@@ -5,6 +6,7 @@ using Cms.Application.DTOs.Authentication;
 using Cms.Domain.Constants;
 using Cms.Domain.Entities;
 using Cms.Domain.Enums;
+using Cms.Application.Contracts;
 using Cms.Infrastructure.Data;
 using Cms.Infrastructure.Security;
 using Microsoft.AspNetCore.Hosting;
@@ -16,6 +18,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace Cms.Tests.Integration;
 
@@ -40,6 +43,15 @@ public sealed class CmsWebApplicationFactory : WebApplicationFactory<Program>
         Guid.NewGuid().ToString("N"));
     private readonly SemaphoreSlim _seedLock = new(1, 1);
     private bool _seeded;
+
+    public TestEmailVerificationSender VerificationSender { get; } = new();
+
+    public ConcurrentQueue<string> LogMessages { get; } = new();
+
+    /// <summary>Override per test to exercise cooldown/rate-limit behaviour.</summary>
+    public int VerificationCooldownSeconds { get; init; } = 0;
+
+    public int VerificationRateLimitPermitLimit { get; init; } = 1000;
 
     public const string AdminEmail = "admin@tests.local";
     public const string OfficerEmail = "officer@tests.local";
@@ -67,9 +79,21 @@ public sealed class CmsWebApplicationFactory : WebApplicationFactory<Program>
                 ["EmailProtection:HashKey"] = TestSecrets.EmailHashKey,
                 ["FileStorage:RootPath"] = _storageRoot,
                 ["Outbox:ProcessorEnabled"] = "false",
-                ["DemoSeed:Enabled"] = "false"
+                ["DemoSeed:Enabled"] = "false",
+                ["Resend:ApiKey"] = "re_test_placeholder",
+                ["Resend:FromEmail"] = "no-reply@tests.local",
+                ["Resend:FromName"] = "Safeway",
+                ["Resend:ApiBaseUrl"] = "https://api.resend.com/",
+                ["EmailVerification:BaseUrl"] = "https://localhost:3000/verify-email/confirm",
+                ["EmailVerification:LogoUrl"] = "https://localhost:3000/safeway-email-logo.svg",
+                ["EmailVerification:TokenExpirationMinutes"] = "30",
+                ["EmailVerification:ResendCooldownSeconds"] = VerificationCooldownSeconds.ToString(),
+                ["EmailVerification:RateLimitPermitLimit"] = VerificationRateLimitPermitLimit.ToString()
             });
         });
+
+        builder.ConfigureLogging(logging =>
+            logging.AddProvider(new CapturingLoggerProvider(LogMessages)));
 
         builder.ConfigureTestServices(services =>
         {
@@ -87,6 +111,9 @@ public sealed class CmsWebApplicationFactory : WebApplicationFactory<Program>
 
             services.AddDbContext<CmsDbContext>(options =>
                 options.UseInMemoryDatabase(_databaseName));
+
+            services.RemoveAll<IEmailVerificationEmailSender>();
+            services.AddSingleton<IEmailVerificationEmailSender>(VerificationSender);
         });
     }
 

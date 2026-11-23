@@ -89,6 +89,35 @@ public sealed class AuthController : ControllerBase
         return Ok(new { Authorized = true });
     }
 
+    /// <summary>Redeems a one-time email verification token.</summary>
+    [HttpPost("email/verify")]
+    [AllowAnonymous]
+    [EnableRateLimiting("email-verification")]
+    [ProducesResponseType(typeof(EmailVerificationResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    public async Task<ActionResult<EmailVerificationResponseDto>> VerifyEmail(
+        [FromBody] VerifyEmailRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        return Ok(await _authenticationService.VerifyEmailAsync(request, cancellationToken));
+    }
+
+    /// <summary>Requests a replacement verification link without revealing account existence.</summary>
+    [HttpPost("email/resend")]
+    [AllowAnonymous]
+    [EnableRateLimiting("email-verification")]
+    [ProducesResponseType(typeof(EmailVerificationResponseDto), StatusCodes.Status202Accepted)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
+    public async Task<ActionResult<EmailVerificationResponseDto>> ResendVerification(
+        [FromBody] ResendVerificationRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        var response = await _authenticationService.ResendVerificationAsync(request, cancellationToken);
+        return StatusCode(StatusCodes.Status202Accepted, response);
+    }
+
     /// <summary>Returns the authenticated user's profile and roles.</summary>
     [HttpGet("me")]
     [Authorize]

@@ -10,8 +10,10 @@ using Cms.Domain.Entities;
 using Cms.Domain.Enums;
 using Cms.Infrastructure.Authentication;
 using Cms.Infrastructure.Data;
+using Cms.Infrastructure.Notifications;
 using Cms.Infrastructure.Security;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
 
 namespace Cms.Infrastructure.Services;
@@ -30,6 +32,8 @@ public sealed class AuthenticationService : IAuthenticationService
     private readonly EmailProtectionService _emailProtection;
     private readonly PasswordHashingService _passwordHashing;
     private readonly IDateTimeService _dateTimeService;
+    private readonly IEmailVerificationEmailSender _verificationEmailSender;
+    private readonly ILogger<AuthenticationService> _logger;
 
     public AuthenticationService(
         CmsDbContext db,
@@ -39,7 +43,9 @@ public sealed class AuthenticationService : IAuthenticationService
         JwtTokenService jwtTokenService,
         EmailProtectionService emailProtection,
         PasswordHashingService passwordHashing,
-        IDateTimeService dateTimeService)
+        IDateTimeService dateTimeService,
+        IEmailVerificationEmailSender verificationEmailSender,
+        ILogger<AuthenticationService> logger)
     {
         _db = db;
         _configuration = configuration;
@@ -49,6 +55,8 @@ public sealed class AuthenticationService : IAuthenticationService
         _emailProtection = emailProtection;
         _passwordHashing = passwordHashing;
         _dateTimeService = dateTimeService;
+        _verificationEmailSender = verificationEmailSender;
+        _logger = logger;
     }
 
     public async Task<AuthResponseDto> RegisterAsync(
@@ -120,8 +128,29 @@ public sealed class AuthenticationService : IAuthenticationService
             ]
         };
 
+        var (rawToken, tokenEntity) = CreateEmailVerificationToken(user.Id, now);
+
         _db.Users.Add(user);
+        _db.EmailVerificationTokens.Add(tokenEntity);
         await _db.SaveChangesAsync(cancellationToken);
+
+        // The raw token is only ever handed to the email sender. Registration
+        // still succeeds if the provider is unavailable; the user can resend.
+        try
+        {
+            await SendVerificationEmailAsync(
+                user,
+                email,
+                rawToken,
+                isResend: false,
+                cancellationToken);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            _logger.LogWarning(
+                exception,
+                "Verification email was not delivered for a newly registered user.");
+        }
 
         var response = await IssueTokensAsync(user, email, cancellationToken);
 
@@ -362,8 +391,219 @@ public sealed class AuthenticationService : IAuthenticationService
             UserId = user.Id,
             FullName = $"{user.FirstName} {user.LastName}".Trim(),
             Email = DecryptEmail(user.EmailEncrypted),
-            Roles = GetRoleNames(user)
+            Roles = GetRoleNames(user),
+            IsEmailVerified = user.IsEmailVerified
         };
+    }
+
+    public async Task<EmailVerificationResponseDto> VerifyEmailAsync(
+        VerifyEmailRequestDto request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        var rawToken = (request.Token ?? string.Empty).Trim();
+        if (rawToken.Length is 0 or > 200)
+        {
+            throw new ValidationException(
+                "A verification token is required.",
+                new Dictionary<string, string[]>
+                {
+                    ["Token"] = ["A verification token is required."]
+                });
+        }
+
+        var tokenHash = HashVerificationToken(rawToken);
+        var now = _dateTimeService.UtcNow;
+
+        var stored = await _db.EmailVerificationTokens
+            .Include(token => token.User)
+            .SingleOrDefaultAsync(
+                token => token.TokenHash == tokenHash,
+                cancellationToken);
+
+        if (stored is null)
+        {
+            throw new DomainException(
+                "This verification link is not valid.",
+                "VERIFICATION_TOKEN_INVALID");
+        }
+
+        if (stored.ConsumedAt.HasValue)
+        {
+            await LogVerificationAuditAsync(
+                stored.UserId,
+                "AlreadyUsed",
+                cancellationToken);
+
+            throw new DomainException(
+                "This verification link has already been used.",
+                "VERIFICATION_TOKEN_ALREADY_USED");
+        }
+
+        if (stored.User.IsEmailVerified)
+        {
+            stored.ConsumedAt = now;
+            await _db.SaveChangesAsync(cancellationToken);
+
+            await LogVerificationAuditAsync(
+                stored.UserId,
+                "AlreadyVerified",
+                cancellationToken);
+
+            return new EmailVerificationResponseDto
+            {
+                IsEmailVerified = true,
+                AlreadyVerified = true,
+                Message = "Your email address is already verified."
+            };
+        }
+
+        if (stored.RevokedAt.HasValue)
+        {
+            throw new DomainException(
+                "This verification link has been replaced. Request a new one.",
+                "VERIFICATION_TOKEN_REVOKED");
+        }
+
+        if (stored.ExpiresAt <= now)
+        {
+            throw new DomainException(
+                "This verification link has expired. Request a new one.",
+                "VERIFICATION_TOKEN_EXPIRED");
+        }
+
+        // Optimistic concurrency on consumed_at/revoked_at makes redemption
+        // single-use even if two requests load the same token simultaneously.
+        stored.ConsumedAt = now;
+        stored.User.IsEmailVerified = true;
+        stored.User.UpdatedAt = now;
+
+        try
+        {
+            await _db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            var settled = await _db.EmailVerificationTokens
+                .AsNoTracking()
+                .Include(token => token.User)
+                .SingleOrDefaultAsync(token => token.Id == stored.Id, cancellationToken);
+
+            if (settled?.ConsumedAt.HasValue == true || settled?.User.IsEmailVerified == true)
+            {
+                await LogVerificationAuditAsync(
+                    stored.UserId,
+                    "ConcurrentVerificationLost",
+                    cancellationToken);
+
+                throw new DomainException(
+                    "This verification link has already been used.",
+                    "VERIFICATION_TOKEN_ALREADY_USED");
+            }
+
+            throw new DomainException(
+                "This verification link is not valid.",
+                "VERIFICATION_TOKEN_INVALID");
+        }
+
+        await LogVerificationAuditAsync(stored.UserId, "Verified", cancellationToken);
+
+        return new EmailVerificationResponseDto
+        {
+            IsEmailVerified = true,
+            AlreadyVerified = false,
+            Message = "Your email address has been verified."
+        };
+    }
+
+    public async Task<EmailVerificationResponseDto> ResendVerificationAsync(
+        ResendVerificationRequestDto request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        var email = NormalizeEmail(request.Email);
+        if (!IsValidEmail(email))
+        {
+            throw new ValidationException(
+                "A valid email address is required.",
+                new Dictionary<string, string[]>
+                {
+                    ["Email"] = ["A valid email address is required."]
+                });
+        }
+
+        // One safe response for unknown, inactive and already-verified accounts
+        // so this anonymous endpoint cannot be used to enumerate users.
+        var safeResponse = new EmailVerificationResponseDto
+        {
+            IsEmailVerified = false,
+            AlreadyVerified = false,
+            Message = "If an account exists that still needs verification, a new link has been sent."
+        };
+
+        var emailHash = _emailProtection.HashEmail(email);
+        var user = await _db.Users
+            .SingleOrDefaultAsync(candidate => candidate.EmailHash == emailHash, cancellationToken);
+
+        if (user is null || user.Status != UserStatus.Active || user.IsEmailVerified)
+        {
+            return safeResponse;
+        }
+
+        var now = _dateTimeService.UtcNow;
+        var cooldownSeconds = Math.Max(
+            0,
+            _configuration.GetSection(EmailVerificationOptions.SectionName)
+                .GetValue<int?>("ResendCooldownSeconds") ?? 60);
+
+        var latest = await _db.EmailVerificationTokens
+            .Where(token => token.UserId == user.Id)
+            .OrderByDescending(token => token.CreatedAt)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (latest is not null && latest.CreatedAt > now.AddSeconds(-cooldownSeconds))
+        {
+            return safeResponse;
+        }
+
+        var activeTokens = await _db.EmailVerificationTokens
+            .Where(token => token.UserId == user.Id &&
+                            token.ConsumedAt == null &&
+                            token.RevokedAt == null)
+            .ToListAsync(cancellationToken);
+
+        foreach (var activeToken in activeTokens)
+        {
+            activeToken.RevokedAt = now;
+        }
+
+        var (rawToken, tokenEntity) = CreateEmailVerificationToken(user.Id, now);
+        _db.EmailVerificationTokens.Add(tokenEntity);
+
+        try
+        {
+            // The filtered unique index in SQL also rejects two simultaneous
+            // active tokens; the safe response prevents caller-visible races.
+            await _db.SaveChangesAsync(cancellationToken);
+        }
+        catch (Exception exception) when (exception is DbUpdateConcurrencyException or DbUpdateException)
+        {
+            return safeResponse;
+        }
+
+        await SendVerificationEmailAsync(user, email, rawToken, isResend: true, cancellationToken);
+
+        await _auditLogger.LogAsync(
+            user.Id,
+            "User.EmailVerificationResent",
+            "identity.User",
+            user.Id.ToString(),
+            new { outcome = "Sent" },
+            cancellationToken);
+
+        return safeResponse;
     }
 
     private async Task<AuthResponseDto> IssueTokensAsync(
@@ -392,7 +632,8 @@ public sealed class AuthenticationService : IAuthenticationService
             user.Id,
             email,
             roles,
-            user.OrganisationId);
+            user.OrganisationId,
+            user.IsEmailVerified);
 
         return new AuthResponseDto
         {
@@ -402,7 +643,8 @@ public sealed class AuthenticationService : IAuthenticationService
             UserId = user.Id,
             FullName = $"{user.FirstName} {user.LastName}".Trim(),
             Email = email,
-            Roles = roles
+            Roles = roles,
+            IsEmailVerified = user.IsEmailVerified
         };
     }
 
@@ -447,6 +689,108 @@ public sealed class AuthenticationService : IAuthenticationService
     {
         var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(token));
         return Convert.ToHexString(bytes);
+    }
+
+    private static string HashVerificationToken(string token) => HashRefreshToken(token);
+
+    private (string Token, EmailVerificationToken Entity) CreateEmailVerificationToken(
+        Guid userId,
+        DateTime now)
+    {
+        // 32 cryptographically secure bytes, Base64URL encoded (43 characters).
+        var bytes = RandomNumberGenerator.GetBytes(32);
+        var rawToken = Convert.ToBase64String(bytes)
+            .TrimEnd('=')
+            .Replace('+', '-')
+            .Replace('/', '_');
+
+        var lifetimeMinutes = Math.Max(
+            1,
+            _configuration.GetSection(EmailVerificationOptions.SectionName)
+                .GetValue<int?>("TokenExpirationMinutes") ?? 30);
+
+        var entity = new EmailVerificationToken
+        {
+            UserId = userId,
+            TokenHash = HashVerificationToken(rawToken),
+            CreatedAt = now,
+            ExpiresAt = now.AddMinutes(lifetimeMinutes)
+        };
+
+        return (rawToken, entity);
+    }
+
+    private async Task SendVerificationEmailAsync(
+        User user,
+        string email,
+        string rawToken,
+        bool isResend,
+        CancellationToken cancellationToken)
+    {
+        var baseUrl = RequireHttpsSetting(
+            _configuration[EmailVerificationOptions.SectionName + ":BaseUrl"],
+            "EMAIL_VERIFICATION_BASE_URL");
+
+        var logoUrl = RequireHttpsSetting(
+            _configuration[EmailVerificationOptions.SectionName + ":LogoUrl"],
+            "EMAIL_LOGO_URL");
+
+        var verificationUrl = $"{baseUrl.TrimEnd('/')}?token={Uri.EscapeDataString(rawToken)}";
+
+        var displayName = $"{user.FirstName} {user.LastName}".Trim();
+        if (displayName.Length == 0)
+        {
+            displayName = "there";
+        }
+
+        var (html, text) = isResend
+            ? EmailVerificationTemplates.RenderResend(displayName, logoUrl, verificationUrl)
+            : EmailVerificationTemplates.RenderRegistration(displayName, logoUrl, verificationUrl);
+
+        var subject = isResend
+            ? EmailVerificationTemplates.ResendSubject
+            : EmailVerificationTemplates.RegisterSubject;
+
+        var fromName = _configuration["Resend:FromName"];
+        if (string.IsNullOrWhiteSpace(fromName))
+        {
+            fromName = "Safeway";
+        }
+
+        await _verificationEmailSender.SendAsync(
+            email,
+            displayName,
+            fromName.Trim(),
+            subject,
+            html,
+            text,
+            cancellationToken);
+    }
+
+    private async Task LogVerificationAuditAsync(
+        Guid userId,
+        string outcome,
+        CancellationToken cancellationToken)
+    {
+        await _auditLogger.LogAsync(
+            userId,
+            "User.EmailVerification",
+            "identity.User",
+            userId.ToString(),
+            new { outcome },
+            cancellationToken);
+    }
+
+    private static string RequireHttpsSetting(string? value, string environmentVariable)
+    {
+        if (!Uri.TryCreate(value, UriKind.Absolute, out var uri) ||
+            uri.Scheme != Uri.UriSchemeHttps)
+        {
+            throw new InvalidOperationException(
+                $"{environmentVariable} must be configured as an absolute HTTPS URL.");
+        }
+
+        return value!;
     }
 
     private string DecryptEmail(string? encryptedEmail)

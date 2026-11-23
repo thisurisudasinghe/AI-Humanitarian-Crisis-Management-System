@@ -20,6 +20,8 @@ import {
   type CurrentUser
 } from "@/lib/api";
 import { hasAnyRole } from "@/lib/roles";
+import { resendVerificationEmail } from "@/lib/verification";
+import type { ResendView } from "@/lib/verification-state";
 
 interface RegisterInput {
   fullName: string;
@@ -34,6 +36,7 @@ interface AuthContextValue {
   register: (input: RegisterInput) => Promise<CurrentUser>;
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
+  resendVerification: (email?: string) => Promise<ResendView>;
   can: (allowed: readonly string[]) => boolean;
 }
 
@@ -122,6 +125,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [loadCurrentUser]);
 
+  const resendVerification = useCallback(
+    (email?: string) =>
+      resendVerificationEmail(email ?? user?.email ?? ""),
+    [user?.email]
+  );
+
   const can = useCallback(
     (allowed: readonly string[]) =>
       Boolean(user && hasAnyRole(user.roles, allowed)),
@@ -129,8 +138,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo<AuthContextValue>(
-    () => ({ user, ready, login, register, logout, refresh, can }),
-    [user, ready, login, register, logout, refresh, can]
+    () => ({
+      user,
+      ready,
+      login,
+      register,
+      logout,
+      refresh,
+      resendVerification,
+      can
+    }),
+    [user, ready, login, register, logout, refresh, resendVerification, can]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

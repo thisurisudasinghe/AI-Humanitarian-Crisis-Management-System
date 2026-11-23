@@ -1,0 +1,19 @@
+SAFEWAY · HUMANITARIAN ASSISTANCE COORDINATION
+
+Your new verification link is here, {{FIRST_NAME}}.
+
+You asked for another email verification link for your Safeway account. We are happy to help.
+
+Use the link below to finish verifying your email address.
+
+Verify My Email:
+{{VERIFICATION_URL}}
+
+This new link expires after 30 minutes. The previous verification link should no longer be used if it was invalidated when this email was requested.
+
+For your security, only use the newest link from Safeway and never share it with anyone. If you did not request this email, you can ignore it.
+
+— Safeway
+Blue for Trust. White for Clarity. Green for Hope.
+
+This is an automated account security message. Please do not reply.

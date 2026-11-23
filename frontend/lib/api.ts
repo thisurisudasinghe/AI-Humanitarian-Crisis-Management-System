@@ -22,6 +22,7 @@ export interface AuthResponse {
   fullName: string;
   email: string;
   roles: string[];
+  isEmailVerified: boolean;
 }
 
 export interface CurrentUser {
@@ -29,7 +30,16 @@ export interface CurrentUser {
   fullName: string;
   email?: string | null;
   roles: string[];
+  isEmailVerified: boolean;
 }
+
+export interface EmailVerificationResponse {
+  isEmailVerified: boolean;
+  alreadyVerified: boolean;
+  message: string;
+}
+
+export const EMAIL_VERIFICATION_REQUIRED = "EMAIL_VERIFICATION_REQUIRED";
 
 export class ApiError extends Error {
   readonly status: number;

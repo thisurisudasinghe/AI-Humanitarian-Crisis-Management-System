@@ -5,7 +5,12 @@
  * auth/refresh/error handling stays in `lib/api.ts`; this module only adds
  * DEV2-specific payload mapping and response types.
  */
-import { api, apiJson, ApiError } from "@/lib/api";
+import {
+  api,
+  apiJson,
+  ApiError,
+  EMAIL_VERIFICATION_REQUIRED
+} from "@/lib/api";
 
 export interface CrisisReportInput {
   category: string;
@@ -286,5 +291,18 @@ export function caseRequestErrorMessage(cause: unknown, fallback: string): strin
   if (cause instanceof ApiError && cause.status === 401) {
     return "Sign in as a citizen to submit and track reports.";
   }
+
+  if (
+    cause instanceof ApiError &&
+    (cause.code === EMAIL_VERIFICATION_REQUIRED ||
+      cause.code === "EMAIL_NOT_VERIFIED")
+  ) {
+    return "Verify your Safeway email address before submitting a report.";
+  }
+
+  if (cause instanceof ApiError && cause.status === 403) {
+    return "Verify your Safeway email address, then sign in again to continue.";
+  }
+
   return cause instanceof Error ? cause.message : fallback;
 }

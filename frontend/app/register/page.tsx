@@ -8,6 +8,8 @@ import { PublicFooter } from "@/components/safeway/PublicFooter";
 import { PublicNav } from "@/components/safeway/PublicNav";
 import { errorMessage } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { resendVerificationEmail } from "@/lib/verification";
+import { resendView, type ResendState } from "@/lib/verification-state";
 
 const benefits: [string, string, string][] = [
   ["file", "Track every report", "See review and response updates clearly."],
@@ -27,6 +29,13 @@ export default function RegisterPage() {
   const [complete, setComplete] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [resendState, setResendState] = useState<ResendState>("idle");
+
+  async function onResend() {
+    setResendState("loading");
+    const result = await resendVerificationEmail(email.trim());
+    setResendState(result.state);
+  }
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -93,15 +102,40 @@ export default function RegisterPage() {
 
         <section className="register-card">
           {complete ? (
-            <div className="register-success">
+            <div className="register-success verification-pending">
               <i>
-                <Icon name="check" size={36} />
+                <Icon name="bell" size={36} />
               </i>
-              <div className="section-kicker">Account ready</div>
-              <h2>Welcome to SAFEWAY.</h2>
-              <p>Your citizen account has been created and you are signed in.</p>
-              <Link className="btn btn-primary" href="/dashboard">
-                Continue to dashboard <Icon name="arrow" />
+              <div className="section-kicker">One more step</div>
+              <h2>Check your email, {firstName.trim() || "friend"}.</h2>
+              <p>
+                Your Safeway account has been created. We sent a verification link to{" "}
+                <strong>{email.trim()}</strong>. Open it within 30 minutes to activate your
+                account.
+              </p>
+              <p className="verification-hint">
+                Links stay valid for 30 minutes and can only be used once.
+              </p>
+              <div className="verification-actions">
+                <Link className="btn btn-primary" href="/verify-email">
+                  I have a link <Icon name="arrow" />
+                </Link>
+                <button
+                  className="btn btn-outline"
+                  type="button"
+                  onClick={onResend}
+                  disabled={resendState === "loading"}
+                >
+                  {resendState === "loading" ? "Sending…" : "Resend email"}
+                </button>
+              </div>
+              {resendState !== "idle" ? (
+                <p className="verification-feedback" role="status">
+                  {resendView(resendState).message}
+                </p>
+              ) : null}
+              <Link className="verification-login-link" href="/login">
+                Back to login
               </Link>
             </div>
           ) : (

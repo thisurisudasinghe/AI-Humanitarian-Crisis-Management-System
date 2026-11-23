@@ -23,4 +23,12 @@ public interface IAuthenticationService
 
     Task<CurrentUserDto> GetCurrentUserAsync(
         CancellationToken cancellationToken = default);
+
+    Task<EmailVerificationResponseDto> VerifyEmailAsync(
+        VerifyEmailRequestDto request,
+        CancellationToken cancellationToken = default);
+
+    Task<EmailVerificationResponseDto> ResendVerificationAsync(
+        ResendVerificationRequestDto request,
+        CancellationToken cancellationToken = default);
 }
