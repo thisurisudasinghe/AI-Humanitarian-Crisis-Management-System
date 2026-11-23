@@ -5,11 +5,14 @@ import { useSearchParams } from "next/navigation";
 import { Suspense, useState, type FormEvent } from "react";
 import { Brand } from "@/components/safeway/Brand";
 import { Icon } from "@/components/safeway/Icon";
+import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
 import { apiJson, errorMessage } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 
 function ResetPasswordForm() {
   const searchParams = useSearchParams();
   const token = (searchParams.get("token") ?? "").trim();
+  const t = useT();
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showNew, setShowNew] = useState(false);
@@ -23,17 +26,15 @@ function ResetPasswordForm() {
     setError(null);
 
     if (!token) {
-      setError("This password reset link is missing or invalid. Request a new link.");
+      setError(t("auth.resetMissingToken"));
       return;
     }
-
     if (newPassword.length < 8) {
-      setError("Password must be at least 8 characters.");
+      setError(t("validation.passwordMin"));
       return;
     }
-
     if (newPassword !== confirmPassword) {
-      setError("Passwords do not match.");
+      setError(t("validation.passwordsNoMatch"));
       return;
     }
 
@@ -59,119 +60,61 @@ function ResetPasswordForm() {
       <div className="login-brand-panel">
         <Brand light />
         <div>
-          <div className="eyebrow">
-            <span /> Account recovery
-          </div>
-          <h1>Choose a new password.</h1>
-          <p>
-            Create a strong password for your SAFEWAY account. Reset links are single-use and
-            time-limited for your security.
-          </p>
+          <div className="eyebrow"><span /> {t("auth.accountRecovery")}</div>
+          <h1>{t("auth.resetHeroTitle")}</h1>
+          <p>{t("auth.resetHeroCopy")}</p>
         </div>
-        <blockquote>“Connecting people to help. Coordinating action. Restoring hope.”</blockquote>
+        <blockquote>{t("auth.quote")}</blockquote>
       </div>
 
       <div className="login-form-panel">
-        <Link className="back-link" href="/login">
-          ← Back to login
-        </Link>
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+          <Link className="back-link" href="/login">{t("auth.backToLoginLink")}</Link>
+          <LanguageSwitcher variant="compact" />
+        </div>
         <div className="login-form">
-          <span className="mobile-brand">
-            <Brand />
-          </span>
-          <h2>Set a new password</h2>
-          <p>Enter and confirm your new password below.</p>
+          <span className="mobile-brand"><Brand /></span>
+          <h2>{t("auth.setNewPassword")}</h2>
+          <p>{t("auth.resetSubtitle2")}</p>
 
-          {!token ? (
-            <div className="form-error" role="alert">
-              This password reset link is missing or invalid. Please request a new password reset
-              link.
-            </div>
-          ) : null}
+          {!token ? <div className="form-error" role="alert">{t("auth.resetMissingToken")}</div> : null}
 
           {success ? (
-            <div className="form-success" role="status">
-              Your password has been reset. You can now sign in with your new password.
-            </div>
+            <div className="form-success" role="status">{t("auth.resetSuccess2")}</div>
           ) : (
             <form onSubmit={onSubmit} noValidate>
               <label>
-                <span className="field-label">New password</span>
+                <span className="field-label">{t("auth.newPasswordLabel")}</span>
                 <span className="password-field">
-                  <input
-                    type={showNew ? "text" : "password"}
-                    autoComplete="new-password"
-                    value={newPassword}
-                    onChange={(event) => setNewPassword(event.target.value)}
-                    minLength={8}
-                    required
-                    disabled={!token || busy}
-                  />
-                  <button
-                    type="button"
-                    className="password-toggle"
-                    onClick={() => setShowNew((value) => !value)}
-                    aria-label={showNew ? "Hide new password" : "Show new password"}
-                    aria-pressed={showNew}
-                  >
+                  <input type={showNew ? "text" : "password"} autoComplete="new-password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} minLength={8} required disabled={!token || busy} />
+                  <button type="button" className="password-toggle" onClick={() => setShowNew((value) => !value)} aria-label={showNew ? t("auth.hideNewPassword") : t("auth.showNewPassword")} aria-pressed={showNew}>
                     <Icon name={showNew ? "eyeOff" : "eye"} size={18} />
                   </button>
                 </span>
               </label>
 
               <label>
-                <span className="field-label">Confirm new password</span>
+                <span className="field-label">{t("auth.confirmNewPassword")}</span>
                 <span className="password-field">
-                  <input
-                    type={showConfirm ? "text" : "password"}
-                    autoComplete="new-password"
-                    value={confirmPassword}
-                    onChange={(event) => setConfirmPassword(event.target.value)}
-                    minLength={8}
-                    required
-                    disabled={!token || busy}
-                  />
-                  <button
-                    type="button"
-                    className="password-toggle"
-                    onClick={() => setShowConfirm((value) => !value)}
-                    aria-label={showConfirm ? "Hide confirm password" : "Show confirm password"}
-                    aria-pressed={showConfirm}
-                  >
+                  <input type={showConfirm ? "text" : "password"} autoComplete="new-password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} minLength={8} required disabled={!token || busy} />
+                  <button type="button" className="password-toggle" onClick={() => setShowConfirm((value) => !value)} aria-label={showConfirm ? t("auth.hideConfirmPassword") : t("auth.showConfirmPassword")} aria-pressed={showConfirm}>
                     <Icon name={showConfirm ? "eyeOff" : "eye"} size={18} />
                   </button>
                 </span>
               </label>
 
-              {error ? (
-                <div className="form-error" role="alert">
-                  {error}
-                </div>
-              ) : null}
+              {error ? <div className="form-error" role="alert">{error}</div> : null}
 
-              <button
-                className="btn btn-primary login-submit"
-                type="submit"
-                disabled={busy || !token}
-              >
-                {busy ? "Resetting password..." : "Reset password"} <Icon name="arrow" />
+              <button className="btn btn-primary login-submit" type="submit" disabled={busy || !token}>
+                {busy ? t("auth.resetting") : t("auth.resetPassword")} <Icon name="arrow" />
               </button>
             </form>
           )}
 
           <p className="register">
-            {success ? (
-              <Link href="/login">Continue to login</Link>
-            ) : (
-              <>
-                Need a new link? <Link href="/forgot-password">Request password reset</Link>
-              </>
-            )}
+            {success ? <Link href="/login">{t("auth.continueToLogin")}</Link> : <>{t("auth.needNewLink")} <Link href="/forgot-password">{t("auth.requestReset")}</Link></>}
           </p>
-          <div className="secure-line">
-            <Icon name="shield" size={16} /> Your password is encrypted and never stored in plain
-            text.
-          </div>
+          <div className="secure-line"><Icon name="shield" size={16} /> {t("auth.passwordEncrypted")}</div>
         </div>
       </div>
     </div>
@@ -180,20 +123,7 @@ function ResetPasswordForm() {
 
 export default function ResetPasswordPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="login-page">
-          <div className="login-brand-panel">
-            <Brand light />
-          </div>
-          <div className="login-form-panel">
-            <div className="login-form">
-              <p>Loading...</p>
-            </div>
-          </div>
-        </div>
-      }
-    >
+    <Suspense fallback={<div className="login-page"><div className="login-brand-panel"><Brand light /></div><div className="login-form-panel"><div className="login-form"><p>Loading...</p></div></div></div>}>
       <ResetPasswordForm />
     </Suspense>
   );

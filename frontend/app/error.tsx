@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { Brand } from "@/components/safeway/Brand";
 import { Icon } from "@/components/safeway/Icon";
+import { useT } from "@/lib/i18n";
 
 export default function ErrorPage({
   error,
@@ -11,6 +12,7 @@ export default function ErrorPage({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const t = useT();
   useEffect(() => {
     console.error("Unhandled UI error", error);
   }, [error]);
@@ -20,15 +22,12 @@ export default function ErrorPage({
       <div>
         <Brand />
         <span className="badge coral" style={{ marginTop: 26 }}>
-          <i /> Something went wrong
+          <i /> {t("common.somethingWrong")}
         </span>
-        <h1>We couldn&apos;t finish loading this page.</h1>
-        <p>
-          Try again. If the problem continues, contact an administrator and include the time it
-          happened.
-        </p>
+        <h1>{t("common.errorTitle")}</h1>
+        <p>{t("common.errorCopy")}</p>
         <button className="btn btn-primary" type="button" onClick={reset}>
-          Try again <Icon name="arrow" />
+          {t("common.retry")} <Icon name="arrow" />
         </button>
       </div>
     </main>

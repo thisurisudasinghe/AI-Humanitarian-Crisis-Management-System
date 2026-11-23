@@ -1,36 +1,37 @@
+"use client";
+
 import Link from "next/link";
+import { useT } from "@/lib/i18n";
 import { PublicBrand } from "./PublicBrand";
 
 export function PublicFooter() {
+  const t = useT();
   return (
     <footer className="public-footer">
       <div className="public-footer__main">
         <div className="public-footer__brand">
           <PublicBrand light />
-          <p>
-            SAFEWAY connects people requesting assistance with authorized humanitarian response and
-            coordination services.
-          </p>
+          <p>{t("nav.footerTagline")}</p>
         </div>
 
-        <nav aria-label="Footer explore links">
-          <b>Explore</b>
-          <Link href="/about">About SAFEWAY</Link>
-          <Link href="/services">Services</Link>
-          <Link href="/how-it-works">How it works</Link>
+        <nav aria-label={t("nav.footerExploreAria")}>
+          <b>{t("nav.explore")}</b>
+          <Link href="/about">{t("nav.aboutSafeway")}</Link>
+          <Link href="/services">{t("nav.services")}</Link>
+          <Link href="/how-it-works">{t("nav.howItWorksLink")}</Link>
         </nav>
 
-        <nav aria-label="Footer help links">
-          <b>Get help</b>
-          <Link href="/report">Report a crisis</Link>
-          <Link href="/find-assistance">Find assistance</Link>
-          <Link href="/contact">Contact</Link>
+        <nav aria-label={t("nav.footerHelpAria")}>
+          <b>{t("nav.getHelp")}</b>
+          <Link href="/report">{t("nav.reportCrisis")}</Link>
+          <Link href="/find-assistance">{t("nav.findAssistance")}</Link>
+          <Link href="/contact">{t("nav.contact")}</Link>
         </nav>
       </div>
 
       <div className="public-footer__bottom">
-        <span>© 2026 SAFEWAY. Prototype experience.</span>
-        <Link href="/contact">Contact support</Link>
+        <span>{t("nav.footerCopyright")}</span>
+        <Link href="/contact">{t("nav.contactSupport")}</Link>
       </div>
     </footer>
   );

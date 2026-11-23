@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { useI18n } from "@/lib/i18n";
 import { Icon } from "./Icon";
 
 interface PublicAlert {
@@ -25,17 +26,19 @@ interface PublicServiceCentre {
   openingHours?: string | null;
 }
 
-function formatDate(value?: string | null): string {
-  if (!value) return "—";
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? "—" : date.toLocaleString();
-}
-
 export function PublicCaseUpdates() {
+  const { t, locale } = useI18n();
   const [alerts, setAlerts] = useState<PublicAlert[]>([]);
   const [centres, setCentres] = useState<PublicServiceCentre[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const loc = locale === "si" ? "si-LK" : locale === "ta" ? "ta-LK" : "en-LK";
+  const formatDate = (value?: string | null) => {
+    if (!value) return "—";
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? "—" : date.toLocaleString(loc);
+  };
 
   useEffect(() => {
     let active = true;
@@ -51,30 +54,28 @@ export function PublicCaseUpdates() {
       })
       .catch(() => {
         if (!active) return;
-        setError("Live public updates could not be loaded. You can still submit a report for assistance.");
+        setError(t("common.alertsError"));
       })
       .finally(() => {
         if (active) setLoading(false);
       });
 
-    return () => {
-      active = false;
-    };
-  }, []);
+    return () => { active = false; };
+  }, [t]);
 
   return (
     <>
-      <section className="public-live-updates" aria-label="Verified public alerts">
+      <section className="public-live-updates" aria-label={t("common.publicAlertsTitle")}>
         <div className="section-head">
           <div>
-            <div className="eyebrow dark"><span /> Public alerts</div>
-            <h2>Verified alerts from coordinators</h2>
+            <div className="eyebrow dark"><span /> {t("common.publicAlertsEyebrow")}</div>
+            <h2>{t("common.publicAlertsTitle")}</h2>
           </div>
         </div>
-        {loading ? <p className="muted">Loading alerts…</p> : null}
+        {loading ? <p className="muted">{t("common.loadingAlerts")}</p> : null}
         {error ? <p className="form-error" role="alert">{error}</p> : null}
         {!loading && !error && alerts.length === 0 ? (
-          <p className="muted">No published public alerts right now.</p>
+          <p className="muted">{t("common.noAlerts")}</p>
         ) : null}
         <div className="value-grid">
           {alerts.slice(0, 6).map((alert) => (
@@ -82,21 +83,21 @@ export function PublicCaseUpdates() {
               <i><Icon name="alert" /></i>
               <h3>{alert.title}</h3>
               <p>{alert.body}</p>
-              <p className="muted"><small>Published: {formatDate(alert.publishedAt ?? alert.createdAt)}</small></p>
+              <p className="muted"><small>{t("common.published")}: {formatDate(alert.publishedAt ?? alert.createdAt)}</small></p>
             </article>
           ))}
         </div>
       </section>
 
-      <section className="public-live-updates" aria-label="Verified service centres">
+      <section className="public-live-updates" aria-label={t("common.serviceCentresTitle")}>
         <div className="section-head">
           <div>
-            <div className="eyebrow dark"><span /> Service centres</div>
-            <h2>Approved service centres and support points</h2>
+            <div className="eyebrow dark"><span /> {t("common.serviceCentresEyebrow")}</div>
+            <h2>{t("common.serviceCentresTitle")}</h2>
           </div>
         </div>
         {!loading && !error && centres.length === 0 ? (
-          <p className="muted">No active service centres are published right now.</p>
+          <p className="muted">{t("common.noCentres")}</p>
         ) : null}
         <div className="value-grid">
           {centres.slice(0, 6).map((centre) => (
@@ -104,8 +105,8 @@ export function PublicCaseUpdates() {
               <i><Icon name="pin" /></i>
               <h3>{centre.name}</h3>
               <p>{centre.address}</p>
-              <p className="muted"><small>Services: {centre.services || "—"}</small></p>
-              <p className="muted"><small>Hours: {centre.openingHours || "—"}</small></p>
+              <p className="muted"><small>{t("common.servicesLabel")}: {centre.services || "—"}</small></p>
+              <p className="muted"><small>{t("common.hoursLabel")}: {centre.openingHours || "—"}</small></p>
             </article>
           ))}
         </div>
