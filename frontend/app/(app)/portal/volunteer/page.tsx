@@ -201,7 +201,7 @@ export default function VolunteerPortalPage() {
     verification === "Verified" ? "green" : verification === "Pending" ? "amber" : "coral";
 
   return (
-    <AuthGuard allowedRoles={[RoleNames.Volunteer]}>
+    <AuthGuard allowedRoles={[RoleNames.Volunteer]} activationPurpose="volunteer">
       <PortalHeader
         eyebrow={t("portal.volunteer.eyebrow")}
         title={t("portal.volunteer.title")}

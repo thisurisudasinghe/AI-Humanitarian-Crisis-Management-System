@@ -66,6 +66,7 @@ export const en = {
     "register": "Create account",
     "backToHome": "← Back to home",
     "backToDashboard": "Back to dashboard",
+    "backToPortals": "Back to Portals",
     "skipToMain": "Skip to main content",
     "openNavigation": "Open navigation",
     "closeNavigation": "Close navigation",
@@ -754,12 +755,51 @@ export const en = {
     "SystemAdmin": "System administrator",
     "Donor": "Donor"
   },
+  "portalLanding": {
+    "welcome": "Welcome to SAFEWAY",
+    "subtitle": "How would you like to use SAFEWAY today?",
+    "help": "Need urgent help right now? Report a crisis or find verified assistance.",
+    "helpLink": "Find assistance",
+    "brandAria": "SAFEWAY portal selection",
+    "status": {
+      "active": "Role active",
+      "needed": "Activation needed"
+    },
+    "roles": {
+      "citizen": {
+        "label": "CITIZEN",
+        "title": "I Need Help",
+        "copy": "Report a crisis, find assistance, and track requests.",
+        "open": "Open Citizen Portal",
+        "activate": "Activate Citizen Access"
+      },
+      "volunteer": {
+        "label": "VOLUNTEER",
+        "title": "I Want to Volunteer",
+        "copy": "Offer skills, manage availability, and participate in relief activities.",
+        "open": "Open Volunteer Portal",
+        "activate": "Join as Volunteer"
+      },
+      "donor": {
+        "label": "DONOR",
+        "title": "I Want to Donate",
+        "copy": "Support humanitarian efforts and track contributions.",
+        "open": "Open Donor Portal",
+        "activate": "Become a Donor"
+      }
+    }
+  },
   "authGuard": {
     "checking": "Checking your session...",
     "forbiddenBadge": "403 — Forbidden",
     "title": "This workspace is not available for your role.",
     "copy": "Your account is signed in, but it does not hold one of the roles this page requires. Ask a system administrator if you believe you should have access.",
-    "back": "Back to dashboard"
+    "back": "Back to dashboard",
+    "activationBadge": "ONE MORE STEP",
+    "activationTitle": "Join this SAFEWAY role",
+    "activationCopy": "{role} access is not active on your account yet. The server will verify your request before opening the portal.",
+    "activationFailed": "We couldn't add this role. Please try again or go back to the portals.",
+    "activating": "Adding role…"
   },
   "map": {
     "mapAria": "Location map. Use arrow keys to pan, or the coordinate fields below.",
@@ -794,7 +834,8 @@ export const en = {
     "shelterFull": "The selected shelter is at capacity.",
     "shelterCapacityBelowOccupancy": "Shelter capacity cannot be below current occupancy.",
     "domain": "The request could not be completed. Please review the details and try again.",
-    "generic": "The request could not be completed. Please try again."
+    "generic": "The request could not be completed. Please try again.",
+    "server": "The service is temporarily unavailable. Please try again in a moment."
   },
   "ui": {
     "active": "Active",

@@ -164,7 +164,7 @@ export default function CitizenPortalPage() {
   }
 
   return (
-    <AuthGuard allowedRoles={[RoleNames.Citizen]}>
+    <AuthGuard allowedRoles={[RoleNames.Citizen]} activationPurpose="citizen">
       <PortalHeader
         eyebrow={t("portal.citizen.eyebrow")}
         title={t("portal.citizen.title")}
