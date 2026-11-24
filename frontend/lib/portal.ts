@@ -61,6 +61,17 @@ export interface OperationsPaged<T> {
   pageSize: number;
 }
 
+export interface DonationItemInput {
+  name: string;
+  category?: string;
+  quantity: number;
+  unit?: string;
+  condition?: string;
+  notes?: string;
+  expiryDate?: string;
+  packaging?: string;
+}
+
 export interface RecordDonationInput {
   donationType: "Monetary" | "Material";
   currency: string;
@@ -68,6 +79,15 @@ export interface RecordDonationInput {
   itemDescription?: string;
   quantity?: number;
   estimatedValue?: number | null;
+  campaignId?: string;
+  category?: string;
+  unit?: string;
+  locationText?: string;
+  latitude?: number;
+  longitude?: number;
+  deliveryMethod?: string;
+  idempotencyKey?: string;
+  items?: DonationItemInput[];
   notes?: string;
 }
 
@@ -131,16 +151,29 @@ export function getDonorProfile(): Promise<DonorDto> {
   return api<DonorDto>("/api/v1/portal/donor/profile");
 }
 
-export function getDonorCampaigns(page = 1, pageSize = 12): Promise<PagedResult<CampaignDto>> {
-  return api<PagedResult<CampaignDto>>(
-    `/api/v1/portal/donor/campaigns?page=${page}&pageSize=${pageSize}`
-  );
+export function getDonorCampaigns(
+  page = 1,
+  pageSize = 12,
+  search = ""
+): Promise<PagedResult<CampaignDto>> {
+  const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
+  if (search.trim()) params.set("search", search.trim());
+  return api<PagedResult<CampaignDto>>(`/api/v1/portal/donor/campaigns?${params.toString()}`);
 }
 
-export function getDonorDonations(page = 1, pageSize = 20): Promise<PagedResult<DonationDto>> {
-  return api<PagedResult<DonationDto>>(
-    `/api/v1/portal/donor/donations?page=${page}&pageSize=${pageSize}`
-  );
+export function getDonorDonations(
+  page = 1,
+  pageSize = 20,
+  filters: { type?: string; status?: string } = {}
+): Promise<PagedResult<DonationDto>> {
+  const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
+  if (filters.type) params.set("donationType", filters.type);
+  if (filters.status) params.set("status", filters.status);
+  return api<PagedResult<DonationDto>>(`/api/v1/portal/donor/donations?${params.toString()}`);
+}
+
+export function getDonorDonation(id: string): Promise<DonationDto> {
+  return api<DonationDto>(`/api/v1/portal/donor/donations/${encodeURIComponent(id)}`);
 }
 
 /** Records an already-confirmed donation. No payment is processed here. */

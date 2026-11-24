@@ -50,6 +50,8 @@ public class CmsDbContext : DbContext
 
     public DbSet<DonationAllocation> DonationAllocations => Set<DonationAllocation>();
 
+    public DbSet<DonationItem> DonationItems => Set<DonationItem>();
+
     public DbSet<CampaignExpense> CampaignExpenses => Set<CampaignExpense>();
 
     // AI decision support and governance (ai schema), owned by Dev 3 (M3/M4).

@@ -80,6 +80,32 @@ public sealed class DonationService : IDonationService
             ItemDescription = donation.ItemDescription,
             Quantity = donation.Quantity,
             EstimatedValue = donation.EstimatedValue,
+            CampaignId = donation.CampaignId,
+            CampaignName = donation.Campaign != null ? donation.Campaign.Name : null,
+            Category = donation.Category,
+            Unit = donation.Unit,
+            LocationText = donation.LocationText,
+            Latitude = donation.Latitude,
+            Longitude = donation.Longitude,
+            DeliveryMethod = donation.DeliveryMethod,
+            IdempotencyKey = donation.IdempotencyKey,
+            Items = donation.Items
+                .OrderBy(item => item.CreatedAt)
+                .Select(item => new DonationItemDto
+                {
+                    Id = item.Id,
+                    DonationId = item.DonationId,
+                    Name = item.Name,
+                    Category = item.Category,
+                    Quantity = item.Quantity,
+                    Unit = item.Unit,
+                    Condition = item.Condition,
+                    Notes = item.Notes,
+                    ExpiryDate = item.ExpiryDate,
+                    Packaging = item.Packaging,
+                    CreatedAt = item.CreatedAt
+                })
+                .ToList(),
             ReceivedAt = donation.ReceivedAt,
             Status = donation.Status,
             IsSuspicious = donation.IsSuspicious,
@@ -618,6 +644,29 @@ public sealed class DonationService : IDonationService
         return await GetDonationsAsync(query, cancellationToken);
     }
 
+    public async Task<DonationDto?> GetDonationForUserAsync(
+        Guid userId,
+        Guid donationId,
+        CancellationToken cancellationToken = default)
+    {
+        var donor = await _db.Donors
+            .AsNoTracking()
+            .SingleOrDefaultAsync(candidate => candidate.UserId == userId, cancellationToken);
+
+        if (donor is null)
+        {
+            return null;
+        }
+
+        var owned = await _db.Donations
+            .AsNoTracking()
+            .AnyAsync(
+                candidate => candidate.Id == donationId && candidate.DonorId == donor.Id,
+                cancellationToken);
+
+        return owned ? await GetDonationAsync(donationId, cancellationToken) : null;
+    }
+
     public async Task<DonationDto> CreateDonationForUserAsync(
         Guid userId,
         CreateDonationRequestDto request,
@@ -753,10 +802,114 @@ public sealed class DonationService : IDonationService
         var errors = new Dictionary<string, string[]>();
         var currency = NormalizeCurrency(request.Currency);
         var itemDescription = NormalizeOptional(request.ItemDescription);
+        var category = NormalizeOptional(request.Category);
+        var unit = NormalizeOptional(request.Unit);
+        var locationText = NormalizeOptional(request.LocationText);
+        var deliveryMethod = NormalizeOptional(request.DeliveryMethod);
+        var idempotencyKey = NormalizeOptional(request.IdempotencyKey);
+        var latitude = request.Latitude;
+        var longitude = request.Longitude;
+
+        // A replayed submit returns the persisted donation for this same donor.
+        // This is deliberate first-request-wins idempotency: the donor client
+        // regenerates the key whenever any draft field changes, so a reused key
+        // means the exact same submission. The unique SQL index is the final
+        // guard against concurrent duplicates.
+        if (idempotencyKey is not null)
+        {
+            var replay = await _db.Donations
+                .AsNoTracking()
+                .SingleOrDefaultAsync(
+                    candidate => candidate.IdempotencyKey == idempotencyKey,
+                    cancellationToken);
+
+            if (replay is not null)
+            {
+                if (replay.DonorId != donor.Id)
+                {
+                    throw new DomainException(
+                        "This submission key belongs to another donor.",
+                        "IDEMPOTENCY_KEY_REUSED");
+                }
+
+                return await GetDonationAsync(replay.Id, cancellationToken);
+            }
+        }
 
         if (currency.Length != 3 || !currency.All(char.IsLetter))
         {
             errors["currency"] = ["Currency must be a three-letter code."];
+        }
+
+        if ((latitude.HasValue != longitude.HasValue)
+            || (latitude.HasValue && (latitude.Value is < -90 or > 90))
+            || (longitude.HasValue && (longitude.Value is < -180 or > 180)))
+        {
+            errors["location"] = ["The selected map coordinates are not valid."];
+        }
+
+        Guid? campaignId = null;
+        if (request.CampaignId.HasValue)
+        {
+            var campaign = await _db.Campaigns
+                .AsNoTracking()
+                .SingleOrDefaultAsync(
+                    candidate => candidate.Id == request.CampaignId.Value,
+                    cancellationToken);
+
+            if (campaign is null)
+            {
+                errors["campaignId"] = ["The selected campaign is no longer available."];
+            }
+            else if (campaign.Status != CampaignStatus.Active)
+            {
+                errors["campaignId"] = ["Donations can only support an active campaign."];
+            }
+            else if (!string.Equals(campaign.Currency, currency, StringComparison.OrdinalIgnoreCase))
+            {
+                errors["campaignId"] = ["The selected campaign uses a different currency."];
+            }
+            else
+            {
+                campaignId = campaign.Id;
+            }
+        }
+
+        var structuredItems = new List<DonationItem>();
+        if (request.Items is { Count: > 0 })
+        {
+            foreach (var candidate in request.Items)
+            {
+                var name = NormalizeOptional(candidate.Name);
+                var itemCategory = NormalizeOptional(candidate.Category);
+                var itemUnit = NormalizeOptional(candidate.Unit);
+                var condition = NormalizeOptional(candidate.Condition);
+                var notes = NormalizeOptional(candidate.Notes);
+                var packaging = NormalizeOptional(candidate.Packaging);
+
+                if (name is null || candidate.Quantity <= 0)
+                {
+                    errors["items"] = ["Every item needs a name and a quantity greater than zero."];
+                }
+
+                if (candidate.ExpiryDate.HasValue
+                    && candidate.ExpiryDate.Value.Date < _dateTimeService.UtcNow.Date)
+                {
+                    errors["items"] = ["Expired items cannot be recorded as donations."];
+                }
+
+                structuredItems.Add(new DonationItem
+                {
+                    Name = name ?? string.Empty,
+                    Category = itemCategory,
+                    Quantity = Math.Max(0, candidate.Quantity),
+                    Unit = itemUnit,
+                    Condition = condition,
+                    Notes = notes,
+                    ExpiryDate = candidate.ExpiryDate,
+                    Packaging = packaging
+                });
+            }
         }
 
         if (request.DonationType == DonationType.Monetary)
@@ -783,6 +936,11 @@ public sealed class DonationService : IDonationService
                 errors["estimatedValue"] =
                     ["A monetary donation cannot carry an estimated value."];
             }
+
+            if (structuredItems.Count > 0)
+            {
+                errors["items"] = ["A monetary donation cannot carry supply items."];
+            }
         }
         else
         {
@@ -791,10 +949,39 @@ public sealed class DonationService : IDonationService
                 errors["amount"] = ["A material donation cannot carry a cash amount."];
             }
 
-            if (itemDescription is null)
+            if (structuredItems.Count == 0 && itemDescription is null)
             {
                 errors["itemDescription"] =
                     ["A material donation requires an item description."];
+            }
+
+            if (structuredItems.Count > 0)
+            {
+                var totalQuantity = structuredItems.Sum(item => (long)item.Quantity);
+                if (totalQuantity > int.MaxValue)
+                {
+                    errors["items"] = ["The combined item quantity is too large."];
+                }
+                else
+                {
+                    request.Quantity = (int)totalQuantity;
+                    itemDescription = string.Join("; ", structuredItems.Select(item => item.Name));
+                    if (itemDescription.Length > 500)
+                    {
+                        itemDescription = itemDescription[..500];
+                    }
+
+                    if (structuredItems.Count == 1)
+                    {
+                        category = structuredItems[0].Category;
+                        unit = structuredItems[0].Unit;
+                    }
+                    else
+                    {
+                        category = null;
+                        unit = null;
+                    }
+                }
             }
         }
 
@@ -830,6 +1017,15 @@ public sealed class DonationService : IDonationService
             EstimatedValue = request.EstimatedValue.HasValue
                 ? Round(request.EstimatedValue.Value)
                 : null,
+            CampaignId = campaignId,
+            Category = request.DonationType == DonationType.Material ? category : null,
+            Unit = request.DonationType == DonationType.Material ? unit : null,
+            LocationText = locationText,
+            Latitude = latitude,
+            Longitude = longitude,
+            DeliveryMethod = deliveryMethod,
+            IdempotencyKey = idempotencyKey,
+            Items = structuredItems,
             ReceivedAt = receivedAt,
             Status = DonationStatus.Received,
             IsSuspicious = isSuspicious,
@@ -841,7 +1037,29 @@ public sealed class DonationService : IDonationService
         };
 
         _db.Donations.Add(donation);
-        await _db.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await _db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException) when (idempotencyKey is not null)
+        {
+            // A concurrent submit with the same key can win the unique index after
+            // the replay check above. Return that donor's persisted record instead
+            // of surfacing a duplicate-key failure; all other write errors stand.
+            var replayKey = idempotencyKey;
+            var replay = await _db.Donations
+                .AsNoTracking()
+                .SingleOrDefaultAsync(
+                    candidate => candidate.IdempotencyKey == replayKey,
+                    cancellationToken);
+
+            if (replay is not null && replay.DonorId == donor.Id)
+            {
+                return await GetDonationAsync(replay.Id, cancellationToken);
+            }
+
+            throw;
+        }
 
         await _auditLogger.LogAsync(
             AuditActions.DonationRecorded,
@@ -855,6 +1073,8 @@ public sealed class DonationService : IDonationService
                 donation.Amount,
                 donation.EstimatedValue,
                 donation.Currency,
+                donation.CampaignId,
+                itemCount = donation.Items.Count,
                 isSuspicious
             },
             cancellationToken);
