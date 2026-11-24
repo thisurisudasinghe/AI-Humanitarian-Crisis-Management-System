@@ -12,11 +12,10 @@ import { PublicBrand } from "./PublicBrand";
 
 const publicLinks = [
   { key: "nav.home", href: "/", icon: "home" },
-  { key: "nav.findAssistance", href: "/find-assistance", icon: "pin" },
-  { key: "nav.liveMap", href: "/live-map", icon: "layers" },
-  { key: "nav.publicAlerts", href: "/public-alerts", icon: "bell" },
-  { key: "nav.emergencyServices", href: "/emergency-services", icon: "phone" },
-  { key: "nav.getSupport", href: "/support", icon: "help-circle" }
+  { key: "nav.about", href: "/about", icon: "info" },
+  { key: "nav.services", href: "/services", icon: "layers" },
+  { key: "nav.howItWorks", href: "/how-it-works", icon: "route" },
+  { key: "nav.liveMap", href: "/live-map", icon: "layers" }
 ] as const;
 
 export function PublicNav() {
@@ -89,9 +88,9 @@ export function PublicNav() {
             <Icon name="user" size={17} />
             <span>{workspaceLabel}</span>
           </Link>
-          <Link className="btn btn-primary public-action public-action--report" href="/report">
-            <Icon name="alert" size={17} />
-            <span>{t("nav.reportCrisis")}</span>
+          <Link className="public-action public-action--emergency" href="/emergency-services">
+            <Icon name="alert" size={16} />
+            <span>{t("nav.emergencyServices")}</span>
           </Link>
         </div>
       </div>

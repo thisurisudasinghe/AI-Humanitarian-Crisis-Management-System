@@ -36,11 +36,6 @@ export default function HomePage() {
               {t("nav.reportCrisis")}
               <Icon name="arrow" size={18} />
             </Link>
-            <Link className="btn btn-ghost public-hero__map" href="/live-map">
-              <Icon name="layers" size={18} />
-              {t("nav.liveMap")}
-              <Icon name="arrow" size={18} />
-            </Link>
           </div>
           <p className="public-hero__emergency">
             <Icon name="info" size={15} />
