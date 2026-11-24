@@ -22,6 +22,8 @@ export interface MapPickerProps {
   onChange: (point: MapPoint) => void;
   height?: number;
   disabled?: boolean;
+  /** Public donation flows hide raw coordinate entry and use a readable label instead. */
+  allowCoordinateEntry?: boolean;
 }
 
 const DEFAULT_CENTRE: [number, number] = [7.8731, 80.7718];
@@ -82,6 +84,7 @@ export default function MapPickerInner({
   onChange,
   height = 420,
   disabled = false,
+  allowCoordinateEntry = true,
 }: MapPickerProps) {
   const [point, setPoint] = useState<MapPoint>(value ?? { lat: DEFAULT_CENTRE[0], lng: DEFAULT_CENTRE[1] });
   const [address, setAddress] = useState(value?.address ?? "");
@@ -118,8 +121,12 @@ export default function MapPickerInner({
     } catch (error) {
       // Geocoder offline / 404: soft fallback, never throw to the page.
       setApproximate(true);
-      setManual(true);
-      setNotice(`${localizedErrorMessage(error, t)} ${t("map.manualHint")}`);
+      setManual(allowCoordinateEntry);
+      setNotice(
+        allowCoordinateEntry
+          ? `${localizedErrorMessage(error, t)} ${t("map.manualHint")}`
+          : localizedErrorMessage(error, t)
+      );
     } finally {
       setBusy(false);
     }
@@ -156,9 +163,11 @@ export default function MapPickerInner({
           <button type="button" onClick={() => void search()} disabled={disabled || busy || !address.trim()}>
             {busy ? t("map.searching") : t("map.findOnMap")}
           </button>
-          <button type="button" disabled={disabled} onClick={() => setManual((current) => !current)}>
-            {manual ? t("map.hideCoordinates") : t("map.enterCoordinates")}
-          </button>
+          {allowCoordinateEntry ? (
+            <button type="button" disabled={disabled} onClick={() => setManual((current) => !current)}>
+              {manual ? t("map.hideCoordinates") : t("map.enterCoordinates")}
+            </button>
+          ) : null}
         </div>
         <p className="muted small">
           {t("map.pinHint")}
@@ -183,34 +192,36 @@ export default function MapPickerInner({
         </MapContainer>
       </div>
 
-      {(manual || approximate) && (
+      {(manual || approximate || notice) && (
         <div className="map-picker-manual panel" aria-live="polite">
           {approximate && <p className="badge badge-warn">{t("map.approximate")}</p>}
           {notice && <p className="error small">{notice}</p>}
-          <div className="inline">
-            <label htmlFor="map-picker-lat">{t("map.latitude")}</label>
-            <input
-              id="map-picker-lat"
-              type="number"
-              step="any"
-              min={-90}
-              max={90}
-              disabled={disabled}
-              value={point.lat}
-              onChange={(event) => updateManual("lat", event.target.value)}
-            />
-            <label htmlFor="map-picker-lng">{t("map.longitude")}</label>
-            <input
-              id="map-picker-lng"
-              type="number"
-              step="any"
-              min={-180}
-              max={180}
-              disabled={disabled}
-              value={point.lng}
-              onChange={(event) => updateManual("lng", event.target.value)}
-            />
-          </div>
+          {allowCoordinateEntry && (manual || approximate) ? (
+            <div className="inline">
+              <label htmlFor="map-picker-lat">{t("map.latitude")}</label>
+              <input
+                id="map-picker-lat"
+                type="number"
+                step="any"
+                min={-90}
+                max={90}
+                disabled={disabled}
+                value={point.lat}
+                onChange={(event) => updateManual("lat", event.target.value)}
+              />
+              <label htmlFor="map-picker-lng">{t("map.longitude")}</label>
+              <input
+                id="map-picker-lng"
+                type="number"
+                step="any"
+                min={-180}
+                max={180}
+                disabled={disabled}
+                value={point.lng}
+                onChange={(event) => updateManual("lng", event.target.value)}
+              />
+            </div>
+          ) : null}
         </div>
       )}
     </div>
