@@ -162,6 +162,78 @@ public sealed class PublicMapWorkflowTests
     }
 
     [Fact]
+    public async Task Anonymous_map_handles_null_and_blank_severity_without_crashing()
+    {
+        using var factory = new CmsWebApplicationFactory();
+        await factory.EnsureSeededAsync();
+        var now = DateTime.UtcNow;
+        var nullSeverityId = Guid.NewGuid();
+        var blankSeverityId = Guid.NewGuid();
+
+        using (var scope = factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<CmsDbContext>();
+            db.Set<Alert>().AddRange(
+                NewAlert(nullSeverityId, "PRIVATE_NULL_TITLE", "PRIVATE_NULL_BODY",
+                    AlertStatus.Draft, false, null, now.AddMinutes(-3)),
+                NewAlert(blankSeverityId, "PRIVATE_BLANK_TITLE", "PRIVATE_BLANK_BODY",
+                    AlertStatus.Draft, false, null, now.AddMinutes(-2)));
+            await db.SaveChangesAsync();
+        }
+
+        using var coordinator = (await CreateCoordinatorAsync(factory)).Client;
+        var publish = await coordinator.PostAsJsonAsync(
+            $"/api/v1/alerts/{blankSeverityId}/map-publication",
+            new PublishMapAlertDto
+            {
+                Visible = true,
+                PublicTitle = "Blank severity advisory",
+                PublicSummary = "Severity was intentionally not supplied.",
+                CrisisType = "Flood",
+                Severity = "   ",
+                District = "Colombo",
+                Latitude = 6.93,
+                Longitude = 79.86,
+                ExpiresAt = now.AddDays(1)
+            },
+            JsonOptions);
+        Assert.Equal(HttpStatusCode.NoContent, publish.StatusCode);
+
+        using (var scope = factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<CmsDbContext>();
+            var nullSeverityAlert = await db.Set<Alert>().SingleAsync(a => a.Id == nullSeverityId);
+            nullSeverityAlert.PublicVisible = true;
+            nullSeverityAlert.PublicTitle = "Null severity advisory";
+            nullSeverityAlert.PublicSummary = "Severity is absent in the database.";
+            nullSeverityAlert.PublicType = "Flood";
+            nullSeverityAlert.Severity = null;
+            nullSeverityAlert.District = "Colombo";
+            nullSeverityAlert.Latitude = 6.93;
+            nullSeverityAlert.Longitude = 79.86;
+            nullSeverityAlert.PublishedAt = now.AddMinutes(-1);
+            nullSeverityAlert.UpdatedAt = now;
+
+            var blankSeverityAlert = await db.Set<Alert>().SingleAsync(a => a.Id == blankSeverityId);
+            Assert.Null(blankSeverityAlert.Severity);
+            await db.SaveChangesAsync();
+        }
+
+        using var anonymous = factory.CreateClient();
+        var map = await anonymous.GetFromJsonAsync<PublicMapDto>("/api/v1/public/map", JsonOptions);
+        Assert.NotNull(map);
+        Assert.Equal(2, map!.Incidents.Count);
+        Assert.All(map.Incidents, incident => Assert.Null(incident.Severity));
+
+        var json = await anonymous.GetStringAsync("/api/v1/public/map");
+        foreach (var marker in new[]
+                 { "PRIVATE_NULL_TITLE", "PRIVATE_NULL_BODY", "PRIVATE_BLANK_TITLE", "PRIVATE_BLANK_BODY" })
+        {
+            Assert.DoesNotContain(marker, json, StringComparison.OrdinalIgnoreCase);
+        }
+    }
+
+    [Fact]
     public async Task Anonymous_public_alerts_return_only_public_fields()
     {
         using var factory = new CmsWebApplicationFactory();

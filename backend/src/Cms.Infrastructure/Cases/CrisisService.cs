@@ -350,7 +350,9 @@ public sealed class CrisisService : ICrisisService
         alert.PublicTitle = request.PublicTitle!.Trim();
         alert.PublicSummary = request.PublicSummary!.Trim();
         alert.PublicType = request.CrisisType!.Trim();
-        alert.Severity = request.Severity?.Trim();
+        alert.Severity = string.IsNullOrWhiteSpace(request.Severity)
+            ? null
+            : request.Severity.Trim();
         alert.District = request.District?.Trim();
         alert.Latitude = request.Latitude!.Value;
         alert.Longitude = request.Longitude!.Value;
