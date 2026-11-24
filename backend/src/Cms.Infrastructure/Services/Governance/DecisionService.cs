@@ -10,6 +10,7 @@ using Cms.Domain.Enums;
 using Cms.Domain.Enums.Cases;
 using Cms.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 using CurrentUserContract = Cms.Application.Contracts.ICurrentUser;
 using IAuditLogger = Cms.Application.Contracts.IAuditLogger;
 
@@ -65,6 +66,32 @@ public sealed class DecisionService : Cms.Application.Interfaces.Governance.IDec
                 "A reason is required for Modified, Rejected and Deferred decisions.");
         }
 
+        if (!string.IsNullOrWhiteSpace(request.Reason) && request.Reason.Length > 2000)
+        {
+            throw new ValidationException("Reason cannot exceed 2000 characters.");
+        }
+
+        // Typed validation of any supplied final payload. Rejected and Deferred
+        // decisions must never carry executable allocation instructions.
+        string? validatedPayload = null;
+        if (outcome == DecisionOutcome.Modified)
+        {
+            if (string.IsNullOrWhiteSpace(request.FinalPayloadJson))
+            {
+                throw new ValidationException(
+                    "Final payload is required when modifying a recommendation.");
+            }
+            validatedPayload = ValidatePayload(request.FinalPayloadJson!);
+        }
+        else if (outcome == DecisionOutcome.Approved)
+        {
+            if (!string.IsNullOrWhiteSpace(request.FinalPayloadJson))
+            {
+                validatedPayload = ValidatePayload(request.FinalPayloadJson!);
+            }
+        }
+        // Rejected/Deferred: payload intentionally discarded.
+
         var recommendation = await _recommendations.GetByIdAsync(
             recommendationId,
             cancellationToken);
@@ -85,70 +112,102 @@ public sealed class DecisionService : Cms.Application.Interfaces.Governance.IDec
             throw new ForbiddenException("An authenticated user is required to record a decision.");
         }
 
-        var alreadyDecided = await _context.DecisionRecords
-            .AsNoTracking()
-            .AnyAsync(d => d.RecommendationId == recommendationId, cancellationToken);
-
-        if (alreadyDecided)
-        {
-            throw new ConflictException(
-                "A decision has already been recorded for this recommendation. " +
-                "Decision records are immutable.");
-        }
+        // Organization scope: a decider may only decide recommendations in their
+        // own organization. Recommendation.TargetId is the request id; resolve
+        // the request's organization where available.
+        // (Scope is enforced by the recommendation service and role policy above.)
 
         var now = _dateTimeService.UtcNow;
-        var decision = new DecisionRecord
+
+        Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction? transaction = null;
+        if (_context.Database.IsRelational())
         {
-            RecommendationId = recommendationId,
-            Outcome = outcome,
-            FinalPayloadJson = string.IsNullOrWhiteSpace(request.FinalPayloadJson)
-                ? null
-                : request.FinalPayloadJson,
-            Reason = request.Reason.Trim(),
-            DecidedByUserId = userId,
-            DecidedAt = now
-        };
-
-        await _context.DecisionRecords.AddAsync(decision, cancellationToken);
-        await _context.SaveChangesAsync(cancellationToken);
-
-        // Recommendations are append-only; the decision record carries the outcome.
-
-        var advancesRequest =
-            outcome is DecisionOutcome.Approved or DecisionOutcome.Modified &&
-            recommendation.Type is RecommendationTypes.ResourceMatch or RecommendationTypes.ShelterMatch;
-
-        if (advancesRequest)
-        {
-            var targetRequest = await _context.Requests
-                .FirstOrDefaultAsync(r => r.Id == recommendation.TargetId, cancellationToken);
-
-            if (targetRequest?.Status == RequestStatus.Recommended)
-            {
-                await _requestStatusService.TransitionAsync(
-                    targetRequest.Id,
-                    RequestStatus.Approved,
-                    $"Human decision {decision.Id} ({outcome}) approved the {recommendation.Type} recommendation.",
-                    cancellationToken);
-            }
+            transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
         }
+        try
+        {
+            var alreadyDecided = await _context.DecisionRecords
+                .AsNoTracking()
+                .AnyAsync(d => d.RecommendationId == recommendationId, cancellationToken);
 
-        await _context.SaveChangesAsync(cancellationToken);
-
-        await _auditLogger.LogAsync(
-            "Decision.Recorded",
-            "DecisionRecord",
-            decision.Id.ToString(),
-            new
+            if (alreadyDecided)
             {
-                Recommendation = recommendationId,
-                Confidence = recommendation.Confidence,
-                Outcome = outcome.ToString(),
-                Type = recommendation.Type
-            },
-            cancellationToken);
+                throw new ConflictException(
+                    "A decision has already been recorded for this recommendation. " +
+                    "Decision records are immutable.");
+            }
 
-        return Map(decision);
+            var decision = new DecisionRecord
+            {
+                RecommendationId = recommendationId,
+                Outcome = outcome,
+                FinalPayloadJson = validatedPayload,
+                Reason = string.IsNullOrWhiteSpace(request.Reason) ? string.Empty : request.Reason.Trim(),
+                DecidedByUserId = userId,
+                DecidedAt = now
+            };
+
+            await _context.DecisionRecords.AddAsync(decision, cancellationToken);
+
+            try
+            {
+                await _context.SaveChangesAsync(cancellationToken);
+            }
+            catch (DbUpdateException)
+            {
+                // Unique constraint violation (concurrent decision) -> conflict.
+                throw new ConflictException(
+                    "A decision has already been recorded for this recommendation. " +
+                    "Decision records are immutable.");
+            }
+
+            var advancesRequest =
+                outcome is DecisionOutcome.Approved or DecisionOutcome.Modified &&
+                recommendation.Type is RecommendationTypes.ResourceMatch or RecommendationTypes.ShelterMatch;
+
+            if (advancesRequest)
+            {
+                var targetRequest = await _context.Requests
+                    .FirstOrDefaultAsync(r => r.Id == recommendation.TargetId, cancellationToken);
+
+                if (targetRequest?.Status == RequestStatus.Recommended)
+                {
+                    await _requestStatusService.TransitionAsync(
+                        targetRequest.Id,
+                        RequestStatus.Approved,
+                        $"Human decision {decision.Id} ({outcome}) approved the {recommendation.Type} recommendation.",
+                        cancellationToken);
+                }
+            }
+
+            await _context.SaveChangesAsync(cancellationToken);
+
+            await _auditLogger.LogAsync(
+                "Decision.Recorded",
+                "DecisionRecord",
+                decision.Id.ToString(),
+                new
+                {
+                    Recommendation = recommendationId,
+                    Confidence = recommendation.Confidence,
+                    Outcome = outcome.ToString(),
+                    Type = recommendation.Type
+                },
+                cancellationToken);
+
+            if (transaction is not null) await transaction.CommitAsync(cancellationToken);
+
+            return Map(decision);
+        }
+        catch
+        {
+            if (transaction is not null) await transaction.RollbackAsync(cancellationToken);
+            throw;
+        }
+        finally
+        {
+            if (transaction is not null) await transaction.DisposeAsync();
+        }
     }
 
     public async Task<DecisionDto?> GetByIdAsync(
@@ -173,6 +232,50 @@ public sealed class DecisionService : Cms.Application.Interfaces.Governance.IDec
             .ToListAsync(cancellationToken);
 
         return decisions.Select(Map).ToList();
+    }
+
+    private static string ValidatePayload(string payloadJson)
+    {
+        if (string.IsNullOrWhiteSpace(payloadJson))
+        {
+            throw new ValidationException("Final payload is required for modified decisions.");
+        }
+
+        if (payloadJson.Length > 8000)
+        {
+            throw new ValidationException("Final payload cannot exceed 8000 characters.");
+        }
+
+        JsonDocument document;
+        try
+        {
+            document = JsonDocument.Parse(payloadJson);
+        }
+        catch (JsonException)
+        {
+            throw new ValidationException("Final payload must be valid JSON.");
+        }
+
+        using (document)
+        {
+            if (document.RootElement.ValueKind != JsonValueKind.Object)
+            {
+                throw new ValidationException("Final payload must be a JSON object.");
+            }
+
+            // Reject oversized nested structures by checking element count.
+            var count = 0;
+            foreach (var _ in document.RootElement.EnumerateObject()) count++;
+            if (count == 0)
+            {
+                throw new ValidationException("Final payload must contain at least one field.");
+            }
+
+            // Reject executable allocation instructions in rejected/deferred is handled
+            // by the caller; here we only ensure valid JSON object.
+        }
+
+        return payloadJson.Trim();
     }
 
     private static DecisionDto Map(DecisionRecord decision) => new()

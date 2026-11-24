@@ -173,6 +173,12 @@ public sealed class OperationsService(
         var existing = await db.Allocations.AsNoTracking().FirstOrDefaultAsync(x => x.IdempotencyKey == key, ct);
         if (existing is not null) return MapAllocation(existing);
 
+        // Prevent repeated execution of the same approved decision using a
+        // different idempotency key: if any allocation already exists for
+        // this decision, return it instead of allocating again.
+        var existingByDecision = await db.Allocations.AsNoTracking().FirstOrDefaultAsync(x => x.DecisionId == decisionId, ct);
+        if (existingByDecision is not null) return MapAllocation(existingByDecision);
+
         var preflight = await DecisionRecordForAsync(decisionId, ct);
         var preflightPayload = ParsePayload(preflight.FinalPayloadJson);
         if (!TryGuid(preflightPayload, "requestId", out var requestId)) throw InvalidDecisionPayload();
