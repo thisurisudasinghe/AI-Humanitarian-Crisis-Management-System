@@ -199,6 +199,24 @@
     color: var(--deep);
 }
 
+.public-shell .public-action--emergency {
+    background: transparent;
+    color: #B95359;
+    border: 1px solid #B95359;
+}
+
+.public-shell .public-action--emergency:hover,
+.public-shell .public-action--emergency:focus-visible {
+    background: transparent;
+    border-color: #B95359;
+    color: #B95359;
+    filter: brightness(0.92);
+}
+
+.public-shell .public-action--emergency svg {
+    color: #B95359;
+}
+
 .public-shell .public-action--report {
     background: var(--deep);
     color: var(--white);
