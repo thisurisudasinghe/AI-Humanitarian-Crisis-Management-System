@@ -15,11 +15,15 @@ export interface CrisisReportInput {
   urgency: string;
   lat: number;
   lng: number;
+  householdSize: number;
+  accessibilityNeeds?: string;
 }
 
 export interface CrisisReportReceipt {
   reference: string;
   submittedAt: string;
+  status: RequestStatus;
+  statusConfirmed: boolean;
   evidenceAttached?: boolean;
   evidenceFileName?: string;
   evidenceError?: string;
@@ -94,6 +98,40 @@ export interface CaseRequestListItem {
   isOverdue: boolean;
 }
 
+export interface RequestTimelineEntry {
+  id: string;
+  fromStatus: RequestStatus;
+  toStatus: RequestStatus;
+  actorDisplayName?: string | null;
+  reason?: string | null;
+  createdAt: string;
+}
+
+export interface RequestAttachmentMetadata {
+  id: string;
+  originalFileName: string;
+  contentType: string;
+  sizeBytes: number;
+  createdAt: string;
+}
+
+export interface CaseRequestDetail extends CaseRequestListItem {
+  requesterUserId: string;
+  crisisId?: string | null;
+  lat: number;
+  lng: number;
+  address?: string | null;
+  householdSize: number;
+  accessibilityNeeds?: string | null;
+  assignedToUserId?: string | null;
+  mergedIntoRequestId?: string | null;
+  verifiedAt?: string | null;
+  triagedAt?: string | null;
+  closedAt?: string | null;
+  attachments: RequestAttachmentMetadata[];
+  timeline: RequestTimelineEntry[];
+}
+
 export interface CrisisRecord {
   id: string;
   name: string;
@@ -131,6 +169,7 @@ interface CreateCaseRequestPayload {
   lng: number;
   address: string;
   householdSize: number;
+  accessibilityNeeds?: string;
 }
 
 export interface StaffCaseQuery {
@@ -201,6 +240,7 @@ export async function submitCrisisReport(
     throw new Error("Valid latitude and longitude are required.");
   }
 
+  const accessibilityNeeds = clean(input.accessibilityNeeds ?? "");
   const payload: CreateCaseRequestPayload = {
     category: reportCategoryToCaseCategory[input.category] ?? "Other",
     urgency: reportSeverityToCaseUrgency[input.urgency] ?? "Low",
@@ -208,15 +248,44 @@ export async function submitCrisisReport(
     lat: input.lat,
     lng: input.lng,
     address: clean(input.location),
-    householdSize: 1
+    householdSize: Math.min(100, Math.max(1, Math.trunc(input.householdSize) || 1)),
+    ...(accessibilityNeeds ? { accessibilityNeeds } : {})
   };
 
   const created = await apiJson<{ id: string }>("/api/v1/requests", "POST", payload);
 
-  return {
-    reference: created.id,
-    submittedAt: new Date().toISOString()
-  };
+  // The create endpoint returns only the id. Fetch the newly created request so
+  // the confirmation shows the persisted timestamp and current status instead
+  // of a client-side guess. A failed detail fetch must not hide a successful
+  // submission from the citizen.
+  try {
+    const detail = await getCaseRequestDetail(created.id);
+    return {
+      reference: created.id,
+      submittedAt: detail.submittedAt,
+      status: detail.status,
+      statusConfirmed: true
+    };
+  } catch {
+    // Never invent a submission time. The reference is real because the
+    // create call succeeded, but the receipt stays explicitly unconfirmed.
+    return {
+      reference: created.id,
+      submittedAt: "",
+      status: "Submitted",
+      statusConfirmed: false
+    };
+  }
+}
+
+/** Reads the server-side status history for a request. */
+export function getCaseRequestTimeline(id: string): Promise<RequestTimelineEntry[]> {
+  return api<RequestTimelineEntry[]>(`/api/v1/requests/${encodeURIComponent(id)}/timeline`);
+}
+
+/** Reads the full request DTO, including address, household and timeline. */
+export function getCaseRequestDetail(id: string): Promise<CaseRequestDetail> {
+  return api<CaseRequestDetail>(`/api/v1/requests/${encodeURIComponent(id)}`);
 }
 
 /**
@@ -282,6 +351,26 @@ export function listMyCaseRequests(
   return api<Paged<CaseRequestListItem>>(
     `/api/v1/requests/mine${queryString({ page, pageSize, sortBy: "submittedAt" })}`
   );
+}
+
+/**
+ * The list DTO intentionally stays small. Citizen cards need the address and
+ * latest timeline entry, so fetch those details for the visible slice only.
+ */
+export async function loadCaseRequestDetails(
+  items: readonly CaseRequestListItem[],
+  limit = 12
+): Promise<Record<string, CaseRequestDetail | null>> {
+  const entries = await Promise.all(
+    items.slice(0, limit).map(async (item) => {
+      try {
+        return [item.id, await getCaseRequestDetail(item.id)] as const;
+      } catch {
+        return [item.id, null] as const;
+      }
+    })
+  );
+  return Object.fromEntries(entries);
 }
 
 export function listCrises(): Promise<CrisisRecord[]> {

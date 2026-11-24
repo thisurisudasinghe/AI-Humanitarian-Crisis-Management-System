@@ -224,6 +224,27 @@ public class DonationDto
 
     public decimal? EstimatedValue { get; set; }
 
+    public Guid? CampaignId { get; set; }
+
+    public string? CampaignName { get; set; }
+
+    public string? Category { get; set; }
+
+    public string? Unit { get; set; }
+
+    public string? LocationText { get; set; }
+
+    public double? Latitude { get; set; }
+
+    public double? Longitude { get; set; }
+
+    public string? DeliveryMethod { get; set; }
+
+    public string? IdempotencyKey { get; set; }
+
+    public IReadOnlyCollection<DonationItemDto> Items { get; set; }
+        = Array.Empty<DonationItemDto>();
+
     public decimal? AllocatableValue { get; set; }
 
     public decimal AllocatedAmount { get; set; }
@@ -246,6 +267,58 @@ public class DonationDto
 
     public IReadOnlyCollection<DonationAllocationDto> Allocations { get; set; }
         = Array.Empty<DonationAllocationDto>();
+}
+
+public class DonationItemDto
+{
+    public Guid Id { get; set; }
+
+    public Guid DonationId { get; set; }
+
+    public string Name { get; set; } = string.Empty;
+
+    public string? Category { get; set; }
+
+    public int Quantity { get; set; }
+
+    public string? Unit { get; set; }
+
+    public string? Condition { get; set; }
+
+    public string? Notes { get; set; }
+
+    public DateTime? ExpiryDate { get; set; }
+
+    public string? Packaging { get; set; }
+
+    public DateTime CreatedAt { get; set; }
+}
+
+public class CreateDonationItemDto
+{
+    [Required]
+    [MaxLength(200)]
+    public string Name { get; set; } = string.Empty;
+
+    [MaxLength(80)]
+    public string? Category { get; set; }
+
+    [Range(1, int.MaxValue)]
+    public int Quantity { get; set; }
+
+    [MaxLength(80)]
+    public string? Unit { get; set; }
+
+    [MaxLength(100)]
+    public string? Condition { get; set; }
+
+    [MaxLength(500)]
+    public string? Notes { get; set; }
+
+    public DateTime? ExpiryDate { get; set; }
+
+    [MaxLength(200)]
+    public string? Packaging { get; set; }
 }
 
 public class DonationQueryDto
@@ -290,6 +363,30 @@ public class CreateDonationRequestDto
 
     [Range(typeof(decimal), "0", "9999999999999999.99")]
     public decimal? EstimatedValue { get; set; }
+
+    /// <summary>Optional campaign the donor intends to support. Does not allocate funds.</summary>
+    public Guid? CampaignId { get; set; }
+
+    [MaxLength(80)]
+    public string? Category { get; set; }
+
+    [MaxLength(80)]
+    public string? Unit { get; set; }
+
+    [MaxLength(300)]
+    public string? LocationText { get; set; }
+
+    public double? Latitude { get; set; }
+
+    public double? Longitude { get; set; }
+
+    [MaxLength(80)]
+    public string? DeliveryMethod { get; set; }
+
+    [MaxLength(100)]
+    public string? IdempotencyKey { get; set; }
+
+    public IReadOnlyCollection<CreateDonationItemDto>? Items { get; set; }
 
     public DateTime? ReceivedAt { get; set; }
 

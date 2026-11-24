@@ -32,15 +32,25 @@ export const GlobalChatSuggestions = [
   "Who makes the final decision?"
 ] as const;
 
+export const MAX_CHAT_MESSAGE_LENGTH = 2000;
+
 /**
  * Sends one FAQ question. `suggestions` is optional on older responses, so it
  * is normalised to an array here rather than assuming the planned shape.
  */
 export async function sendChatMessage(message: string, locale?: string): Promise<ChatResponseDto> {
+  const trimmed = message.trim();
+  if (!trimmed) {
+    throw new Error("Please enter a question.");
+  }
+  if (trimmed.length > MAX_CHAT_MESSAGE_LENGTH) {
+    throw new Error(`Questions must be ${MAX_CHAT_MESSAGE_LENGTH} characters or fewer.`);
+  }
+
   const response = await apiJson<Partial<ChatResponseDto> | null>(
     "/api/v1/ai/chat",
     "POST",
-    { message, locale }
+    { message: trimmed, locale }
   );
 
   if (typeof response?.answer !== "string" || !response.answer.trim()) {
@@ -48,17 +58,19 @@ export async function sendChatMessage(message: string, locale?: string): Promise
   }
 
   return {
-    answer: response.answer,
+    answer: response.answer.trim(),
     source:
       typeof response.source === "string" && response.source.trim()
         ? response.source
         : "FAQ",
     suggestions: Array.isArray(response.suggestions)
-      ? response.suggestions.filter((item): item is string => typeof item === "string")
+      ? response.suggestions
+          .filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+          .slice(0, 4)
       : [],
     notice:
       typeof response.notice === "string" && response.notice.trim()
-        ? response.notice
+        ? response.notice.trim()
         : "",
     decidesNothing: response.decidesNothing !== false
   };

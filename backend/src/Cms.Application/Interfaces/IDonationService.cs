@@ -59,6 +59,12 @@ public interface IDonationService
         DonationQueryDto query,
         CancellationToken cancellationToken = default);
 
+    /// <summary>Returns one donation only when it belongs to the signed-in public donor.</summary>
+    Task<DonationDto?> GetDonationForUserAsync(
+        Guid userId,
+        Guid donationId,
+        CancellationToken cancellationToken = default);
+
     /// <summary>Records a donation against the caller's linked donor profile.</summary>
     Task<DonationDto> CreateDonationForUserAsync(
         Guid userId,

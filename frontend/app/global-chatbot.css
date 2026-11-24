@@ -10,7 +10,7 @@
     position: fixed;
     right: calc(1.5rem + env(safe-area-inset-right, 0px));
     bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
-    z-index: 1100;
+    z-index: 1200;
     box-sizing: border-box;
     width: var(--chat-launcher-size);
     height: var(--chat-launcher-size);
@@ -62,7 +62,7 @@
     position: fixed;
     right: calc(1.5rem + env(safe-area-inset-right, 0px));
     bottom: calc(7.75rem + env(safe-area-inset-bottom, 0px));
-    z-index: 1100;
+    z-index: 1200;
     width: min(23.75rem, calc(100vw - 3rem));
     max-height: min(40rem, calc(100dvh - 9.5rem));
     display: flex;

@@ -121,6 +121,24 @@ public sealed class PublicPortalController : ControllerBase
         return Ok(await _donations.GetDonationsForUserAsync(userId, query, cancellationToken));
     }
 
+    /// <summary>Returns one donation only when it belongs to the signed-in donor.</summary>
+    [HttpGet("donor/donations/{id:guid}")]
+    [Authorize(Roles = RoleNames.Donor)]
+    [ProducesResponseType(typeof(DonationDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<DonationDto>> DonorDonation(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        var userId = _currentUser.UserId
+            ?? throw new UnauthorizedAccessException("Authentication is required.");
+
+        return await _donations.GetDonationForUserAsync(userId, id, cancellationToken)
+            ?? throw new NotFoundException(
+                "This donation is not available for your account.",
+                "DONATION_NOT_FOUND");
+    }
+
     /// <summary>
     /// Records a donation against the caller's donor profile. This uses the
     /// existing supported recording workflow and does not process payments.

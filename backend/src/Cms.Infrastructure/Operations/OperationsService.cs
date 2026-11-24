@@ -592,10 +592,11 @@ public sealed class OperationsService(
         var item = await db.Volunteers.FirstOrDefaultAsync(x => x.Id == id, ct) ?? throw NotFound("VOLUNTEER_NOT_FOUND", "The volunteer was not found.");
         if (item.VerificationStatus == "Rejected") throw Conflict("VOLUNTEER_REJECTED", "A rejected profile cannot be re-verified through this endpoint.");
         if (string.IsNullOrWhiteSpace(reason)) throw Validation("A verification reason is required.");
-        item.VerificationStatus = approved ? "Verified" : "Rejected";
+        var status = approved ? "Verified" : "Rejected";
+        item.VerificationStatus = status;
         item.VerificationReason = reason.Trim();
         item.UpdatedAt = DateTime.UtcNow;
-        await EnqueueNotificationAsync(id, new { volunteerId = id, userId = item.UserId, status = item.VerificationStatus, reason = item.VerificationReason, action = "volunteer-verification" }, ct);
+        await EnqueueNotificationAsync(id, new { volunteerId = id, userId = item.UserId, status, reason = item.VerificationReason, action = "volunteer-verification" }, ct, $"volunteer-verification-{status}");
         await db.SaveChangesAsync(ct);
         await AuditAsync("Volunteer." + item.VerificationStatus, "Volunteer", id, new { reason = item.VerificationReason }, ct);
         return MapVolunteer(item);
@@ -707,7 +708,7 @@ public sealed class OperationsService(
         task.VolunteerId = volunteerId;
         task.Status = "Assigned";
         task.UpdatedAt = now;
-        await EnqueueNotificationAsync(id, new { taskId = id, volunteerId, userId = volunteer.UserId, action = "task-assigned" }, ct);
+        await EnqueueNotificationAsync(id, new { taskId = id, volunteerId, userId = volunteer.UserId, action = "task-assigned" }, ct, "task-assigned");
         await db.SaveChangesAsync(ct);
         await AuditAsync("VolunteerTask.Assigned", "VolunteerTask", id, new { volunteerId }, ct);
         return MapTask(task);
@@ -722,7 +723,7 @@ public sealed class OperationsService(
         task.Status = accept ? "Accepted" : "Open";
         if (!accept) task.VolunteerId = null;
         task.UpdatedAt = DateTime.UtcNow;
-        await EnqueueNotificationAsync(id, new { taskId = id, volunteerId = volunteer.Id, accepted = accept, reason, action = "task-response" }, ct);
+        await EnqueueNotificationAsync(id, new { taskId = id, volunteerId = volunteer.Id, userId = volunteer.UserId, accepted = accept, reason, action = "task-response" }, ct, "task-response");
         await db.SaveChangesAsync(ct);
         await AuditAsync("VolunteerTask." + task.Status, "VolunteerTask", id, new { accepted = accept, reason }, ct);
         return MapTask(task);
@@ -739,7 +740,7 @@ public sealed class OperationsService(
         task.CompletedAt = now;
         task.UpdatedAt = now;
         db.VolunteerActivities.Add(new VolunteerActivity { Id = Guid.NewGuid(), VolunteerId = volunteer.Id, TaskId = id, CompletedBy = user.UserId.Value, CompletedAt = now });
-        await EnqueueNotificationAsync(id, new { taskId = id, volunteerId = volunteer.Id, completedAt = now, action = "task-completed" }, ct);
+        await EnqueueNotificationAsync(id, new { taskId = id, volunteerId = volunteer.Id, userId = volunteer.UserId, completedAt = now, action = "task-completed" }, ct, "task-completed");
         await db.SaveChangesAsync(ct);
         await AuditAsync("VolunteerTask.Completed", "VolunteerTask", id, new { volunteer.Id, completedAt = now }, ct);
         return MapTask(task);
@@ -946,7 +947,7 @@ public sealed class OperationsService(
         }
     }
 
-    private async Task EnqueueNotificationAsync(Guid entityId, object payload, CancellationToken ct)
+    private async Task EnqueueNotificationAsync(Guid entityId, object payload, CancellationToken ct, string? idempotencySuffix = null)
     {
         // The Notification.Send contract requires a recipient and template key.
         // Normalise the Member 4 activity payloads here so the registered handler
@@ -994,8 +995,15 @@ public sealed class OperationsService(
             Data = data
         };
 
-        await outbox.EnqueueAsync(OutboxEventTypes.NotificationSend, entityId, notification,
-            OutboxEventTypes.BuildIdempotencyKey(OutboxEventTypes.NotificationSend, entityId, 1), ct);
+        // Keep the shared key format untouched. A local suffix only distinguishes
+        // lifecycle events that intentionally share one entity id.
+        var idempotencyKey = OutboxEventTypes.BuildIdempotencyKey(OutboxEventTypes.NotificationSend, entityId, 1);
+        if (!string.IsNullOrWhiteSpace(idempotencySuffix))
+        {
+            idempotencyKey = $"{idempotencyKey}:{idempotencySuffix}";
+        }
+
+        await outbox.EnqueueAsync(OutboxEventTypes.NotificationSend, entityId, notification, idempotencyKey, ct);
     }
 
     private static string? ReadString(

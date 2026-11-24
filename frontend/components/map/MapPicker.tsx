@@ -21,5 +21,5 @@ const MapPickerInner = dynamic(() => import("./MapPickerInner"), {
 export type { MapPoint } from "./MapPickerInner";
 
 export default function MapPicker(props: MapPickerProps) {
-  return <MapPickerInner {...props} />;
+  return <MapPickerInner allowCoordinateEntry {...props} />;
 }
