@@ -273,7 +273,14 @@ function VolunteerWorkspaceContent() {
       ) : (
         <>
           <section className="panel">
-            <h2>{t("volunteers.verificationQueue")}</h2>
+            <h2>
+              {t("volunteers.verificationQueue")}
+              {volunteers.filter((volunteer) => volunteer.verificationStatus !== "Verified").length > 0 ? (
+                <span className="badge badge-warn" style={{ marginLeft: 10 }}>
+                  {volunteers.filter((volunteer) => volunteer.verificationStatus !== "Verified").length}
+                </span>
+              ) : null}
+            </h2>
             {canManageVolunteers && <div className="inline">
               <label htmlFor="verify-reason">{t("volunteers.reason")}</label>
               <input id="verify-reason" value={verifyReason} onChange={(event) => setVerifyReason(event.target.value)} />
