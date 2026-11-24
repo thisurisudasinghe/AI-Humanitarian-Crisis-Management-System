@@ -50,5 +50,6 @@ The backend enforces a 5-second timeout, PII scrubbing, 2,000-character input an
 
 - The assistant answers questions only. It cannot submit, approve, reject, allocate, dispatch or close anything.
 - Immediate-danger questions prioritise local emergency services.
-- Live shelter availability, inventory quantities and operational status are never claimed; the assistant links users to the authoritative SAFEWAY pages and human staff.
-- Sensitive details should be entered only in official forms, not in chat.
+- Live shelter availability, inventory quantities and operational status are never claimed; the assistant links users to authoritative SAFEWAY pages and human staff.
+- The backend scrubs obvious PII before optional AI calls, enforces 2,000-character input / 4,000-character answer limits, validates provider responses, applies a defensive no-autonomous-action guard, and always appends a safety disclaimer.
+- Sensitive details should be entered only in official SAFEWAY forms, not in chat.
