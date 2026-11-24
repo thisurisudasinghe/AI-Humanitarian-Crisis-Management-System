@@ -2,23 +2,29 @@
 
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useI18n, useT } from "@/lib/i18n";
-import { Brand } from "./Brand";
-import { Icon } from "./Icon";
+import { statusTone } from "@/lib/citizen-status";
 import {
   caseRequestErrorMessage,
   submitCrisisReport,
   uploadCrisisReportEvidence,
   type CrisisReportReceipt
 } from "@/lib/crisis";
+import { formatDate } from "@/lib/i18n/core";
 import type { MapPoint } from "@/components/map/MapPicker";
+import { Brand } from "./Brand";
+import { Icon } from "./Icon";
+import { PortalNotice } from "./PortalPrimitives";
 
 const MapPicker = dynamic(() => import("@/components/map/MapPicker"), { ssr: false });
 
+const SUBMIT_LOCK_KEY = "safeway.report.lastSubmit";
+const DUPLICATE_WINDOW_MS = 30_000;
+
 const categories = [
   ["Food", "box", "catFood"],
-  ["Medicine", "heart", "catMedicine"],
+  ["Medicine", "medical", "catMedicine"],
   ["Shelter", "home", "catShelter"],
   ["Transport", "map", "catTransport"],
   ["Accessibility", "users", "catAccessibility"],
@@ -32,10 +38,7 @@ const severities = [
 ] as const;
 
 function coordinatesAreValid(latText: string, lngText: string): boolean {
-  if (!latText.trim() || !lngText.trim()) {
-    return false;
-  }
-
+  if (!latText.trim() || !lngText.trim()) return false;
   const latValue = Number(latText);
   const lngValue = Number(lngText);
   return (
@@ -48,6 +51,14 @@ function coordinatesAreValid(latText: string, lngText: string): boolean {
   );
 }
 
+function evidenceProblem(file: File, t: (key: string) => string): string | null {
+  const extensionAllowed = /\.(jpe?g|png|pdf)$/i.test(file.name);
+  const mimeAllowed = ["image/jpeg", "image/png", "application/pdf"].includes(file.type);
+  if (!extensionAllowed && !mimeAllowed) return t("citizenX.report.evidenceType");
+  if (file.size > 1_000_000) return t("citizenX.report.evidenceTooLarge");
+  return null;
+}
+
 export function ReportFlow() {
   const t = useT();
   const { locale } = useI18n();
@@ -58,10 +69,16 @@ export function ReportFlow() {
   const [location, setLocation] = useState("");
   const [lat, setLat] = useState("");
   const [lng, setLng] = useState("");
+  const [householdSize, setHouseholdSize] = useState("1");
+  const [accessibilityNeeds, setAccessibilityNeeds] = useState("");
   const [evidenceFile, setEvidenceFile] = useState<File | null>(null);
+  const [evidenceError, setEvidenceError] = useState<string | null>(null);
+  const [locationMessage, setLocationMessage] = useState<string | null>(null);
+  const [locating, setLocating] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [receipt, setReceipt] = useState<CrisisReportReceipt | null>(null);
+  const submittingRef = useRef(false);
 
   useEffect(() => {
     document.title = `${t("report.title")} — SAFEWAY`;
@@ -89,7 +106,34 @@ export function ReportFlow() {
     setStep(next);
   }
 
+  function useMyLocation() {
+    setLocationMessage(null);
+    if (!navigator.geolocation) {
+      setLocationMessage(t("citizenX.report.locationUnavailable"));
+      return;
+    }
+
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const nextLat = position.coords.latitude.toFixed(6);
+        const nextLng = position.coords.longitude.toFixed(6);
+        setLat(nextLat);
+        setLng(nextLng);
+        if (!location.trim()) setLocation(`${nextLat}, ${nextLng}`);
+        setLocationMessage(null);
+        setLocating(false);
+      },
+      () => {
+        setLocationMessage(t("citizenX.report.locationDenied"));
+        setLocating(false);
+      },
+      { enableHighAccuracy: true, timeout: 10_000, maximumAge: 60_000 }
+    );
+  }
+
   async function onSubmit() {
+    if (submittingRef.current) return;
     setFormError(null);
 
     if (!coordinatesAreValid(lat, lng)) {
@@ -97,8 +141,39 @@ export function ReportFlow() {
       return;
     }
 
+    const size = Number(householdSize);
+    if (!Number.isInteger(size) || size < 1 || size > 100) {
+      setFormError(t("citizenX.report.affectedError"));
+      return;
+    }
+
+    const signature = JSON.stringify({
+      category,
+      severity,
+      description: description.trim(),
+      location: location.trim(),
+      lat,
+      lng,
+      size,
+      accessibilityNeeds: accessibilityNeeds.trim()
+    });
+
+    try {
+      const raw = window.sessionStorage.getItem(SUBMIT_LOCK_KEY);
+      const last = raw ? (JSON.parse(raw) as { signature?: string; at?: number }) : null;
+      if (last?.signature === signature && typeof last.at === "number" && Date.now() - last.at < DUPLICATE_WINDOW_MS) {
+        setFormError(t("citizenX.report.duplicate"));
+        return;
+      }
+      window.sessionStorage.setItem(SUBMIT_LOCK_KEY, JSON.stringify({ signature, at: Date.now() }));
+    } catch {
+      // Private browsing may block storage; the in-flight ref still prevents
+      // accidental double submission.
+    }
+
     const parsedLat = Number(lat);
     const parsedLng = Number(lng);
+    submittingRef.current = true;
     setBusy(true);
 
     try {
@@ -108,7 +183,9 @@ export function ReportFlow() {
         location,
         urgency: severity,
         lat: parsedLat,
-        lng: parsedLng
+        lng: parsedLng,
+        householdSize: size,
+        accessibilityNeeds
       });
 
       if (!evidenceFile) {
@@ -134,8 +211,14 @@ export function ReportFlow() {
         });
       }
     } catch (caught) {
+      try {
+        window.sessionStorage.removeItem(SUBMIT_LOCK_KEY);
+      } catch {
+        // Ignore storage failures on the error path.
+      }
       setFormError(caseRequestErrorMessage(caught, t("report.errSubmitFallback"), t));
     } finally {
+      submittingRef.current = false;
       setBusy(false);
     }
   }
@@ -143,21 +226,40 @@ export function ReportFlow() {
   if (receipt) {
     return (
       <div className="form-shell">
-        <main className="success-page">
+        <main className="success-page citizen-confirmation">
           <div className="success-check">
-            <Icon name="check" size={42} />
+            <Icon name="checkCircle" size={44} />
           </div>
           <div className="eyebrow dark">
             <span /> {t("report.title")}
           </div>
-          <h1>{t("report.submittedTitle")}</h1>
-          <p>
-            {t("report.submittedCopy")}
-          </p>
-          <div className="reference-box">
-            <span>{t("report.reference")}</span>
-            <strong>{receipt.reference}</strong>
+          <h1>{t("citizenX.report.submittedTitle")}</h1>
+          <p>{t("citizenX.report.submittedCopy")}</p>
+
+          <div className="citizen-confirmation__facts">
+            <div className="reference-box">
+              <span>{t("report.reference")}</span>
+              <strong>{receipt.reference}</strong>
+            </div>
+            <div>
+              <span>{t("citizenX.report.submissionTime")}</span>
+              <strong>
+                {receipt.statusConfirmed
+                  ? formatDate(receipt.submittedAt, locale)
+                  : t("citizenX.tracking.notProvided")}
+              </strong>
+            </div>
+            <div>
+              <span>{t("citizenX.report.currentStatus")}</span>
+              <strong className={`badge ${statusTone(receipt.status)}`}>
+                <i aria-hidden="true" /> {t(`citizenX.status.${receipt.status}`)}
+              </strong>
+            </div>
           </div>
+
+          {!receipt.statusConfirmed ? (
+            <PortalNotice tone="error">{t("citizenX.report.statusUnconfirmed")}</PortalNotice>
+          ) : null}
           {receipt.evidenceAttached ? (
             <p className="muted">
               {t("report.evidenceAttached", { file: receipt.evidenceFileName ?? "uploaded file" })}
@@ -168,36 +270,15 @@ export function ReportFlow() {
               <strong>{t("report.evidenceErrorTitle")}</strong>{" "}{receipt.evidenceError} {t("report.evidenceErrorCopy")}
             </div>
           ) : null}
-          <p className="muted">
-            {t("report.noEdit")}
-          </p>
-          <div className="next-steps">
-            <b>{t("report.nextSteps")}</b>
-            <div>
-              <span>1</span>
-              <p>
-                <strong>{t("report.stepReview")}</strong> {t("report.stepReviewCopy")}
-              </p>
-            </div>
-            <div>
-              <span>2</span>
-              <p>
-                <strong>{t("report.stepResponse")}</strong> {t("report.stepResponseCopy")}
-              </p>
-            </div>
-            <div>
-              <span>3</span>
-              <p>
-                <strong>{t("report.stepUpdates")}</strong> {t("report.stepUpdatesCopy")}
-              </p>
-            </div>
+
+          <div className="citizen-confirmation__actions">
+            <Link className="btn btn-primary" href={`/my-reports/${receipt.reference}`}>
+              {t("citizenX.report.trackRequest")} <Icon name="arrow" />
+            </Link>
+            <Link className="btn btn-outline" href="/portal/citizen">
+              <Icon name="arrowLeft" /> {t("citizenX.report.backPortal")}
+            </Link>
           </div>
-          <Link className="btn btn-primary" href="/dashboard">
-            {t("report.viewMyReports")} <Icon name="arrow" />
-          </Link>
-          <Link className="text-btn" href="/">
-            {t("report.returnHome")}
-          </Link>
         </main>
       </div>
     );
@@ -235,7 +316,11 @@ export function ReportFlow() {
         </aside>
 
         <section className="form-panel">
-          <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"center",flexWrap:"wrap"}}><Link className="back-link report-back-link" href="/">{t("common.backToHome")}</Link></div>
+          <div className="report-back-row">
+            <Link className="back-link report-back-link" href="/portal/citizen">
+              <Icon name="arrowLeft" size={16} /> {t("citizenX.report.backPortal")}
+            </Link>
+          </div>
           <div className="mobile-progress">
             {t("report.stepOf", { step: String(step), total: "3" })}{" "}
             <span>
@@ -281,6 +366,33 @@ export function ReportFlow() {
                 placeholder={t("report.descPlaceholder")}
               />
               <div className="char-count">{description.length} / 1,000</div>
+
+              <div className="two-fields">
+                <div>
+                  <label className="field-label" htmlFor="household-size">{t("citizenX.report.affectedLabel")}</label>
+                  <input
+                    id="household-size"
+                    type="number"
+                    min={1}
+                    max={100}
+                    inputMode="numeric"
+                    value={householdSize}
+                    onChange={(event) => setHouseholdSize(event.target.value)}
+                  />
+                  <small className="field-hint">{t("citizenX.report.affectedHint")}</small>
+                </div>
+                <div>
+                  <label className="field-label" htmlFor="accessibility-needs">{t("citizenX.report.accessibilityLabel")}</label>
+                  <input
+                    id="accessibility-needs"
+                    value={accessibilityNeeds}
+                    maxLength={2000}
+                    placeholder={t("citizenX.report.accessibilityPlaceholder")}
+                    onChange={(event) => setAccessibilityNeeds(event.target.value)}
+                  />
+                </div>
+              </div>
+
               <button className="btn btn-primary form-next" type="button" onClick={() => goToStep(2)}>
                 {t("report.continue")} <Icon name="arrow" />
               </button>
@@ -309,17 +421,30 @@ export function ReportFlow() {
                   onChange={(event) => setLocation(event.target.value)}
                 />
               </div>
-              <p className="muted">
-                {t("report.locationNote")}
-              </p>
+              <p className="muted">{t("report.locationNote")}</p>
 
+              <button
+                className="btn btn-outline citizen-locate-btn"
+                type="button"
+                onClick={useMyLocation}
+                disabled={locating}
+                aria-busy={locating}
+              >
+                <Icon name="pin" size={16} />
+                {locating ? t("citizenX.report.locating") : t("citizenX.report.useMyLocation")}
+              </button>
+              {locationMessage ? (
+                <p className="portal-subtle" role="status">{locationMessage}</p>
+              ) : null}
+
+              <p className="field-label citizen-manual-label">{t("citizenX.report.manualLocation")}</p>
               <div className="two-fields">
                 <label>
                   <span className="field-label">{t("report.latLabel")}</span>
                   <input
                     inputMode="decimal"
                     value={lat}
-                    placeholder="7.2906"
+                    placeholder={t("citizenX.report.latPlaceholder")}
                     onChange={(event) => setLat(event.target.value)}
                   />
                 </label>
@@ -328,7 +453,7 @@ export function ReportFlow() {
                   <input
                     inputMode="decimal"
                     value={lng}
-                    placeholder="80.6337"
+                    placeholder={t("citizenX.report.lngPlaceholder")}
                     onChange={(event) => setLng(event.target.value)}
                   />
                 </label>
@@ -380,10 +505,15 @@ export function ReportFlow() {
                 </span>
                 <input
                   type="file"
-                  accept=".jpg,.jpeg,.png,.webp,.pdf"
-                  onChange={(event) => setEvidenceFile(event.target.files?.[0] ?? null)}
+                  accept=".jpg,.jpeg,.png,.pdf"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0] ?? null;
+                    setEvidenceFile(file);
+                    setEvidenceError(file ? evidenceProblem(file, t) : null);
+                  }}
                 />
               </label>
+              {evidenceError ? <p className="form-error" role="alert">{evidenceError}</p> : null}
 
               <button className="btn btn-primary form-next" type="button" onClick={() => goToStep(3)}>
                 {t("report.continue")} <Icon name="arrow" />
@@ -408,6 +538,10 @@ export function ReportFlow() {
                   <strong>{t(`report.${categories.find(([v]) => v === category)?.[2] ?? "catOther"}`)}</strong>
                 </div>
                 <div>
+                  <span>{t("report.descLabel")}</span>
+                  <strong>{description || "—"}</strong>
+                </div>
+                <div>
                   <span>{t("report.fieldLocation")}</span>
                   <strong>{location || "—"}</strong>
                 </div>
@@ -418,6 +552,14 @@ export function ReportFlow() {
                 <div>
                   <span>{t("report.fieldUrgency")}</span>
                   <strong>{t(`report.${severities.find(([v]) => v === severity)?.[1] ?? "sevHigh"}`)}</strong>
+                </div>
+                <div>
+                  <span>{t("citizenX.report.fieldAffected")}</span>
+                  <strong>{householdSize}</strong>
+                </div>
+                <div>
+                  <span>{t("citizenX.report.fieldAccessibility")}</span>
+                  <strong>{accessibilityNeeds.trim() || t("report.notProvided")}</strong>
                 </div>
                 <div>
                   <span>{t("report.fieldEvidence")}</span>
@@ -436,6 +578,7 @@ export function ReportFlow() {
                 type="button"
                 onClick={() => void onSubmit()}
                 disabled={busy}
+                aria-busy={busy}
               >
                 {busy ? t("report.submitting") : t("report.submit")} <Icon name="arrow" />
               </button>
@@ -452,5 +595,3 @@ export function ReportFlow() {
     </div>
   );
 }
-
-
