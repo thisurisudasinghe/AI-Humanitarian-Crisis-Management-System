@@ -13,7 +13,14 @@ import { statusTone } from "@/lib/citizen-status";
 import { caseRequestErrorMessage, listMyCaseRequests, type CaseRequestListItem } from "@/lib/crisis";
 import { useI18n } from "@/lib/i18n";
 import { formatDate } from "@/lib/i18n/core";
+import { emergencyContacts } from "@/lib/publicEmergency";
 import { RoleNames } from "@/lib/roles";
+
+const EMERGENCY_LABEL_KEYS: Record<string, string> = {
+  police: "citizenX.landing.police",
+  ambulance: "citizenX.landing.ambulance",
+  fire: "citizenX.landing.fire"
+};
 
 const ACTION_CARDS = [
   {
@@ -93,21 +100,13 @@ export default function CitizenPortalPage() {
             <h2 id="citizen-urgent-heading">{t("citizenX.landing.urgentTitle")}</h2>
             <p>{t("citizenX.landing.urgentBody")}</p>
             <div className="citizen-urgent__numbers">
-              <a href="tel:119">
-                <Icon name="phone" size={16} />
-                <span>{t("citizenX.landing.police")}</span>
-                <strong>119</strong>
-              </a>
-              <a href="tel:199">
-                <Icon name="phone" size={16} />
-                <span>{t("citizenX.landing.ambulance")}</span>
-                <strong>199</strong>
-              </a>
-              <a href="tel:191">
-                <Icon name="phone" size={16} />
-                <span>{t("citizenX.landing.fire")}</span>
-                <strong>191</strong>
-              </a>
+              {emergencyContacts.slice(0, 3).map((contact) => (
+                <a href={contact.primary.href} key={contact.id}>
+                  <Icon name="phone" size={16} />
+                  <span>{t(EMERGENCY_LABEL_KEYS[contact.id])}</span>
+                  <strong>{contact.primary.display}</strong>
+                </a>
+              ))}
             </div>
             <small>{t("citizenX.landing.officialNumbers")}</small>
           </div>

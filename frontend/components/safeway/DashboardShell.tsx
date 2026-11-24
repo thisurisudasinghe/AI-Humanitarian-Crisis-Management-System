@@ -295,6 +295,18 @@ export function DashboardShell({ children }: { children: ReactNode }) {
   const staffMode = isStaff(roles);
   const homeHref = homePathForRoles(roles);
   const displayName = user?.fullName ?? t("common.loading");
+  const roleKeys: string[] = [
+    RoleNames.EmergencyCoordinator,
+    RoleNames.CaseManager,
+    RoleNames.LogisticsManager,
+    RoleNames.ShelterAdmin,
+    RoleNames.VolunteerCoordinator,
+    RoleNames.DonorOfficer,
+    RoleNames.PartnerOfficer,
+    RoleNames.SystemAdmin
+  ];
+  const activeRole = roles.find((role) => roleKeys.includes(role as never)) ?? roles[0];
+  const roleLabel = activeRole ? t(`roleLabels.${activeRole}`) : t("dashboard.commandCentre");
 
   const visibleGroups = navGroups
     .map((group) => ({
@@ -471,6 +483,28 @@ export function DashboardShell({ children }: { children: ReactNode }) {
       <nav aria-label={t("dashboard.mainNav")} className="sidebar-groups">
         {visibleGroups.map((group) => {
           const groupActive = group.links.some((link) => isActive(pathname, link.href));
+
+          // Single-destination groups are rendered as a plain navigation item;
+          // they do not need an expandable accordion trigger.
+          if (group.links.length === 1) {
+            const link = group.links[0];
+            const active = isActive(pathname, link.href);
+            return (
+              <div className={`sidebar-group ${groupActive ? "sidebar-group--active" : ""}`} key={group.id}>
+                <Link
+                  href={link.href}
+                  className={`sidebar-group__link ${active ? "sidebar-group__link--active" : ""}`}
+                  aria-current={active ? "page" : undefined}
+                  onClick={closeMobileNav}
+                  title={t(link.labelKey)}
+                >
+                  <Icon name={link.icon} size={15} />
+                  <span>{t(link.labelKey)}</span>
+                </Link>
+              </div>
+            );
+          }
+
           const expanded = openGroups.includes(group.id) || groupActive;
           return (
             <div className={`sidebar-group ${groupActive ? "sidebar-group--active" : ""}`} key={group.id}>
@@ -521,7 +555,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
         </span>
         <span className="sidebar-footer__identity">
           <b>{displayName}</b>
-          <small>{t("dashboard.commandCentre")}</small>
+          <small>{roleLabel}</small>
         </span>
       </div>
     </aside>
@@ -548,15 +582,13 @@ export function DashboardShell({ children }: { children: ReactNode }) {
             </button>
           ) : null}
 
-          {!staffMode ? <Brand href={homeHref} className="app-topbar__brand" /> : null}
+          <Brand href={homeHref} className="app-topbar__brand" />
 
           <nav className="app-topbar__nav" aria-label={t("dashboard.accountNav")}>
-            {!staffMode ? (
-              <Link href={homeHref} className="app-topbar__link" aria-label={t("dashboard.home")}>
-                <Icon name="home" size={17} />
-                <span>{t("dashboard.home")}</span>
-              </Link>
-            ) : null}
+            <Link href={homeHref} className="app-topbar__link" aria-label={t("dashboard.home")}>
+              <Icon name="home" size={17} />
+              <span>{t("dashboard.home")}</span>
+            </Link>
             <Link href="/account" className="app-topbar__link" aria-label={t("dashboard.profile")}>
               <Icon name="user" size={17} />
               <span>{t("dashboard.profile")}</span>

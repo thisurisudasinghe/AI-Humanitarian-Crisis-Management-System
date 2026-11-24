@@ -260,7 +260,8 @@ public sealed class PublicMapWorkflowTests
             var legacyFeed = await legacyResponse.Content.ReadAsStringAsync();
             Assert.DoesNotContain("PRIVATE_EDITORIAL_TITLE", legacyFeed, StringComparison.OrdinalIgnoreCase);
             Assert.DoesNotContain("PRIVATE_EDITORIAL_BODY", legacyFeed, StringComparison.OrdinalIgnoreCase);
-            Assert.DoesNotContain(alertId.ToString(), legacyFeed, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("Road closure", legacyFeed, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("title\":\"PRIVATE", legacyFeed, StringComparison.OrdinalIgnoreCase);
         }
 
         var hide = await coordinator.PostAsJsonAsync(
@@ -291,6 +292,7 @@ public sealed class PublicMapWorkflowTests
             var legacyFeed = await anonymous.GetStringAsync("/api/v1/public/alerts");
             Assert.DoesNotContain("PRIVATE_EDITORIAL_TITLE", legacyFeed, StringComparison.OrdinalIgnoreCase);
             Assert.DoesNotContain("PRIVATE_EDITORIAL_BODY", legacyFeed, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("Road closure", legacyFeed, StringComparison.OrdinalIgnoreCase);
             Assert.DoesNotContain(alertId.ToString(), legacyFeed, StringComparison.OrdinalIgnoreCase);
         }
     }

@@ -114,10 +114,6 @@ export default function AccountPage() {
           <b>{user?.email ?? "—"}</b>
         </div>
         <div className="ops-card">
-          <span>{t("account.userId")}</span>
-          <b style={{ fontSize: 12 }}>{user?.userId ?? "—"}</b>
-        </div>
-        <div className="ops-card">
           <span>{t("account.roles")}</span>
           <div className="role-chips">
             {(user?.roles ?? []).map((role) => (
@@ -128,6 +124,18 @@ export default function AccountPage() {
           </div>
         </div>
       </div>
+
+      <details className="ops-card" style={{ padding: "14px 22px", marginBottom: 22 }}>
+        <summary style={{ cursor: "pointer", fontWeight: 700, color: "var(--midnight)" }}>
+          {t("common.details")}
+        </summary>
+        <div className="profile-card-grid" style={{ marginTop: 12, marginBottom: 0 }}>
+          <div className="ops-card">
+            <span>{t("account.userId")}</span>
+            <b style={{ fontSize: 12 }}>{user?.userId ?? "—"}</b>
+          </div>
+        </div>
+      </details>
 
       {isCitizen ? (
         <section className="ops-card" style={{ padding: 24, marginBottom: 24 }}>
@@ -190,18 +198,6 @@ export default function AccountPage() {
         <div className="resource-bars">
           <div>
             <span>
-              <b>{t("account.accessToken")}</b>
-              <i>{t("account.accessTokenDesc")}</i>
-            </span>
-          </div>
-          <div>
-            <span>
-              <b>{t("account.refreshToken")}</b>
-              <i>{t("account.refreshTokenDesc")}</i>
-            </span>
-          </div>
-          <div>
-            <span>
               <b>{t("account.signOutTitle")}</b>
               <i>{t("account.signOutDesc")}</i>
             </span>
@@ -211,9 +207,11 @@ export default function AccountPage() {
           <button className="btn btn-outline" type="button" onClick={() => void onLogout()}>
             <Icon name="logout" /> {t("account.signOut")}
           </button>
-          <Link className="btn btn-primary" href="/report">
-            <Icon name="alert" /> {t("account.reportCrisis")}
-          </Link>
+          {isCitizen ? (
+            <Link className="btn btn-primary" href="/report">
+              <Icon name="alert" /> {t("account.reportCrisis")}
+            </Link>
+          ) : null}
         </div>
       </section>
     </>

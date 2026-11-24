@@ -16,6 +16,7 @@ export const MAP_MARKER_TYPES = {
   fire: { label: "Fire", color: "#b6433e" },
   "severe-weather": { label: "Severe weather", color: "#7356a8" },
   drought: { label: "Drought", color: "#a78b32" },
+  medical: { label: "Medical emergency", color: "#a63a3a" },
   "other-crisis": { label: "Other crisis", color: "#667085" },
   "public-shelter": { label: "Public shelter", color: "#2f7d4f" },
   "aid-centre": { label: "Aid centre", color: "#0f766e" }
@@ -38,6 +39,7 @@ export const MARKER_LABEL_KEYS: Record<MapMarkerType, string> = {
   fire: "map.markerTypes.fire",
   "severe-weather": "map.markerTypes.severeWeather",
   drought: "map.markerTypes.drought",
+  medical: "map.markerTypes.medical",
   "other-crisis": "map.markerTypes.otherCrisis",
   "public-shelter": "map.markerTypes.publicShelter",
   "aid-centre": "map.markerTypes.aidCentre"

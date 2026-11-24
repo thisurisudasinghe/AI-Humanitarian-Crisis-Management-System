@@ -272,23 +272,16 @@ public sealed class CrisisService : ICrisisService
             .ToListAsync(cancellationToken);
     }
 
-    public async Task<IReadOnlyList<AlertDto>> ListPublicAlertsAsync(CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Legacy anonymous alert feed. It now reuses the explicit map-publication
+    /// projection so private editorial Title/Body can never be exposed, and a
+    /// draft/internal alert can never become public merely because its editorial
+    /// status was set to Published.
+    /// </summary>
+    public async Task<IReadOnlyList<PublicMapIncidentDto>> ListPublicAlertsAsync(
+        CancellationToken cancellationToken = default)
     {
-        return await _context.Set<Alert>()
-            .AsNoTracking()
-            .Where(a => a.Status == AlertStatus.Published)
-            .OrderByDescending(a => a.PublishedAt ?? a.CreatedAt)
-            .Select(a => new AlertDto
-            {
-                Id = a.Id,
-                CrisisId = a.CrisisId,
-                Title = a.Title,
-                Body = a.Body,
-                Status = a.Status,
-                PublishedAt = a.PublishedAt,
-                CreatedAt = a.CreatedAt
-            })
-            .ToListAsync(cancellationToken);
+        return await GetPublicIncidentsAsync(cancellationToken);
     }
 
     public async Task<IReadOnlyList<ServiceCentreDto>> ListPublicServiceCentresAsync(
@@ -296,7 +289,7 @@ public sealed class CrisisService : ICrisisService
     {
         return await _context.Set<ServiceCentre>()
             .AsNoTracking()
-            .Where(s => s.IsActive)
+            .Where(s => s.IsActive && s.PublicVisible)
             .OrderBy(s => s.Name)
             .Select(s => new ServiceCentreDto
             {
@@ -363,9 +356,9 @@ public sealed class CrisisService : ICrisisService
         alert.Longitude = request.Longitude!.Value;
         alert.PublicExpiresAt = request.ExpiresAt;
         alert.PublishedByUserId = _currentUser.UserId;
-        // Map publication is deliberately independent of the legacy Alert.Status.
-        // Changing Status to Published would expose the private Title/Body through
-        // the older anonymous /public/alerts feed.
+        // Publication for anonymous consumers is controlled only by PublicVisible.
+        // Editorial Alert.Status is retained for internal workflow state and is
+        // never used as a public disclosure flag.
         alert.PublishedAt ??= now;
         alert.UpdatedAt = now;
 
@@ -388,11 +381,11 @@ public sealed class CrisisService : ICrisisService
         await _context.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task<PublicMapDto> GetPublicMapAsync(CancellationToken cancellationToken = default)
+    private async Task<IReadOnlyList<PublicMapIncidentDto>> GetPublicIncidentsAsync(
+        CancellationToken cancellationToken)
     {
         var now = _dateTimeService.UtcNow;
-
-        var incidents = await _context.Set<Alert>()
+        return await _context.Set<Alert>()
             .AsNoTracking()
             .Where(a => a.PublicVisible
                         && (a.PublicExpiresAt == null || a.PublicExpiresAt > now))
@@ -410,6 +403,13 @@ public sealed class CrisisService : ICrisisService
                 a.PublishedAt,
                 a.PublicExpiresAt))
             .ToListAsync(cancellationToken);
+    }
+
+    public async Task<PublicMapDto> GetPublicMapAsync(CancellationToken cancellationToken = default)
+    {
+        var now = _dateTimeService.UtcNow;
+
+        var incidents = await GetPublicIncidentsAsync(cancellationToken);
 
         var shelters = await _context.Shelters
             .AsNoTracking()

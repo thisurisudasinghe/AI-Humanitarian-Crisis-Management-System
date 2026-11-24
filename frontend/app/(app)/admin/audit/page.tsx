@@ -11,7 +11,6 @@ import {
   type Column
 } from "@/components/ui";
 import { AuthGuard } from "@/components/AuthGuard";
-import { AdminNav } from "@/components/safeway/AdminNav";
 import { api } from "@/lib/api";
 import {
   formatDate,
@@ -175,8 +174,6 @@ export default function AuditPage() {
             {t("admin.audit.clearFilters")}
           </Button>
         </header>
-
-        <AdminNav />
 
         <section className="card">
           <div className="filters">

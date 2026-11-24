@@ -1,7 +1,9 @@
+using Cms.Application.Access.Interfaces;
 using Cms.Application.Cases.Common;
 using Cms.Application.Cases.Interfaces;
 using Cms.Application.Contracts;
 using Cms.Application.Interfaces;
+using Cms.Infrastructure.Access;
 using Cms.Infrastructure.Services;
 using Cms.Infrastructure.Stubs;
 using Microsoft.AspNetCore.DataProtection;
@@ -57,6 +59,10 @@ public static class CasesModuleExtensions
         services.AddScoped<ICrisisService, CrisisService>();
         services.AddScoped<IHouseholdService, HouseholdService>();
         services.AddScoped<IAttachmentService, AttachmentService>();
+
+        // Access application and anonymous guest reporting workflows.
+        services.AddScoped<IStaffAccessService, StaffAccessService>();
+        services.AddScoped<IGuestReportService, GuestReportService>();
 
         return services;
     }

@@ -40,6 +40,14 @@ public static class AuditActions
     public const string DecisionRecorded = "Decision.Recorded";
     public const string AnnouncementApproved = "Announcement.Approved";
 
+    // Staff access applications and anonymous guest reporting
+    public const string StaffAccessApplicationSubmitted = "StaffAccess.ApplicationSubmitted";
+    public const string StaffAccessApplicationApproved = "StaffAccess.ApplicationApproved";
+    public const string StaffAccessApplicationRejected = "StaffAccess.ApplicationRejected";
+    public const string GuestReportSubmitted = "GuestReport.Submitted";
+    public const string GuestReportTracked = "GuestReport.Tracked";
+    public const string GuestReportStatusChanged = "GuestReport.StatusChanged";
+
     // Logistics, shelter and volunteers
     public const string AllocationCreated = "Allocation.Created";
     public const string DispatchCreated = "Dispatch.Created";

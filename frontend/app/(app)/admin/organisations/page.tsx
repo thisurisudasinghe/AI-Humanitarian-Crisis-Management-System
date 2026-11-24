@@ -15,7 +15,6 @@ import {
   type Column
 } from "@/components/ui";
 import { AuthGuard } from "@/components/AuthGuard";
-import { AdminNav } from "@/components/safeway/AdminNav";
 import { api, apiJson } from "@/lib/api";
 import {
   OrganisationTypes,
@@ -253,8 +252,6 @@ export default function OrganisationsPage() {
           </div>
           <Button onClick={openCreate}>{t("admin.organisations.create")}</Button>
         </header>
-
-        <AdminNav />
 
         <section className="card">
           <div className="filters">

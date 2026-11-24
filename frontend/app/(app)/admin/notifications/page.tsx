@@ -11,7 +11,6 @@ import {
   type Column
 } from "@/components/ui";
 import { AuthGuard } from "@/components/AuthGuard";
-import { AdminNav } from "@/components/safeway/AdminNav";
 import { api } from "@/lib/api";
 import { formatDate, type PagedResult } from "@/lib/admin";
 import { useT } from "@/lib/i18n";
@@ -105,8 +104,6 @@ export default function FailedNotificationsPage() {
             {t("admin.notifications.refresh")}
           </Button>
         </header>
-
-        <AdminNav />
 
         <section className="card">
           {loading ? (

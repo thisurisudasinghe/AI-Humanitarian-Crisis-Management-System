@@ -82,7 +82,23 @@ public static class NotificationTemplates
             [("Announcement.Rejected", "ta")] =
                 ("அறிவிப்பு புதுப்பிப்பு", "{message}"),
             [("Announcement.Rejected", "es")] =
-                ("Actualización del anuncio", "{message}")
+                ("Actualización del anuncio", "{message}"),
+            [("StaffAccess.ApplicationApproved", "en")] =
+                ("Staff access approved", "Application {reference} for {role} was approved. Sign in again to see your new workspace access."),
+            [("StaffAccess.ApplicationApproved", "si")] =
+                ("කාර්ය මණ්ඩල ප්‍රවේශය අනුමතයි", "{role} සඳහා වූ {reference} අයදුම්පත අනුමත විය. නව ප්‍රවේශය බැලීමට නැවත පුරනය වන්න."),
+            [("StaffAccess.ApplicationApproved", "ta")] =
+                ("ஊழியர் அணுகல் அங்கீகரிக்கப்பட்டது", "{role} க்கான {reference} விண்ணப்பம் அங்கீகரிக்கப்பட்டது. புதிய அணுகலைக் காண மீண்டும் உள்நுழையவும்."),
+            [("StaffAccess.ApplicationApproved", "es")] =
+                ("Acceso de personal aprobado", "La solicitud {reference} para {role} fue aprobada. Inicie sesión de nuevo para ver el acceso."),
+            [("StaffAccess.ApplicationRejected", "en")] =
+                ("Staff access update", "Application {reference} for {role} was not approved. Review the reason in your application status."),
+            [("StaffAccess.ApplicationRejected", "si")] =
+                ("කාර්ය මණ්ඩල ප්‍රවේශය යාවත්කාලීනය", "{role} සඳහා වූ {reference} අයදුම්පත අනුමත නොවීය. හේතුව අයදුම්පත් තත්ත්වයේ බලන්න."),
+            [("StaffAccess.ApplicationRejected", "ta")] =
+                ("ஊழியர் அணுகல் புதுப்பிப்பு", "{role} க்கான {reference} விண்ணப்பம் அங்கீகரிக்கப்படவில்லை. காரணத்தை விண்ணப்ப நிலையில் காண்க."),
+            [("StaffAccess.ApplicationRejected", "es")] =
+                ("Actualización de acceso de personal", "La solicitud {reference} para {role} no fue aprobada. Revise el motivo en el estado de la solicitud.")
         };
 
     public static (string Subject, string Body) Render(NotificationPayloadDto payload)

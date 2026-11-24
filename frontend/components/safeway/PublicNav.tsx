@@ -12,10 +12,11 @@ import { PublicBrand } from "./PublicBrand";
 
 const publicLinks = [
   { key: "nav.home", href: "/", icon: "home" },
-  { key: "nav.about", href: "/about", icon: "info" },
-  { key: "nav.services", href: "/services", icon: "layers" },
-  { key: "nav.howItWorks", href: "/how-it-works", icon: "route" },
-  { key: "nav.liveMap", href: "/live-map", icon: "layers" }
+  { key: "nav.findAssistance", href: "/find-assistance", icon: "pin" },
+  { key: "nav.liveMap", href: "/live-map", icon: "layers" },
+  { key: "nav.publicAlerts", href: "/public-alerts", icon: "bell" },
+  { key: "nav.emergencyServices", href: "/emergency-services", icon: "phone" },
+  { key: "nav.getSupport", href: "/support", icon: "help-circle" }
 ] as const;
 
 export function PublicNav() {

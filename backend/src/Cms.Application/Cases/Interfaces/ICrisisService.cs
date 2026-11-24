@@ -13,7 +13,7 @@ public interface ICrisisService
     Task<Guid> CreateAlertAsync(Guid crisisId, CreateAlertDto request, CancellationToken cancellationToken = default);
     Task UpdateAlertAsync(Guid alertId, UpdateAlertDto request, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<AlertPublicationDto>> ListAlertsForPublicationAsync(CancellationToken cancellationToken = default);
-    Task<IReadOnlyList<AlertDto>> ListPublicAlertsAsync(CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<PublicMapIncidentDto>> ListPublicAlertsAsync(CancellationToken cancellationToken = default);
     Task<IReadOnlyList<ServiceCentreDto>> ListPublicServiceCentresAsync(CancellationToken cancellationToken = default);
     Task<CrisisSummaryDto> GetSummaryAsync(Guid crisisId, CancellationToken cancellationToken = default);
 
