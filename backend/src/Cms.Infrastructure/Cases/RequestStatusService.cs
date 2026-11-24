@@ -129,8 +129,15 @@ public sealed class RequestStatusService :
         await _writer.AddNotificationAsync(
             request.Id,
             request.RequesterUserId,
-            $"request.status.{to}",
-            new { from = from.ToString(), to = to.ToString(), reason },
+            "Request.StatusChanged",
+            new
+            {
+                requestId = request.Id.ToString(),
+                status = to.ToString(),
+                from = from.ToString(),
+                to = to.ToString(),
+                reason
+            },
             version,
             cancellationToken);
 
@@ -223,15 +230,27 @@ public sealed class RequestStatusService :
         await _writer.AddNotificationAsync(
             source.Id,
             source.RequesterUserId,
-            "request.status.Merged",
-            new { to = RequestStatus.Merged.ToString(), targetRequestId = target.Id },
+            "Request.StatusChanged",
+            new
+            {
+                requestId = source.Id.ToString(),
+                status = RequestStatus.Merged.ToString(),
+                to = RequestStatus.Merged.ToString(),
+                targetRequestId = target.Id
+            },
             sourceVersion,
             cancellationToken);
         await _writer.AddNotificationAsync(
             target.Id,
             target.RequesterUserId,
-            "request.status.Merged",
-            new { sourceRequestId = source.Id },
+            "Request.StatusChanged",
+            new
+            {
+                requestId = target.Id.ToString(),
+                status = RequestStatus.Merged.ToString(),
+                to = RequestStatus.Merged.ToString(),
+                sourceRequestId = source.Id
+            },
             targetVersion,
             cancellationToken);
 

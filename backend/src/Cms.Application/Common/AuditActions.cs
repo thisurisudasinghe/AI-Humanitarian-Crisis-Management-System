@@ -31,6 +31,11 @@ public static class AuditActions
     public const string RequestSubmitted = "Request.Submitted";
     public const string RequestStatusChanged = "Request.StatusChanged";
 
+    // Public live map (explicit publication layer)
+    public const string AlertPublishedToMap = "Alert.PublishedToMap";
+    public const string AlertHiddenFromMap = "Alert.HiddenFromMap";
+    public const string ServiceCentrePublicVisibilityChanged = "ServiceCentre.PublicVisibilityChanged";
+
     // Governance
     public const string DecisionRecorded = "Decision.Recorded";
     public const string AnnouncementApproved = "Announcement.Approved";

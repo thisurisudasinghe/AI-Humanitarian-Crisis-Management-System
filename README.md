@@ -34,7 +34,7 @@ AI-Humanitarian-Crisis-Management-System/
 │   │
 │   ├── db/
 │   │   ├── 00_common.sql
-│   │   ├── 01_cases.sql ... 09_donor_portal.sql (module owners; includes 02_notif.sql)
+│   │   ├── 01_cases.sql ... 10_operations_centre.sql (module owners; includes 02_notif.sql)
 │   │   ├── 98_foreign_keys.sql
 │   │   ├── 99_seed_users.sql
 │   │   └── 90_seed_scenario.sql, 91_seed_ops.sql
@@ -109,11 +109,12 @@ Run the scripts in this canonical order on a fresh database:
 7. `backend/db/06_vol.sql` — Member 4 volunteer tables
 8. `backend/db/08_don.sql` — donation tables (Dev 1)
 9. `backend/db/09_donor_portal.sql` — additive donor portal fields and structured items
-10. `backend/db/98_foreign_keys.sql` — guarded cross-module foreign keys
-11. `backend/db/99_seed_users.sql` — roles and Lead Agency organisation
-12. Start the API once in `Development`; `DevelopmentDemoSeeder` creates the demo users.
-13. `backend/db/90_seed_scenario.sql` — Member 2 case workflow fixtures
-14. `backend/db/91_seed_ops.sql` — Member 4 resource/shelter/volunteer fixtures
+10. `backend/db/10_operations_centre.sql` — additive public live-map publication fields and indexes
+11. `backend/db/98_foreign_keys.sql` — guarded cross-module foreign keys
+12. `backend/db/99_seed_users.sql` — roles and Lead Agency organisation
+13. Start the API once in `Development`; `DevelopmentDemoSeeder` creates the demo users.
+14. `backend/db/90_seed_scenario.sql` — Member 2 case workflow fixtures
+15. `backend/db/91_seed_ops.sql` — Member 4 resource/shelter/volunteer fixtures
 
 `backend/db/07_geo.sql` is intentionally skipped because Member 4 uses `IMemoryCache`, not a persistent `geo.geo_cache` table. The two scenario seed scripts must run after the API has created the demo users. All schema and seed scripts are intended to be safe to re-run.
 
@@ -356,7 +357,7 @@ sqlcmd -S "(localdb)\mssqllocaldb" -E -b -Q "CREATE DATABASE [$db];"
 $scripts = @(
   "00_common.sql", "01_cases.sql", "02_notif.sql", "03_ai.sql",
   "04_res.sql", "05_shelter.sql", "06_vol.sql", "08_don.sql",
-  "09_donor_portal.sql", "98_foreign_keys.sql", "99_seed_users.sql"
+  "09_donor_portal.sql", "10_operations_centre.sql", "98_foreign_keys.sql", "99_seed_users.sql"
 )
 foreach ($s in $scripts) {
   sqlcmd -S "(localdb)\mssqllocaldb" -d $db -I -b -i "backend/db/$s"

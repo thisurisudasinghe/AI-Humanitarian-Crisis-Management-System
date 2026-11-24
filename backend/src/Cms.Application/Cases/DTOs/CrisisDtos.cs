@@ -63,6 +63,31 @@ public class AlertDto
     public DateTime CreatedAt { get; set; }
 }
 
+/// <summary>
+/// Coordinator-facing read model for the publication form. It includes the
+/// private alert text needed by staff but no requester, volunteer or contact
+/// data. Public-facing consumers must use the PublicMap DTOs instead.
+/// </summary>
+public class AlertPublicationDto
+{
+    public Guid Id { get; set; }
+    public Guid? CrisisId { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public string Body { get; set; } = string.Empty;
+    [JsonConverter(typeof(JsonStringEnumConverter))] public AlertStatus Status { get; set; }
+    public DateTime? PublishedAt { get; set; }
+    public bool PublicVisible { get; set; }
+    public string? PublicTitle { get; set; }
+    public string? PublicSummary { get; set; }
+    public string? CrisisType { get; set; }
+    public string? Severity { get; set; }
+    public string? District { get; set; }
+    public double? Latitude { get; set; }
+    public double? Longitude { get; set; }
+    public DateTime? ExpiresAt { get; set; }
+    public Guid? PublishedByUserId { get; set; }
+}
+
 public class CreateAlertDto
 {
     [Required, StringLength(200)] public string Title { get; set; } = string.Empty;

@@ -5,7 +5,7 @@ import { formatDate as formatDateForLocale, resolveLocale } from "@/lib/i18n/cor
 import { useEffect, useMemo, useState } from "react";
 import { AuthGuard } from "@/components/AuthGuard";
 import { Icon } from "@/components/safeway/Icon";
-import { EmptyPanel } from "@/components/safeway/IntegrationNotice";
+import { EmptyPanel } from "@/components/safeway/EmptyPanel";
 import { useT } from "@/lib/i18n";
 import { StaffRoles } from "@/lib/roles";
 import {

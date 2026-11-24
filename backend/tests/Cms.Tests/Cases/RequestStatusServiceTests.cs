@@ -32,7 +32,10 @@ public class RequestStatusServiceTests
         Assert.Equal(1, await context.OutboxMessages.CountAsync());
         var outbox = await context.OutboxMessages.SingleAsync();
         Assert.Equal("Notification.Send", outbox.Type);
-        Assert.Contains("request.status.Verified", outbox.Payload);
+        Assert.Contains("Request.StatusChanged", outbox.Payload);
+        Assert.Contains("requestId", outbox.Payload, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("status", outbox.Payload, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Verified", outbox.Payload);
         Assert.Equal(request.Id, outbox.EntityId);
         Assert.Equal("Notification.Send:" + request.Id + ":1", outbox.IdempotencyKey);
         Assert.DoesNotContain("Notification.Send:", outbox.Payload);
@@ -65,7 +68,7 @@ public class RequestStatusServiceTests
         Assert.Equal(1, await context.AuditEvents.CountAsync());
         var outbox = await context.OutboxMessages.SingleAsync();
         Assert.Equal("Notification.Send", outbox.Type);
-        Assert.Contains("request.status.Triaged", outbox.Payload);
+        Assert.Contains("Request.StatusChanged", outbox.Payload);
     }
 
     [Fact]

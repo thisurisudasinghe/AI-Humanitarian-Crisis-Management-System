@@ -17,6 +17,7 @@ import {
 } from "@/components/ui";
 import { AuthGuard } from "@/components/AuthGuard";
 import { AdminNav } from "@/components/safeway/AdminNav";
+import { Icon } from "@/components/safeway/Icon";
 import { api, apiJson } from "@/lib/api";
 import {
   formatDate,
@@ -24,6 +25,7 @@ import {
   type PagedResult,
   type UserSummary
 } from "@/lib/admin";
+import { humanizeRole } from "@/lib/format";
 import { useT } from "@/lib/i18n";
 import { AllRoles, RoleNames } from "@/lib/roles";
 import { useDebouncedValue } from "@/lib/useDebouncedValue";
@@ -280,7 +282,7 @@ export default function UsersPage() {
       render: (user) => (
         <div className="actions">
           {user.roles.map((item) => (
-            <Badge key={item}>{item}</Badge>
+            <Badge key={item}>{humanizeRole(item, t)}</Badge>
           ))}
         </div>
       )
@@ -303,22 +305,42 @@ export default function UsersPage() {
     {
       key: "actions",
       header: t("admin.users.colActions"),
-      render: (user) => (
-        <div className="actions">
-          <Button variant="secondary" onClick={() => openEdit(user)}>
-            {t("admin.users.edit")}
-          </Button>
-          <Button
-            variant="secondary"
-            onClick={() => setRoleTarget({ user, roles: [...user.roles] })}
-          >
-            {t("admin.users.editRoles")}
-          </Button>
-          <Button variant="secondary" onClick={() => setStatusTarget(user)}>
-            {user.isActive ? t("admin.users.deactivate") : t("admin.users.activate")}
-          </Button>
-        </div>
-      )
+      render: (user) => {
+        const statusLabel = user.isActive
+          ? t("admin.users.deactivate")
+          : t("admin.users.activate");
+        return (
+          <div className="row-actions">
+            <Button
+              variant="secondary"
+              className="row-action"
+              onClick={() => openEdit(user)}
+              aria-label={t("admin.users.edit")}
+              title={t("admin.users.edit")}
+            >
+              <Icon name="file" size={15} />
+            </Button>
+            <Button
+              variant="secondary"
+              className="row-action"
+              onClick={() => setRoleTarget({ user, roles: [...user.roles] })}
+              aria-label={t("admin.users.editRoles")}
+              title={t("admin.users.editRoles")}
+            >
+              <Icon name="shield" size={15} />
+            </Button>
+            <Button
+              variant="secondary"
+              className="row-action"
+              onClick={() => setStatusTarget(user)}
+              aria-label={statusLabel}
+              title={statusLabel}
+            >
+              <Icon name={user.isActive ? "close" : "check"} size={15} />
+            </Button>
+          </div>
+        );
+      }
     }
   ];
 
