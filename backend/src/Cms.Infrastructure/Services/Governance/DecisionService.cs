@@ -71,27 +71,6 @@ public sealed class DecisionService : Cms.Application.Interfaces.Governance.IDec
             throw new ValidationException("Reason cannot exceed 2000 characters.");
         }
 
-        // Typed validation of any supplied final payload. Rejected and Deferred
-        // decisions must never carry executable allocation instructions.
-        string? validatedPayload = null;
-        if (outcome == DecisionOutcome.Modified)
-        {
-            if (string.IsNullOrWhiteSpace(request.FinalPayloadJson))
-            {
-                throw new ValidationException(
-                    "Final payload is required when modifying a recommendation.");
-            }
-            validatedPayload = ValidatePayload(request.FinalPayloadJson!);
-        }
-        else if (outcome == DecisionOutcome.Approved)
-        {
-            if (!string.IsNullOrWhiteSpace(request.FinalPayloadJson))
-            {
-                validatedPayload = ValidatePayload(request.FinalPayloadJson!);
-            }
-        }
-        // Rejected/Deferred: payload intentionally discarded.
-
         var recommendation = await _recommendations.GetByIdAsync(
             recommendationId,
             cancellationToken);
@@ -112,10 +91,31 @@ public sealed class DecisionService : Cms.Application.Interfaces.Governance.IDec
             throw new ForbiddenException("An authenticated user is required to record a decision.");
         }
 
-        // Organization scope: a decider may only decide recommendations in their
-        // own organization. Recommendation.TargetId is the request id; resolve
-        // the request's organization where available.
-        // (Scope is enforced by the recommendation service and role policy above.)
+        // Typed validation of any supplied final payload. Rejected and Deferred
+        // decisions must never carry executable allocation instructions.
+        string? validatedPayload = null;
+        if (outcome == DecisionOutcome.Modified)
+        {
+            if (string.IsNullOrWhiteSpace(request.FinalPayloadJson))
+            {
+                throw new ValidationException(
+                    "Final payload is required when modifying a recommendation.");
+            }
+            validatedPayload = ValidatePayload(request.FinalPayloadJson!, recommendation.Type, recommendation.TargetId);
+        }
+        else if (outcome == DecisionOutcome.Approved)
+        {
+            if (!string.IsNullOrWhiteSpace(request.FinalPayloadJson))
+            {
+                validatedPayload = ValidatePayload(request.FinalPayloadJson!, recommendation.Type, recommendation.TargetId);
+            }
+            else if (recommendation.Type is RecommendationTypes.ResourceMatch or RecommendationTypes.ShelterMatch)
+            {
+                throw new ValidationException(
+                    "A valid final payload is required for allocation decisions.");
+            }
+        }
+        // Rejected/Deferred: payload intentionally discarded.
 
         var now = _dateTimeService.UtcNow;
 
@@ -153,9 +153,8 @@ public sealed class DecisionService : Cms.Application.Interfaces.Governance.IDec
             {
                 await _context.SaveChangesAsync(cancellationToken);
             }
-            catch (DbUpdateException)
+            catch (DbUpdateException ex) when (IsUniqueConstraintViolation(ex))
             {
-                // Unique constraint violation (concurrent decision) -> conflict.
                 throw new ConflictException(
                     "A decision has already been recorded for this recommendation. " +
                     "Decision records are immutable.");
@@ -234,7 +233,7 @@ public sealed class DecisionService : Cms.Application.Interfaces.Governance.IDec
         return decisions.Select(Map).ToList();
     }
 
-    private static string ValidatePayload(string payloadJson)
+    private static string ValidatePayload(string payloadJson, string recommendationType, Guid targetRequestId)
     {
         if (string.IsNullOrWhiteSpace(payloadJson))
         {
@@ -263,7 +262,6 @@ public sealed class DecisionService : Cms.Application.Interfaces.Governance.IDec
                 throw new ValidationException("Final payload must be a JSON object.");
             }
 
-            // Reject oversized nested structures by checking element count.
             var count = 0;
             foreach (var _ in document.RootElement.EnumerateObject()) count++;
             if (count == 0)
@@ -271,11 +269,65 @@ public sealed class DecisionService : Cms.Application.Interfaces.Governance.IDec
                 throw new ValidationException("Final payload must contain at least one field.");
             }
 
-            // Reject executable allocation instructions in rejected/deferred is handled
-            // by the caller; here we only ensure valid JSON object.
+            if (recommendationType is RecommendationTypes.ResourceMatch or RecommendationTypes.ShelterMatch)
+            {
+                if (!document.RootElement.TryGetProperty("requestId", out var reqEl) ||
+                    reqEl.ValueKind != JsonValueKind.String ||
+                    !Guid.TryParse(reqEl.GetString(), out var reqId) ||
+                    reqId == Guid.Empty)
+                {
+                    throw new ValidationException("Final payload must contain a valid requestId GUID.");
+                }
+                if (reqId != targetRequestId)
+                {
+                    throw new ValidationException("Final payload requestId must match the recommendation target request.");
+                }
+
+                if (recommendationType == RecommendationTypes.ResourceMatch)
+                {
+                    if (!document.RootElement.TryGetProperty("inventoryId", out var invEl) ||
+                        invEl.ValueKind != JsonValueKind.String ||
+                        !Guid.TryParse(invEl.GetString(), out var invId) ||
+                        invId == Guid.Empty)
+                    {
+                        throw new ValidationException("Final payload must contain a valid inventoryId GUID.");
+                    }
+                    if (!document.RootElement.TryGetProperty("quantity", out var qtyEl) ||
+                        !qtyEl.TryGetDecimal(out var qty) || qty <= 0)
+                    {
+                        throw new ValidationException("Final payload must contain a positive quantity.");
+                    }
+                }
+                else
+                {
+                    if (!document.RootElement.TryGetProperty("shelterId", out var shEl) ||
+                        shEl.ValueKind != JsonValueKind.String ||
+                        !Guid.TryParse(shEl.GetString(), out var shId) ||
+                        shId == Guid.Empty)
+                    {
+                        throw new ValidationException("Final payload must contain a valid shelterId GUID.");
+                    }
+                    if (!document.RootElement.TryGetProperty("householdSize", out var hsEl) ||
+                        !hsEl.TryGetInt32(out var hs) || hs < 1)
+                    {
+                        throw new ValidationException("Final payload must contain a positive householdSize.");
+                    }
+                }
+            }
         }
 
         return payloadJson.Trim();
+    }
+
+    private static bool IsUniqueConstraintViolation(DbUpdateException ex)
+    {
+        // SQL Server unique constraint/index violation numbers.
+        if (ex.InnerException is Microsoft.Data.SqlClient.SqlException sqlEx)
+        {
+            return sqlEx.Number is 2601 or 2627;
+        }
+        // SQLite / in-memory providers do not raise these; fall back to message.
+        return ex.InnerException?.Message?.Contains("UNIQUE", StringComparison.OrdinalIgnoreCase) == true;
     }
 
     private static DecisionDto Map(DecisionRecord decision) => new()
