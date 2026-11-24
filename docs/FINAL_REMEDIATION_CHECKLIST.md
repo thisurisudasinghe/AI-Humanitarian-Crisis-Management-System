@@ -18,17 +18,20 @@ Isolated test DB: `CmsDbOpsE2E` (never shared `CmsDb`)
 
 ## Fix classification (vs latest develop)
 
-### FIX 01 — Unify AI decision services and auditing [P]
-- Two services exist: `AI.IDecisionService` and `Governance.IDecisionService`, bridged by `DecisionAliasController`.
-- Governance `DecisionService` records audit with Confidence; AI `DecisionService` handles recommendations.
-- Status: partially unified via alias controller; full canonical unification not yet done.
-- Action: keep compatibility adapter; ensure audit completeness (recommendation ref, type/source, confidence, outcome, decider, timestamp, reason).
+### FIX 01 — Unify AI decision services and auditing [x]
+- Legacy `DecisionController` (api/decision) retired; AI.IDecisionService registration removed.
+- All decision endpoints now use canonical Governance.IDecisionService.
+- Authorization strengthened to `AuthorizedRoles.Deciders`.
+- Audit records include recommendation ref, type, confidence, outcome, decider, timestamp, reason.
 
-### FIX 02 — Secure AI human approval and execution [P]
-- Governance `DecisionService.DecideAsync` validates approval/rejection reason, role policy, scope.
-- Frontend uses structured decision form (operations/decisions).
-- Concurrency/idempotency: existing `DecisionId` uniqueness; needs DB-enforced uniqueness verification.
-- Status: partially implemented; needs concurrency test evidence.
+### FIX 02 — Secure AI human approval and execution [x]
+- Typed payload validation: required fields, GUIDs, positive quantities, matching target request IDs, JSON structure, size limits.
+- Approved/modified allocation decisions require valid executable payload; Rejected/Deferred clear payload.
+- DB-enforced uniqueness: `UX_decision_records_recommendation_id` (verified on real SQL Server CmsDbOpsE2E, no duplicates).
+- Concurrency: `DbUpdateException` on unique violation -> `ConflictException` -> HTTP 409 (only genuine duplicate-key conflicts).
+- Atomicity: transaction wraps decision + status transition + audit; rollback on failure.
+- Repeated execution prevention by decisionId in AllocateAsync and AllocateShelterAsync.
+- Resource/shelter capacity rechecked at execution time.
 
 ### FIX 03 — Resource shortages and partial fulfilment [P]
 - `OperationsService` shortage ranking exists; allocations track quantity.

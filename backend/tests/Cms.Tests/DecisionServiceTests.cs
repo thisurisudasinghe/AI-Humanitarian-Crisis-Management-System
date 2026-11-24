@@ -35,7 +35,8 @@ public class DecisionServiceTests
             new DecisionRequestDto
             {
                 Outcome = "Approved",
-                Reason = "Verified by coordinator"
+                Reason = "Verified by coordinator",
+                FinalPayloadJson = "{\"requestId\":\"" + TargetRequestId + "\",\"inventoryId\":\"11111111-1111-1111-1111-111111111111\",\"quantity\":10}"
             });
 
         Assert.Equal(DecisionOutcome.Approved, result.Outcome);
@@ -58,7 +59,8 @@ public class DecisionServiceTests
             new DecisionRequestDto
             {
                 Outcome = "Approved",
-                Reason = "Verified by coordinator"
+                Reason = "Verified by coordinator",
+                FinalPayloadJson = "{\"requestId\":\"" + TargetRequestId + "\",\"inventoryId\":\"11111111-1111-1111-1111-111111111111\",\"quantity\":10}"
             });
 
         audit.Verify(
@@ -170,7 +172,12 @@ public class DecisionServiceTests
 
         await service.RecordAsync(
             RecommendationId,
-            new DecisionRequestDto { Outcome = "Approved", Reason = "Verified" });
+            new DecisionRequestDto
+            {
+                Outcome = "Approved",
+                Reason = "Verified",
+                FinalPayloadJson = "{\"requestId\":\"" + TargetRequestId + "\",\"inventoryId\":\"11111111-1111-1111-1111-111111111111\",\"quantity\":10}"
+            });
 
         requestStatus.Verify(
             s => s.TransitionAsync(
