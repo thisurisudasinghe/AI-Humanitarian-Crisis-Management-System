@@ -45,7 +45,7 @@ public class CaseWriteHelperTests
         await writer.AddNotificationAsync(
             requestId,
             recipientId,
-            "request.status.Verified",
+            "Request.StatusChanged",
             new { from = "Submitted", to = "Verified" },
             2,
             default);
@@ -61,7 +61,7 @@ public class CaseWriteHelperTests
         Assert.Equal($"Notification.Send:{requestId}:2", row.IdempotencyKey);
         Assert.Equal(recipientId, payload!.RecipientUserId);
         Assert.Equal(requestId, payload.RequestId);
-        Assert.Equal("request.status.Verified", payload.TemplateKey);
+        Assert.Equal("Request.StatusChanged", payload.TemplateKey);
         Assert.Equal("en", payload.Language);
     }
 

@@ -17,6 +17,7 @@ import { api, type Paged } from "@/lib/operations-api";
 import type { MapFocus, MapMarker } from "@/components/map/MapView";
 import type { MapPoint } from "@/components/map/MapPicker";
 import { MAP_MARKER_TYPES, markerLabelKey } from "@/components/map/mapTypes";
+import { AlertPublicationPanel } from "@/components/map/AlertPublicationPanel";
 import { useUserLocation, type LocationStatus } from "@/components/map/useUserLocation";
 import styles from "./page.module.css";
 
@@ -212,6 +213,7 @@ function OperationsMapContent() {
     RoleNames.SystemAdmin
   ]);
   const canCreateArea = can([RoleNames.EmergencyCoordinator]);
+  const canPublishMap = can([RoleNames.EmergencyCoordinator]);
 
   const [trackingEnabled, setTrackingEnabled] = useState(true);
   const {
@@ -930,6 +932,8 @@ function OperationsMapContent() {
           </section>
         )}
       </div>
+
+      {canPublishMap && <AlertPublicationPanel />}
     </>
   );
 }

@@ -178,6 +178,43 @@ public class AnnouncementServiceTests
             }));
     }
 
+    [Theory]
+    [InlineData("si")]
+    [InlineData("ta")]
+    public async Task CreateAsync_accepts_the_app_locales(string language)
+    {
+        using var db = TestDb.Create();
+        await SeedUsersAsync(db, 1);
+        var service = MakeService(db, Roles.SystemAdmin);
+
+        var created = await service.CreateAsync(new CreateAnnouncementRequest
+        {
+            Title = "Flood warning",
+            Message = "Move to higher ground",
+            Language = language,
+            Audience = new AnnouncementAudienceDto { AllActiveUsers = true }
+        });
+
+        Assert.Equal(language, created.Language);
+    }
+
+    [Fact]
+    public async Task CreateAsync_rejects_spanish_locale()
+    {
+        using var db = TestDb.Create();
+        await SeedUsersAsync(db, 1);
+        var service = MakeService(db, Roles.SystemAdmin);
+
+        await Assert.ThrowsAsync<ValidationException>(() =>
+            service.CreateAsync(new CreateAnnouncementRequest
+            {
+                Title = "Flood warning",
+                Message = "Move to higher ground",
+                Language = "es",
+                Audience = new AnnouncementAudienceDto { AllActiveUsers = true }
+            }));
+    }
+
     private static async Task SeedUsersAsync(CmsDbContext db, int count)
     {
         var role = new Role { Name = Roles.Citizen };

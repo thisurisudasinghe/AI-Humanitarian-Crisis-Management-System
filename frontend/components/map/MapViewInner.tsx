@@ -17,6 +17,7 @@ import {
 import { useT } from "@/lib/i18n";
 import { MAP_MARKER_TYPES, markerColor, markerLabelKey } from "./mapTypes";
 import styles from "./MapView.module.css";
+import "./mapMarkers.css";
 
 export interface MapMarker {
   id: string;
@@ -60,14 +61,31 @@ export interface MapViewProps {
 
 const DEFAULT_CENTRE: [number, number] = [7.8731, 80.7718];
 
+/** Simple inline glyphs keep disaster markers distinguishable without colour alone. */
+const MARKER_ICON_PATHS: Record<string, string> = {
+  flood: "M2 8c2 0 2-2 4-2s2 2 4 2 2-2 4-2 2 2 4 2 2-2 4-2M2 14c2 0 2-2 4-2s2 2 4 2 2-2 4-2 2 2 4 2 2-2 4-2",
+  landslide: "m3 19 6-10 4 6 2-3 6 7H3Z",
+  fire: "M12 22c4 0 7-2.7 7-6.5 0-4-3.2-6.4-4.8-9.5-.5-1-2-1-2.4 0C11 8.5 9 10 9 13c-1-.5-2-1.6-2-3-2 1.6-2 3.8-2 5.5C5 19.3 8 22 12 22Z",
+  "severe-weather": "M6 16a4 4 0 0 1 .5-8 6 6 0 0 1 11.3 1.6A3.5 3.5 0 0 1 18 16H6Zm6-2-2 4h3l-1 3 4-5h-3l1-2h-3Z",
+  drought: "M12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10ZM12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l-1.4 1.4",
+  "other-crisis": "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Zm0-13h.01M11 12h1v5h1",
+  "public-shelter": "m3 11 9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-9Z",
+  "aid-centre": "M12 3v18M3 12h18"
+};
+
 function markerIcon(type: string | undefined, selected: boolean) {
   const colour = markerColor(type);
   const ring = selected
     ? "outline:3px solid #facc15;outline-offset:2px;"
     : "";
+  const path = type ? MARKER_ICON_PATHS[type] : undefined;
+  const icon = path
+    ? `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="${path}" /></svg>`
+    : "";
+  const classes = `cms-map-pin-dot${path ? " has-icon" : ""}`;
   return L.divIcon({
     className: "cms-map-pin",
-    html: `<span aria-hidden="true" class="cms-map-pin-dot" style="background:${colour};${ring}"></span>`,
+    html: `<span aria-hidden="true" class="${classes}" style="background:${colour};${ring}">${icon}</span>`,
     iconSize: [24, 24],
     iconAnchor: [12, 12]
   });

@@ -541,6 +541,12 @@
     box-shadow: 0 12px 28px rgba(4, 28, 46, 0.22);
 }
 
+.public-shell .public-hero__map {
+    min-height: 52px;
+    padding: 0 24px;
+    border-radius: 10px;
+}
+
 .public-shell .public-hero__emergency {
     display: flex;
     align-items: center;
@@ -1551,7 +1557,8 @@
         font-size: 14px;
     }
     .public-shell .centered-actions,
-    .public-shell .centered-actions .public-hero__cta {
+    .public-shell .centered-actions .public-hero__cta,
+    .public-shell .centered-actions .public-hero__map {
         width: 100%;
     }
     .public-shell .public-hero__emergency {

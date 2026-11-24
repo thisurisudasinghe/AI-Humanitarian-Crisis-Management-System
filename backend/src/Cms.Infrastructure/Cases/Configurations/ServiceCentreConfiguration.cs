@@ -20,11 +20,16 @@ public class ServiceCentreConfiguration : IEntityTypeConfiguration<ServiceCentre
         builder.Property(s => s.Services).HasColumnName("services").IsRequired().HasMaxLength(1000);
         builder.Property(s => s.OpeningHours).HasColumnName("opening_hours").HasMaxLength(500);
         builder.Property(s => s.IsActive).HasColumnName("is_active").IsRequired();
+        builder.Property(s => s.PublicVisible).HasColumnName("public_visible")
+            .HasColumnType("bit").IsRequired().HasDefaultValue(true);
         builder.Property(s => s.CreatedAt).HasColumnName("created_at").IsRequired();
         builder.Property(s => s.UpdatedAt).HasColumnName("updated_at");
 
         builder.HasOne<Crisis>().WithMany().HasForeignKey(s => s.CrisisId)
             .HasConstraintName("FK_service_centres_crises").OnDelete(DeleteBehavior.Restrict);
         builder.HasIndex(s => s.IsActive).HasDatabaseName("IX_service_centres_is_active");
+        builder.HasIndex(s => new { s.PublicVisible, s.IsActive })
+            .HasDatabaseName("IX_service_centres_public")
+            .HasFilter("[public_visible] = 1");
     }
 }

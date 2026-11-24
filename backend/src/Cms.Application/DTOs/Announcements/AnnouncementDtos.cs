@@ -29,7 +29,7 @@ public class CreateAnnouncementRequest
 
     public string Channel { get; set; } = "InApp";
 
-    /// <summary>Template language for the draft. English and Spanish are seeded.</summary>
+    /// <summary>Template language for the draft: en (English), si (Sinhala) or ta (Tamil).</summary>
     public string Language { get; set; } = "en";
 
     /// <summary>Optional client key; a generated one is used when omitted.</summary>

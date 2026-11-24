@@ -14,7 +14,8 @@ const publicLinks = [
   { key: "nav.home", href: "/", icon: "home" },
   { key: "nav.about", href: "/about", icon: "info" },
   { key: "nav.services", href: "/services", icon: "layers" },
-  { key: "nav.howItWorks", href: "/how-it-works", icon: "route" }
+  { key: "nav.howItWorks", href: "/how-it-works", icon: "route" },
+  { key: "nav.liveMap", href: "/live-map", icon: "layers" }
 ] as const;
 
 export function PublicNav() {

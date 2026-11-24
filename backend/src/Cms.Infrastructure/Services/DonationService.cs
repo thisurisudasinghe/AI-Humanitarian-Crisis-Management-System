@@ -4,6 +4,7 @@ using Cms.Application.Common;
 using Cms.Application.Contracts;
 using Cms.Application.DTOs;
 using Cms.Application.DTOs.Donations;
+using Cms.Application.DTOs.Notifications;
 using Cms.Application.Interfaces;
 using Cms.Domain.Constants;
 using Cms.Domain.Entities;
@@ -136,17 +137,20 @@ public sealed class DonationService : IDonationService
     private readonly IAuditLogger _auditLogger;
     private readonly ICurrentUser _currentUser;
     private readonly IDateTimeService _dateTimeService;
+    private readonly IOutbox _outbox;
 
     public DonationService(
         CmsDbContext db,
         IAuditLogger auditLogger,
         ICurrentUser currentUser,
-        IDateTimeService dateTimeService)
+        IDateTimeService dateTimeService,
+        IOutbox outbox)
     {
         _db = db;
         _auditLogger = auditLogger;
         _currentUser = currentUser;
         _dateTimeService = dateTimeService;
+        _outbox = outbox;
     }
 
     // -----------------------------------------------------------------------
@@ -1037,6 +1041,22 @@ public sealed class DonationService : IDonationService
         };
 
         _db.Donations.Add(donation);
+        if (donor.UserId.HasValue)
+        {
+            await EnqueueNotificationAsync(
+                donation.Id,
+                donor.UserId.Value,
+                "Donation.Received",
+                new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["reference"] = donation.Reference,
+                    ["amount"] = (donation.Amount ?? donation.EstimatedValue ?? 0m)
+                        .ToString("0.##", CultureInfo.InvariantCulture),
+                    ["currency"] = donation.Currency
+                },
+                cancellationToken);
+        }
+
         try
         {
             await _db.SaveChangesAsync(cancellationToken);
@@ -1044,8 +1064,10 @@ public sealed class DonationService : IDonationService
         catch (DbUpdateException) when (idempotencyKey is not null)
         {
             // A concurrent submit with the same key can win the unique index after
-            // the replay check above. Return that donor's persisted record instead
-            // of surfacing a duplicate-key failure; all other write errors stand.
+            // the replay check above. Discard the pending outbox row with the failed
+            // insert before returning the persisted record; all other write errors
+            // still surface.
+            _db.ChangeTracker.Clear();
             var replayKey = idempotencyKey;
             var replay = await _db.Donations
                 .AsNoTracking()
@@ -1100,6 +1122,7 @@ public sealed class DonationService : IDonationService
         ArgumentNullException.ThrowIfNull(request);
 
         var donation = await _db.Donations
+            .Include(candidate => candidate.Donor)
             .Include(candidate => candidate.Allocations)
             .SingleOrDefaultAsync(candidate => candidate.Id == donationId, cancellationToken)
             ?? throw new NotFoundException("Donation was not found.", "DONATION_NOT_FOUND");
@@ -1177,6 +1200,22 @@ public sealed class DonationService : IDonationService
         }
 
         donation.UpdatedAt = _dateTimeService.UtcNow;
+        if (donation.Donor.UserId.HasValue)
+        {
+            await EnqueueNotificationAsync(
+                allocation.Id,
+                donation.Donor.UserId.Value,
+                "Donation.Allocated",
+                new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["reference"] = donation.Reference,
+                    ["campaign"] = campaign.Name,
+                    ["amount"] = amount.ToString("0.##", CultureInfo.InvariantCulture),
+                    ["currency"] = donation.Currency
+                },
+                cancellationToken);
+        }
+
         await _db.SaveChangesAsync(cancellationToken);
 
         await _auditLogger.LogAsync(
@@ -1461,6 +1500,28 @@ public sealed class DonationService : IDonationService
     // -----------------------------------------------------------------------
     // Helpers
     // -----------------------------------------------------------------------
+
+    private Task EnqueueNotificationAsync(
+        Guid entityId,
+        Guid recipientUserId,
+        string templateKey,
+        IReadOnlyDictionary<string, string> data,
+        CancellationToken cancellationToken)
+    {
+        var payload = new NotificationPayloadDto
+        {
+            RecipientUserId = recipientUserId,
+            TemplateKey = templateKey,
+            Data = new Dictionary<string, string>(data, StringComparer.OrdinalIgnoreCase)
+        };
+
+        return _outbox.EnqueueAsync(
+            OutboxEventTypes.NotificationSend,
+            entityId,
+            payload,
+            OutboxEventTypes.BuildIdempotencyKey(OutboxEventTypes.NotificationSend, entityId, 1),
+            cancellationToken);
+    }
 
     private async Task EnsureCampaignExistsAsync(
         Guid campaignId,

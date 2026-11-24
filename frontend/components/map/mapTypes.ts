@@ -10,7 +10,15 @@ export const MAP_MARKER_TYPES = {
   area: { label: "Operational area", color: "#b45309" },
   "search-result": { label: "Search result", color: "#0f766e" },
   "current-location": { label: "Your current location", color: "#1d4ed8" },
-  location: { label: "Location", color: "#5b4b8a" }
+  location: { label: "Location", color: "#5b4b8a" },
+  flood: { label: "Flood", color: "#2f6fb0" },
+  landslide: { label: "Landslide", color: "#8a6a4f" },
+  fire: { label: "Fire", color: "#b6433e" },
+  "severe-weather": { label: "Severe weather", color: "#7356a8" },
+  drought: { label: "Drought", color: "#a78b32" },
+  "other-crisis": { label: "Other crisis", color: "#667085" },
+  "public-shelter": { label: "Public shelter", color: "#2f7d4f" },
+  "aid-centre": { label: "Aid centre", color: "#0f766e" }
 } as const;
 
 export type MapMarkerType = keyof typeof MAP_MARKER_TYPES;
@@ -24,7 +32,15 @@ export const MARKER_LABEL_KEYS: Record<MapMarkerType, string> = {
   area: "map.markerTypes.area",
   "search-result": "map.markerTypes.searchResult",
   "current-location": "map.markerTypes.currentLocation",
-  location: "map.markerTypes.location"
+  location: "map.markerTypes.location",
+  flood: "map.markerTypes.flood",
+  landslide: "map.markerTypes.landslide",
+  fire: "map.markerTypes.fire",
+  "severe-weather": "map.markerTypes.severeWeather",
+  drought: "map.markerTypes.drought",
+  "other-crisis": "map.markerTypes.otherCrisis",
+  "public-shelter": "map.markerTypes.publicShelter",
+  "aid-centre": "map.markerTypes.aidCentre"
 };
 
 export function markerLabelKey(type?: string): string {

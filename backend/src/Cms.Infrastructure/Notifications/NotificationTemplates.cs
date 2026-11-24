@@ -6,33 +6,59 @@ namespace Cms.Infrastructure.Notifications;
 
 /// <summary>
 /// Template registry for the frozen Notification.Send payload. Templates are
-/// keyed by TemplateKey and the P2 languages seeded in common.notification_templates
-/// (English and Spanish). A payload may override Subject/Body directly; otherwise
-/// the registry substitutes {key} tokens from the payload Data dictionary.
+/// keyed by TemplateKey and language. The registry supplies English, Sinhala,
+/// Tamil and Spanish defaults for the core notification keys. A payload may
+/// override Subject/Body directly; otherwise the registry substitutes {key}
+/// tokens from the payload Data dictionary. User-generated text is passed
+/// through unchanged.
 /// </summary>
 public static class NotificationTemplates
 {
-    public static readonly string[] SupportedLanguages = { "en", "es" };
+    public static readonly string[] SupportedLanguages = { "en", "si", "ta", "es" };
 
     private static readonly Dictionary<(string Key, string Language), (string Subject, string Body)> Defaults =
         new()
         {
             [("Request.StatusChanged", "en")] =
                 ("Your request status has changed", "Request {requestId} is now {status}."),
+            [("Request.StatusChanged", "si")] =
+                ("ඔබේ ඉල්ලීමේ තත්ත්වය යාවත්කාලීනයි", "{requestId} ඉල්ලීම දැන් {status} තත්ත්වයේ පවතී."),
+            [("Request.StatusChanged", "ta")] =
+                ("உங்கள் கோரிக்கையின் நிலை மாற்றம்", "கோரிக்கை {requestId} இப்போது {status} நிலையில் உள்ளது."),
             [("Request.StatusChanged", "es")] =
                 ("El estado de su solicitud ha cambiado", "La solicitud {requestId} ahora está {status}."),
             [("Request.Assigned", "en")] =
                 ("A responder has been assigned", "Your request {requestId} has been assigned to {assignee}."),
+            [("Request.Assigned", "si")] =
+                ("ප්‍රතිචාරකයෙකු පවරා ඇත", "ඔබේ {requestId} ඉල්ලීම {assignee} වෙත පවරා ඇත."),
+            [("Request.Assigned", "ta")] =
+                ("பதிலளிப்பவர் நியமிக்கப்பட்டுள்ளார்", "உங்கள் கோரிக்கை {requestId} {assignee} க்கு நியமிக்கப்பட்டுள்ளது."),
             [("Request.Assigned", "es")] =
                 ("Se ha asignado un responder", "Su solicitud {requestId} ha sido asignada a {assignee}."),
             [("Shelter.Allocated", "en")] =
                 ("Shelter allocation confirmed", "You have been allocated to {shelter}."),
+            [("Shelter.Allocated", "si")] =
+                ("නවාතැන් වෙන් කිරීම තහවුරුයි", "ඔබට {shelter} නවාතැන වෙන් කර ඇත."),
+            [("Shelter.Allocated", "ta")] =
+                ("இல்லம் ஒதுக்கீடு உறுதிப்படுத்தப்பட்டது", "உங்களுக்கு {shelter} இல்லம் ஒதுக்கப்பட்டுள்ளது."),
             [("Shelter.Allocated", "es")] =
                 ("Asignación de refugio confirmada", "Ha sido asignado a {shelter}."),
             [("Donation.Received", "en")] =
-                ("Donation received", "Thank you. Your donation of {amount} {currency} has been recorded."),
+                ("Donation received", "Thank you. Donation {reference} for {amount} {currency} has been recorded."),
+            [("Donation.Received", "si")] =
+                ("පරිත්‍යාගය ලැබුණි", "ස්තූතියි. {reference} පරිත්‍යාගය {amount} {currency} ලෙස සටහන් කර ඇත."),
+            [("Donation.Received", "ta")] =
+                ("நன்கொடை பெறப்பட்டது", "நன்றி. {reference} நன்கொடை {amount} {currency} ஆகப் பதிவு செய்யப்பட்டுள்ளது."),
             [("Donation.Received", "es")] =
-                ("Donación recibida", "Gracias. Su donación de {amount} {currency} ha sido registrada."),
+                ("Donación recibida", "Gracias. La donación {reference} por {amount} {currency} ha sido registrada."),
+            [("Donation.Allocated", "en")] =
+                ("Donation allocated", "Donation {reference} has been allocated to {campaign} ({amount} {currency})."),
+            [("Donation.Allocated", "si")] =
+                ("පරිත්‍යාගය වෙන් කර ඇත", "{reference} පරිත්‍යාගය {campaign} වෙත වෙන් කර ඇත ({amount} {currency})."),
+            [("Donation.Allocated", "ta")] =
+                ("நன்கொடை ஒதுக்கப்பட்டது", "{reference} நன்கொடை {campaign} க்கு ஒதுக்கப்பட்டுள்ளது ({amount} {currency})."),
+            [("Donation.Allocated", "es")] =
+                ("Donación asignada", "La donación {reference} ha sido asignada a {campaign} ({amount} {currency})."),
             [("Account.Welcome", "en")] =
                 ("Welcome to SAFEWAY", "Hello {name}, your account is ready."),
             [("Account.Welcome", "es")] =
@@ -43,10 +69,18 @@ public static class NotificationTemplates
                 ("Anuncio de emergencia", "{message}"),
             [("Announcement.Approved", "en")] =
                 ("Emergency announcement", "{message}"),
+            [("Announcement.Approved", "si")] =
+                ("හදිසි නිවේදනය", "{message}"),
+            [("Announcement.Approved", "ta")] =
+                ("அவசர அறிவிப்பு", "{message}"),
             [("Announcement.Approved", "es")] =
                 ("Anuncio de emergencia", "{message}"),
             [("Announcement.Rejected", "en")] =
                 ("Announcement update", "{message}"),
+            [("Announcement.Rejected", "si")] =
+                ("නිවේදන යාවත්කාලීනය", "{message}"),
+            [("Announcement.Rejected", "ta")] =
+                ("அறிவிப்பு புதுப்பிப்பு", "{message}"),
             [("Announcement.Rejected", "es")] =
                 ("Actualización del anuncio", "{message}")
         };
@@ -85,7 +119,7 @@ public static class NotificationTemplates
     private static string NormaliseLanguage(string? language)
     {
         var normalised = language?.Trim().ToLowerInvariant();
-        return normalised is "en" or "es" ? normalised : "en";
+        return normalised is "en" or "si" or "ta" or "es" ? normalised : "en";
     }
 
     private static string Substitute(

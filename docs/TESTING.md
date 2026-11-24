@@ -44,7 +44,7 @@ prove it):
 # Canonical order (07_geo.sql is intentionally skipped):
 # 00_common.sql -> 01_cases.sql -> 02_notif.sql -> 03_ai.sql -> 04_res.sql
 # -> 05_shelter.sql -> 06_vol.sql -> 08_don.sql -> 09_donor_portal.sql
-# -> 98_foreign_keys.sql -> 99_seed_users.sql -> start API once
+# -> 10_operations_centre.sql -> 98_foreign_keys.sql -> 99_seed_users.sql -> start API once
 # -> 90_seed_scenario.sql -> 91_seed_ops.sql
 $db = "CmsDb_IntegrationTest"
 sqlcmd -S "(localdb)\mssqllocaldb" -d $db -I -b -i backend/db/00_common.sql
@@ -56,6 +56,7 @@ sqlcmd -S "(localdb)\mssqllocaldb" -d $db -I -b -i backend/db/05_shelter.sql
 sqlcmd -S "(localdb)\mssqllocaldb" -d $db -I -b -i backend/db/06_vol.sql
 sqlcmd -S "(localdb)\mssqllocaldb" -d $db -I -b -i backend/db/08_don.sql
 sqlcmd -S "(localdb)\mssqllocaldb" -d $db -I -b -i backend/db/09_donor_portal.sql
+sqlcmd -S "(localdb)\mssqllocaldb" -d $db -I -b -i backend/db/10_operations_centre.sql
 sqlcmd -S "(localdb)\mssqllocaldb" -d $db -I -b -i backend/db/98_foreign_keys.sql
 sqlcmd -S "(localdb)\mssqllocaldb" -d $db -I -b -i backend/db/99_seed_users.sql
 # After the API demo-user seeder has run once:
@@ -152,9 +153,10 @@ in `docs/DEV3_REPORT.md` after the final run):
    "Information only - this chat does not make or approve decisions."
 6. **Templates** — `backend/db/02_notif.sql` seeds English (`en`) and Spanish
    (`es`) rows in `common.notification_templates`, keyed by template key plus
-   language. The in-code fallback registry currently holds English defaults;
-   if a second-language template is added it must use the same key/language
-   convention rather than a new template key.
+   language. The in-code fallback registry in `NotificationTemplates` supplies
+   `en`, `si`, `ta` and `es` defaults for the notification keys it defines;
+   announcements accept `en`, `si` and `ta`. Keep every new language template
+   under the same canonical key/language pair rather than inventing a new key.
 
 ## 5. Demo accounts
 
@@ -181,7 +183,8 @@ startup by `DevelopmentDemoSeeder` after the SQL schema scripts have run.
 Run this before every Dev 1 hand-off or demo.
 
 1. Run `00_common.sql`, `02_notif.sql`, `03_ai.sql`, `08_don.sql`,
-   `09_donor_portal.sql`, `98_foreign_keys.sql` and `99_seed_users.sql` twice.
+   `09_donor_portal.sql`, `10_operations_centre.sql`, `98_foreign_keys.sql`
+   and `99_seed_users.sql` twice.
    Both passes must succeed;
    `common.system_settings` must contain three rows and
    `common.notification_templates` must contain `en` and `es` rows. Then start

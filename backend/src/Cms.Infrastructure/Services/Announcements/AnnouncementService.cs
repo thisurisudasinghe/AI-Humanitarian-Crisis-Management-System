@@ -82,9 +82,9 @@ public sealed class AnnouncementService : IAnnouncementService
             ? "en"
             : request.Language.Trim().ToLowerInvariant();
 
-        if (language is not ("en" or "es"))
+        if (language is not ("en" or "si" or "ta"))
         {
-            throw new ValidationException("Unsupported template language. Use en or es.");
+            throw new ValidationException("Unsupported template language. Use en, si or ta.");
         }
 
         var key = string.IsNullOrWhiteSpace(request.IdempotencyKey)

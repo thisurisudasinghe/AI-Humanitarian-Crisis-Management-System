@@ -48,9 +48,14 @@ public class ControllerAuthorizationTests
         AssertRoles<CrisesController>("CreateArea", CasesRoles.CoordinatorOnly);
         AssertRoles<CrisesController>("CreateAlert", CasesRoles.CoordinatorOnly);
         AssertRoles<AlertsController>("Update", CasesRoles.CoordinatorOnly);
+        AssertRoles<AlertsController>("List", CasesRoles.CoordinatorOnly);
+        AssertRoles<AlertsController>("PublishToMap", CasesRoles.CoordinatorOnly);
+        AssertRoles<ServiceCentresController>("SetPublicVisibility", CasesRoles.CoordinatorOnly);
 
         var publicController = typeof(PublicController);
         Assert.NotNull(publicController.GetCustomAttribute<AllowAnonymousAttribute>());
+        var publicMapController = typeof(PublicMapController);
+        Assert.NotNull(publicMapController.GetCustomAttribute<AllowAnonymousAttribute>());
     }
 
     private static void AssertRoles<TController>(string methodName, string expectedRoles)

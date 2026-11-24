@@ -12,4 +12,5 @@ public class ServiceCentre : BaseEntity
     public string Services { get; set; } = string.Empty;
     public string? OpeningHours { get; set; }
     public bool IsActive { get; set; } = true;
+    public bool PublicVisible { get; set; } = true;
 }
