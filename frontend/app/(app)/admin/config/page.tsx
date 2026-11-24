@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { localizedErrorMessage } from "@/lib/i18n/errors";
 import { Button, Input, Skeleton, Toast } from "@/components/ui";
 import { AuthGuard } from "@/components/AuthGuard";
-import { AdminNav } from "@/components/safeway/AdminNav";
 import { api, apiJson } from "@/lib/api";
 import { ConfigKeys, type SystemSettingDto } from "@/lib/admin";
 import { useT } from "@/lib/i18n";
@@ -107,8 +106,6 @@ export default function ConfigPage() {
             {saving ? t("admin.config.saving") : t("admin.config.saveChanges")}
           </Button>
         </header>
-
-        <AdminNav />
 
         <section className="card">
           {loading ? (

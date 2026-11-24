@@ -17,8 +17,11 @@ export function PublicFooter() {
         </div>
 
         <nav className="public-footer__links" aria-label={t("nav.footerLinksAria")}>
-          <Link href="/about">{t("nav.about")}</Link>
-          <Link href="/services">{t("nav.services")}</Link>
+          <Link href="/find-assistance">{t("nav.findAssistance")}</Link>
+          <Link href="/public-alerts">{t("nav.publicAlerts")}</Link>
+          <Link href="/emergency-services">{t("nav.emergencyServices")}</Link>
+          <Link href="/support">{t("nav.getSupport")}</Link>
+          <Link href="/staff-access">{t("nav.staffAccess")}</Link>
           <Link href="/contact">{t("nav.contact")}</Link>
         </nav>
 

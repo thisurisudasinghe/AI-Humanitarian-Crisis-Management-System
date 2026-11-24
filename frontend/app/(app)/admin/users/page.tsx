@@ -16,7 +16,6 @@ import {
   type Column
 } from "@/components/ui";
 import { AuthGuard } from "@/components/AuthGuard";
-import { AdminNav } from "@/components/safeway/AdminNav";
 import { Icon } from "@/components/safeway/Icon";
 import { api, apiJson } from "@/lib/api";
 import {
@@ -354,8 +353,6 @@ export default function UsersPage() {
           </div>
           <Button onClick={() => setCreateOpen(true)}>{t("admin.users.create")}</Button>
         </header>
-
-        <AdminNav />
 
         <section className="card">
           <div className="filters">

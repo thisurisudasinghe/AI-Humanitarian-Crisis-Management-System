@@ -14,7 +14,6 @@ import {
   type Column
 } from "@/components/ui";
 import { AuthGuard } from "@/components/AuthGuard";
-import { AdminNav } from "@/components/safeway/AdminNav";
 import { formatDate, type CmsPagedResult } from "@/lib/admin";
 
 import { useAuth } from "@/lib/auth";
@@ -315,8 +314,6 @@ export default function AnnouncementsPage() {
             {t("admin.announcements.refresh")}
           </Button>
         </header>
-
-        <AdminNav />
 
         <Toast
           message={notice?.message ?? null}

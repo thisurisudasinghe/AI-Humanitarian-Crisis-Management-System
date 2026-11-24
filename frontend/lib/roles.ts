@@ -64,3 +64,18 @@ export function isPublicPortalUser(roles: readonly string[]): boolean {
 export function homePathForRoles(roles: readonly string[]): string {
   return isStaff(roles) ? "/operations" : "/dashboard";
 }
+
+/**
+ * Validates an internal-only post-login redirect target. Returns `null` for
+ * anything that is not a same-origin absolute path so callers can fall back to
+ * the role-appropriate landing route.
+ */
+export function safeNextPath(value: string | null | undefined): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (trimmed.length < 1 || trimmed.length > 512) return null;
+  if (!trimmed.startsWith("/") || trimmed.startsWith("//")) return null;
+  if (trimmed.includes("://")) return null;
+  if (/[\u0000-\u001f\u007f]/.test(trimmed)) return null;
+  return trimmed;
+}

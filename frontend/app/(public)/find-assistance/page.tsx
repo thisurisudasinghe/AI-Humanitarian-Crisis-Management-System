@@ -249,14 +249,23 @@ export default function FindAssistancePage() {
           </section>
         ) : null}
 
-        <section className="service-choice public-single-choice">
+        <section className="service-choice public-single-choice pw-assistance-choice">
           <div>
-            <small>{t("find.ctaSmall") || t("public.find.ctaSmallFallback")}</small>
-            <h2>{t("find.ctaTitle") || t("public.find.ctaTitleFallback")}</h2>
+            <small>{t("pw.assistance.eyebrow")}</small>
+            <h2>{t("pw.assistance.title")}</h2>
+            <p>{t("pw.assistance.body")}</p>
           </div>
-          <Link className="btn btn-primary" href="/report">
-            {t("nav.reportCrisis")} <Icon name="arrow" />
-          </Link>
+          <div className="pw-card__links pw-card__links--row">
+            <Link className="btn btn-primary" href="/report">
+              {t("pw.assistance.personalRequest")} <Icon name="arrow" size={16} />
+            </Link>
+            <Link className="btn btn-outline" href="/emergency-services">
+              {t("nav.emergencyServices")} <Icon name="phone" size={16} />
+            </Link>
+            <Link className="btn btn-outline" href="/support">
+              {t("nav.getSupport")} <Icon name="help-circle" size={16} />
+            </Link>
+          </div>
         </section>
       </div>
     </main>

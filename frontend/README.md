@@ -84,8 +84,8 @@ npm start
 | `/admin/audit` | Append-only audit viewer (`SystemAdmin`) |
 | `/admin/outbox` | Read-only outbox dead-letter queue (`SystemAdmin`) |
 
-Every `/admin/*` page shares an `AdminNav` tab strip so the sections are
-reachable without returning to the sidebar.
+Every `/admin/*` page is reached through the shared operations sidebar
+administration group, so no separate admin tab strip is rendered.
 
 `/403`, `not-found`, `error` and `loading` use the same design system.
 

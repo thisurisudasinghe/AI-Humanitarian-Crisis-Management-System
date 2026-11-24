@@ -1,18 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { localizedErrorMessage } from "@/lib/i18n/errors";
-import { useRouter } from "next/navigation";
-import { useEffect, useState, type FormEvent } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState, type FormEvent } from "react";
 import { Brand } from "@/components/safeway/Brand";
 import { Icon } from "@/components/safeway/Icon";
 
 import { useAuth } from "@/lib/auth";
 import { useT } from "@/lib/i18n";
-import { homePathForRoles } from "@/lib/roles";
+import { homePathForRoles, safeNextPath } from "@/lib/roles";
+import { localizedErrorMessage } from "@/lib/i18n/errors";
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, ready, login } = useAuth();
   const t = useT();
   const [role, setRole] = useState<"public" | "officer">("public");
@@ -22,11 +23,15 @@ export default function LoginPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const next = safeNextPath(searchParams.get("next"));
+
   useEffect(() => {
     if (ready && user) {
-      router.replace(homePathForRoles(user.roles));
+      router.replace(next ?? homePathForRoles(user.roles));
     }
-  }, [ready, user, router]);
+    // `next` is validated against internal paths before it reaches this effect.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, user, router, next]);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -35,7 +40,7 @@ export default function LoginPage() {
 
     try {
       const current = await login(email.trim(), password);
-      router.replace(homePathForRoles(current.roles));
+      router.replace(next ?? homePathForRoles(current.roles));
     } catch (caught) {
       setError(localizedErrorMessage(caught, t));
     } finally {
@@ -111,5 +116,27 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  const t = useT();
+  return (
+    <Suspense
+      fallback={
+        <div className="login-page">
+          <div className="login-brand-panel">
+            <Brand light />
+          </div>
+          <div className="login-form-panel">
+            <div className="login-form">
+              <p>{t("feedback.loading")}</p>
+            </div>
+          </div>
+        </div>
+      }
+    >
+      <LoginForm />
+    </Suspense>
   );
 }

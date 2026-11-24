@@ -22,7 +22,7 @@ import {
   type CrisisRecord,
   type Paged as CasePaged
 } from "@/lib/crisis";
-import { useT } from "@/lib/i18n";
+import { formatDate, useI18n } from "@/lib/i18n";
 import { getRecommendations, type RecommendationDto } from "@/lib/recommendations";
 import {
   RoleNames,
@@ -165,7 +165,7 @@ function crisisTypeKey(type: string): string {
 }
 
 export default function OperationsPage() {
-  const t = useT();
+  const { t, locale } = useI18n();
   const { user } = useAuth();
   const roles = user?.roles ?? [];
   const rolesKey = roles.join("|");
@@ -529,8 +529,8 @@ export default function OperationsPage() {
             {kpiReport ? (
               <small>
                 {t("opsX.overview.kpiPeriod", {
-                  from: kpiReport.from,
-                  to: kpiReport.to
+                  from: formatDate(kpiReport.from, locale),
+                  to: formatDate(kpiReport.to, locale)
                 })}
               </small>
             ) : null}
@@ -617,8 +617,8 @@ export default function OperationsPage() {
               <div className="crisis-table overview-crisis-table">
                 <div className="table-head">
                   <span>{t("operations.shared.incident")}</span>
-                  <span>{t("operations.shared.severity")}</span>
-                  <span>{t("opsX.common.started", { value: "" }).trim()}</span>
+                  <span>{t("operations.shared.incidentType")}</span>
+                  <span>{t("opsX.overview.started")}</span>
                   <span>{t("opsX.common.status")}</span>
                   <span />
                 </div>
@@ -629,7 +629,7 @@ export default function OperationsPage() {
                       {crisis.description ? <small>{crisis.description}</small> : null}
                     </span>
                     <span>{t(crisisTypeKey(crisis.type))}</span>
-                    <span>{crisis.startedAt.slice(0, 10)}</span>
+                    <span>{formatDate(crisis.startedAt, locale)}</span>
                     <span>{crisis.status}</span>
                     <span>
                       <Link
@@ -696,7 +696,7 @@ export default function OperationsPage() {
                       <span>
                         <b>{item.title}</b>
                         <small>
-                          {t(item.sourceKey)} · {item.at.slice(0, 10)}
+                          {t(item.sourceKey)} · {formatDate(item.at, locale)}
                         </small>
                       </span>
                     </>

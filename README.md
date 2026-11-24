@@ -89,7 +89,7 @@ dotnet test Cms.slnx
 
 ## 6. Database Setup
 
-1. Create a SQL Server database named `CmsDb`.
+1. Create a disposable SQL Server database (for example `CmsDb_IntegrationTest`). Do not use the legacy shared `CmsDb`.
 2. Configure the connection string (`ConnectionStrings__DefaultConnection`).
 3. Run the ordered SQL scripts from `backend/db`.
 
@@ -110,11 +110,12 @@ Run the scripts in this canonical order on a fresh database:
 8. `backend/db/08_don.sql` — donation tables (Dev 1)
 9. `backend/db/09_donor_portal.sql` — additive donor portal fields and structured items
 10. `backend/db/10_operations_centre.sql` — additive public live-map publication fields and indexes
-11. `backend/db/98_foreign_keys.sql` — guarded cross-module foreign keys
-12. `backend/db/99_seed_users.sql` — roles and Lead Agency organisation
-13. Start the API once in `Development`; `DevelopmentDemoSeeder` creates the demo users.
-14. `backend/db/90_seed_scenario.sql` — Member 2 case workflow fixtures
-15. `backend/db/91_seed_ops.sql` — Member 4 resource/shelter/volunteer fixtures
+11. `backend/db/11_access_reporting.sql` — staff access applications and hashed-token guest reporting
+12. `backend/db/98_foreign_keys.sql` — guarded cross-module foreign keys
+13. `backend/db/99_seed_users.sql` — roles and Lead Agency organisation
+14. Start the API once in `Development`; `DevelopmentDemoSeeder` creates the demo users.
+15. `backend/db/90_seed_scenario.sql` — Member 2 case workflow fixtures
+16. `backend/db/91_seed_ops.sql` — Member 4 resource/shelter/volunteer fixtures
 
 `backend/db/07_geo.sql` is intentionally skipped because Member 4 uses `IMemoryCache`, not a persistent `geo.geo_cache` table. The two scenario seed scripts must run after the API has created the demo users. All schema and seed scripts are intended to be safe to re-run.
 
@@ -323,7 +324,8 @@ Server instance. Frontend checks are `npm.cmd run typecheck` and
   `backend/db/02_notif.sql` → `backend/db/03_ai.sql` → `backend/db/98_foreign_keys.sql`
   → `backend/db/99_seed_users.sql`. `02_notif.sql` seeds English (`en`) and
   Spanish (`es`) template rows keyed by `template_key` + `language`; the
-  in-code fallback registry currently holds English defaults only.
+  in-code fallback registry holds English, Sinhala, Tamil and Spanish defaults
+  for the core notification keys, with new staff-access keys localized in code.
 - Resilience expectations: AI failure, timeout or low confidence falls back to
   the rule-based provider with `Source = Rule`; map failure falls back to
   cache then Haversine (`IsApproximate = true`); email failure leaves the
@@ -357,7 +359,8 @@ sqlcmd -S "(localdb)\mssqllocaldb" -E -b -Q "CREATE DATABASE [$db];"
 $scripts = @(
   "00_common.sql", "01_cases.sql", "02_notif.sql", "03_ai.sql",
   "04_res.sql", "05_shelter.sql", "06_vol.sql", "08_don.sql",
-  "09_donor_portal.sql", "10_operations_centre.sql", "98_foreign_keys.sql", "99_seed_users.sql"
+  "09_donor_portal.sql", "10_operations_centre.sql", "11_access_reporting.sql",
+  "98_foreign_keys.sql", "99_seed_users.sql"
 )
 foreach ($s in $scripts) {
   sqlcmd -S "(localdb)\mssqllocaldb" -d $db -I -b -i "backend/db/$s"

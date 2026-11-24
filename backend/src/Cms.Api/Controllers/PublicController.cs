@@ -1,11 +1,13 @@
 using Cms.Application.Cases.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace Cms.Api.Controllers;
 
 [ApiController]
 [AllowAnonymous]
+[EnableRateLimiting("public")]
 [Route("api/v1/public")]
 public class PublicController : ControllerBase
 {

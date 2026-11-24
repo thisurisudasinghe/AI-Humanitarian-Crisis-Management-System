@@ -1,4 +1,5 @@
 using Cms.Domain.Entities;
+using Cms.Domain.Entities.Access;
 using Cms.Domain.Entities.Operations;
 using Cms.Domain.Entities.Cases;
 using Microsoft.EntityFrameworkCore;
@@ -74,6 +75,11 @@ public class CmsDbContext : DbContext
     public DbSet<VolunteerAvailability> VolunteerAvailabilities => Set<VolunteerAvailability>();
     public DbSet<VolunteerTask> VolunteerTasks => Set<VolunteerTask>();
     public DbSet<VolunteerActivity> VolunteerActivities => Set<VolunteerActivity>();
+
+    // Access and guest reporting (access schema).
+    public DbSet<StaffAccessApplication> StaffAccessApplications => Set<StaffAccessApplication>();
+    public DbSet<GuestReport> GuestReports => Set<GuestReport>();
+    public DbSet<GuestReportTimeline> GuestReportTimelines => Set<GuestReportTimeline>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
