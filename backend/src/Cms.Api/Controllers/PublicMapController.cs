@@ -8,7 +8,8 @@ namespace Cms.Api.Controllers;
 
 /// <summary>
 /// Anonymous, public-safe live-map feed. The service returns projections only:
-/// no requests, volunteers, internal identifiers or private alert fields.
+/// no requests, volunteers, ownership identifiers or private alert fields. Public
+/// incident/location keys are intentional and are used by the map UI.
 /// </summary>
 [ApiController]
 [AllowAnonymous]

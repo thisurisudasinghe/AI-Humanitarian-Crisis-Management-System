@@ -162,6 +162,62 @@ public sealed class PublicMapWorkflowTests
     }
 
     [Fact]
+    public async Task Anonymous_public_alerts_return_only_public_fields()
+    {
+        using var factory = new CmsWebApplicationFactory();
+        await factory.EnsureSeededAsync();
+        var now = DateTime.UtcNow;
+        var visibleId = Guid.NewGuid();
+        var hiddenId = Guid.NewGuid();
+
+        using (var scope = factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<CmsDbContext>();
+            var visible = NewAlert(visibleId, "PRIVATE_ALERT_TITLE", "PRIVATE_ALERT_BODY",
+                AlertStatus.Published, true, now.AddDays(1), now.AddMinutes(-10));
+            visible.PublicTitle = "SAFE_PUBLIC_TITLE";
+            visible.PublicSummary = "SAFE_PUBLIC_SUMMARY";
+            var hidden = NewAlert(hiddenId, "HIDDEN_PRIVATE_TITLE", "HIDDEN_PRIVATE_BODY",
+                AlertStatus.Published, false, now.AddDays(1), now.AddMinutes(-9));
+            hidden.PublicTitle = "HIDDEN_PUBLIC_TITLE";
+            hidden.PublicSummary = "HIDDEN_PUBLIC_SUMMARY";
+            db.Set<Alert>().AddRange(visible, hidden);
+            await db.SaveChangesAsync();
+        }
+
+        using var anonymous = factory.CreateClient();
+        var response = await anonymous.GetAsync("/api/v1/public/alerts");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var json = await response.Content.ReadAsStringAsync();
+
+        Assert.Contains("SAFE_PUBLIC_TITLE", json, StringComparison.Ordinal);
+        Assert.Contains("SAFE_PUBLIC_SUMMARY", json, StringComparison.Ordinal);
+        foreach (var marker in new[]
+                 {
+                     "PRIVATE_ALERT_TITLE", "PRIVATE_ALERT_BODY", "HIDDEN_PRIVATE_TITLE",
+                     "HIDDEN_PRIVATE_BODY", "HIDDEN_PUBLIC_TITLE", "HIDDEN_PUBLIC_SUMMARY",
+                     hiddenId.ToString()
+                 })
+        {
+            Assert.DoesNotContain(marker, json, StringComparison.OrdinalIgnoreCase);
+        }
+
+        using var document = JsonDocument.Parse(json);
+        var alert = Assert.Single(document.RootElement.EnumerateArray());
+        Assert.Equal(visibleId.ToString(), alert.GetProperty("id").GetString());
+        Assert.Equal("SAFE_PUBLIC_TITLE", alert.GetProperty("title").GetString());
+        Assert.Equal("SAFE_PUBLIC_SUMMARY", alert.GetProperty("summary").GetString());
+        Assert.Equal("Flood", alert.GetProperty("type").GetString());
+        Assert.Equal("High", alert.GetProperty("severity").GetString());
+        Assert.Equal("Published", alert.GetProperty("status").GetString());
+        foreach (var forbidden in new[]
+                 { "body", "crisisId", "createdAt", "publishedByUserId", "notes", "address" })
+        {
+            Assert.False(alert.TryGetProperty(forbidden, out _), forbidden);
+        }
+    }
+
+    [Fact]
     public async Task Coordinator_can_list_publish_and_hide_an_alert_with_audit()
     {
         using var factory = new CmsWebApplicationFactory();

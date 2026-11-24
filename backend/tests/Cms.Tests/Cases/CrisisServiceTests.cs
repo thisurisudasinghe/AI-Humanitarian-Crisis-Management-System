@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Cms.Application.Cases.DTOs;
 using Cms.Application.DTOs.Public;
 using Cms.Domain.Cases;
@@ -57,10 +58,59 @@ public class CrisisServiceTests
         Assert.Equal("Public road closure", alert.Title);
         Assert.Equal("Use the alternate route.", alert.Summary);
         Assert.Equal("Flood", alert.Type);
+        Assert.Equal("Published", alert.Status);
         Assert.NotNull(alert.PublishedAt);
 
         await service.PublishAlertToMapAsync(alertId, new PublishMapAlertDto { Visible = false });
         Assert.Empty(await service.ListPublicAlertsAsync());
+    }
+
+    [Fact]
+    public async Task Public_alerts_project_only_explicitly_approved_fields()
+    {
+        using var context = TestContext.Create();
+        var service = CreateService(context, Coordinator(), DateTime.UtcNow);
+        var crisisId = await service.CreateCrisisAsync(new CreateCrisisDto
+        {
+            Name = "Flood",
+            Type = "Flood",
+            StartedAt = DateTime.UtcNow
+        });
+        var alertId = await service.CreateAlertAsync(crisisId, new CreateAlertDto
+        {
+            Title = "PRIVATE_INTERNAL_TITLE",
+            Body = "PRIVATE_INTERNAL_BODY"
+        });
+        await service.UpdateAlertAsync(alertId, new UpdateAlertDto { Publish = true });
+        await service.PublishAlertToMapAsync(alertId, new PublishMapAlertDto
+        {
+            Visible = true,
+            PublicTitle = "SAFE_PUBLIC_TITLE",
+            PublicSummary = "SAFE_PUBLIC_SUMMARY",
+            CrisisType = "Flood",
+            Severity = "High",
+            District = "Colombo",
+            Latitude = 6.9,
+            Longitude = 79.9
+        });
+
+        var projected = Assert.Single(await service.ListPublicAlertsAsync());
+        Assert.Equal("SAFE_PUBLIC_TITLE", projected.Title);
+        Assert.Equal("SAFE_PUBLIC_SUMMARY", projected.Summary);
+
+        var json = JsonSerializer.Serialize(projected, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        Assert.DoesNotContain("PRIVATE_INTERNAL_TITLE", json, StringComparison.Ordinal);
+        Assert.DoesNotContain("PRIVATE_INTERNAL_BODY", json, StringComparison.Ordinal);
+        Assert.DoesNotContain("crisisId", json, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("publishedByUserId", json, StringComparison.OrdinalIgnoreCase);
+        using var document = JsonDocument.Parse(json);
+        var allowed = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "id", "title", "summary", "type", "severity", "status",
+            "district", "latitude", "longitude", "publishedAt", "expiresAt"
+        };
+        Assert.All(document.RootElement.EnumerateObject(),
+            property => Assert.Contains(property.Name, allowed));
     }
 
     [Fact]
