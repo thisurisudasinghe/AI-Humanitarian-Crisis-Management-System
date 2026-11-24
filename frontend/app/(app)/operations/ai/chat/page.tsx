@@ -6,7 +6,7 @@ import { useRef, useState, type FormEvent } from "react";
 import { AuthGuard } from "@/components/AuthGuard";
 import { Icon } from "@/components/safeway/Icon";
 import { Button, Skeleton, Toast } from "@/components/ui";
-import { FaqExamples, sendChatMessage } from "@/lib/aiChat";
+import { FaqExamples, MAX_CHAT_MESSAGE_LENGTH, sendChatMessage } from "@/lib/aiChat";
 
 import { useT } from "@/lib/i18n";
 import { StaffRoles } from "@/lib/roles";
@@ -56,6 +56,9 @@ export default function AiFaqChatPage() {
         }
       ]);
       setSuggestions(answer.suggestions);
+      if (answer.notice) {
+        setNotice({ message: answer.notice, tone: "success" });
+      }
     } catch (error) {
       setNotice({ message: localizedErrorMessage(error, t), tone: "error" });
     } finally {
@@ -100,6 +103,8 @@ export default function AiFaqChatPage() {
             <b>{t("operations.chat.noticeTitle")}</b>
             <br />
             {t("operations.chat.noticeBody")}
+            <br />
+            {t("operations.chat.noticeSafety")}
           </span>
         </div>
 
@@ -180,10 +185,14 @@ export default function AiFaqChatPage() {
             <textarea
               className="input"
               rows={3}
+              maxLength={MAX_CHAT_MESSAGE_LENGTH}
               value={question}
               onChange={(event) => setQuestion(event.target.value)}
               placeholder={t("operations.chat.questionPlaceholder")}
             />
+            <span className="field__help">
+              {t("operations.chat.maxLengthHelp", { max: MAX_CHAT_MESSAGE_LENGTH })}
+            </span>
           </label>
           <Button type="submit" disabled={sending || !question.trim()}>
             {sending ? t("operations.chat.sending") : t("operations.chat.ask")}

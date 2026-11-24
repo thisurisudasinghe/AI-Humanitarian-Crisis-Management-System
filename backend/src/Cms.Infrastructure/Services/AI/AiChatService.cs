@@ -15,6 +15,12 @@ public sealed class AiChatService : IAiChatService
 {
     private const int MaxMessageLength = 2000;
     private static readonly TimeSpan CallTimeout = TimeSpan.FromSeconds(5);
+    private static readonly string[] EmergencyKeywords =
+    {
+        "emergency", "ambulance", "fire", "police", "danger", "immediate", "life threatening",
+        "life-threatening", "trapped", "bleeding", "unconscious", "collapsed", "call 911",
+        "call 999", "call 119"
+    };
 
     private sealed record FaqEntry(
         IReadOnlyList<string> Keywords,
@@ -26,6 +32,8 @@ public sealed class AiChatService : IAiChatService
         string NotConfiguredNotice,
         string ProviderUnavailableNotice,
         string LlmInstruction,
+        string EmergencyAnswer,
+        string SafetyGuardAnswer,
         string EmptyQuestion,
         string DefaultAnswer,
         IReadOnlyList<string> DefaultSuggestions,
@@ -35,8 +43,10 @@ public sealed class AiChatService : IAiChatService
         "Information only. This chat does not submit, approve, reject or change any request, and it does not provide live shelter availability, inventory quantities or operational status. If anyone is in immediate danger, contact local emergency services.",
         "AI provider is not configured. Showing SAFEWAY's verified FAQ guidance.",
         "The AI provider is temporarily unavailable. Showing SAFEWAY's verified FAQ guidance.",
-        "You are the SAFEWAY informational assistant. Answer only general questions about how the platform works. Never claim live emergency information, shelter availability, inventory quantities or operational status. Never submit, approve, reject or change a request, resource, shelter or decision. For immediate danger, tell the user to contact local emergency services. Direct operational decisions to authorised human staff. Respond in English.",
-        "Please enter a question about reporting an incident, finding assistance, shelters, resources, volunteering, donations or human decisions.",
+        "You are the SAFEWAY informational assistant. Answer only general questions about how the platform works. Never claim live emergency information, shelter availability, inventory quantities or operational status. Never submit, approve, reject or change a request, resource, shelter, volunteer assignment or decision. Never provide medical, legal or financial instructions beyond general SAFEWAY guidance. For immediate danger, tell the user to contact local emergency services. Direct operational decisions to authorised human staff. Respond in English.",
+        "If anyone is in immediate danger, contact your local emergency services immediately. SAFEWAY can help coordinate aid after people are safe, but it is not an emergency call service. After everyone is safe, you can report the incident for human triage.",
+        "I can provide informational guidance only. Authorised human staff must review and record any decision or operational action.",
+        "Please enter a question about reporting an incident, finding assistance, shelters, resources, volunteering, donations, notifications or human decisions.",
         "I can explain how to report an incident, find assistance and shelters, understand resources and the response workflow, volunteer, donate, and how authorised people make decisions.",
         new[] { "How do I report an incident?", "How do I find assistance?" },
         BuildEnFaq());
@@ -45,7 +55,9 @@ public sealed class AiChatService : IAiChatService
         "තොරතුරු සඳහා පමණි. මෙම කතාබහ මඟින් කිසිදු ඉල්ලීමක් ඉදිරිපත් කිරීම, අනුමත කිරීම, ප්‍රතික්ෂේප කිරීම හෝ වෙනස් කිරීම සිදු නොකරයි. සජීවී ආරක්ෂිත ස්ථාන ලබාගත හැකි බව, ඉන්වෙන්ටරි ප්‍රමාණ හෝ මෙහෙයුම් තත්ත්වය ලබා නොදේ. කිසිවෙකු ක්ෂණික අනතුරක සිටී නම්, දේශීය හදිසි සේවාවන් අමතන්න.",
         "AI සේවා සැපයුම්කරු සකසා නැත. SAFEWAY හි සත්‍යාපිත FAQ මාර්ගෝපදේශය පෙන්වයි.",
         "AI සේවා සැපයුම්කරු තාවකාලිකව ලබාගත නොහැක. SAFEWAY හි සත්‍යාපිත FAQ මාර්ගෝපදේශය පෙන්වයි.",
-        "You are the SAFEWAY informational assistant. Answer only general questions about how the platform works. Never claim live emergency information, shelter availability, inventory quantities or operational status. Never submit, approve, reject or change a request, resource, shelter or decision. For immediate danger, tell the user to contact local emergency services. Direct operational decisions to authorised human staff. Respond in Sinhala.",
+        "You are the SAFEWAY informational assistant. Answer only general questions about how the platform works. Never claim live emergency information, shelter availability, inventory quantities or operational status. Never submit, approve, reject or change a request, resource, shelter, volunteer assignment or decision. Never provide medical, legal or financial instructions beyond general SAFEWAY guidance. For immediate danger, tell the user to contact local emergency services. Direct operational decisions to authorised human staff. Respond in Sinhala.",
+        "කිසිවෙකු ක්ෂණික අනතුරක සිටී නම්, පළමුව දේශීය හදිසි සේවාවන් අමතන්න. SAFEWAY හදිසි ඇමතුම් සේවාවක් නොවේ; එය සහාය සම්බන්ධීකරණය සඳහාය. සියල්ලන් ආරක්ෂිත වූ පසු, මානුෂීය සමාලෝචනය සඳහා සිදුවීම වාර්තා කළ හැක.",
+        "මට තොරතුරු මාර්ගෝපදේශ පමණක් ලබා දිය හැක. ඕනෑම තීරණයක් හෝ මෙහෙයුම් ක්‍රියාවක් බලයලත් මානුෂීය කාර්ය මණ්ඩලය සමාලෝචනය කර වාර්තා කළ යුතුය.",
         "සිදුවීමක් වාර්තා කිරීම, සහාය සොයාගැනීම, ආරක්ෂිත ස්ථාන, සම්පත්, ස්වේච්ඡා සේවය, පරිත්‍යාග හෝ මානුෂීය තීරණ පිළිබඳ ප්‍රශ්නයක් ඇතුළත් කරන්න.",
         "සිදුවීමක් වාර්තා කරන ආකාරය, සහාය සහ ආරක්ෂිත ස්ථාන සොයාගැනීම, සම්පත් සහ ප්‍රතිචාර ක්‍රියාවලිය තේරුම් ගැනීම, ස්වේච්ඡා සේවය, පරිත්‍යාග සහ බලයලත් පුද්ගලයින් තීරණ ගන්නා ආකාරය පිළිබඳව මට පැහැදිලි කළ හැක.",
         new[] { "සිදුවීමක් වාර්තා කරන්නේ කෙසේද?", "සහාය සොයාගන්නේ කෙසේද?" },
@@ -55,7 +67,9 @@ public sealed class AiChatService : IAiChatService
         "தகவலுக்கு மட்டும். இந்த அரட்டை எந்த கோரிக்கையையும் சமர்ப்பிக்க, அங்கீகரிக்க, நிராகரிக்க அல்லது மாற்றாது. நேரடி தங்குமிட கிடைப்புநிலை, சரக்கு அளவுகள் அல்லது செயல்பாட்டு நிலையை வழங்காது. யாராவது உடனடி ஆபத்தில் இருந்தால், உள்ளூர் அவசர சேவைகளை தொடர்புகொள்ளவும்.",
         "AI வழங்குநர் அமைக்கப்படவில்லை. SAFEWAY இன் சரிபார்க்கப்பட்ட FAQ வழிகாட்டுதலை காட்டுகிறது.",
         "AI வழங்குநர் தற்காலிகமாக கிடைக்கவில்லை. SAFEWAY இன் சரிபார்க்கப்பட்ட FAQ வழிகாட்டுதலை காட்டுகிறது.",
-        "You are the SAFEWAY informational assistant. Answer only general questions about how the platform works. Never claim live emergency information, shelter availability, inventory quantities or operational status. Never submit, approve, reject or change a request, resource, shelter or decision. For immediate danger, tell the user to contact local emergency services. Direct operational decisions to authorised human staff. Respond in Tamil.",
+        "You are the SAFEWAY informational assistant. Answer only general questions about how the platform works. Never claim live emergency information, shelter availability, inventory quantities or operational status. Never submit, approve, reject or change a request, resource, shelter, volunteer assignment or decision. Never provide medical, legal or financial instructions beyond general SAFEWAY guidance. For immediate danger, tell the user to contact local emergency services. Direct operational decisions to authorised human staff. Respond in Tamil.",
+        "யாராவது உடனடி ஆபத்தில் இருந்தால், முதலில் உள்ளூர் அவசர சேவைகளை தொடர்புகொள்ளவும். SAFEWAY அவசர அழைப்பு சேவை அல்ல; இது உதவியை ஒருங்கிணைக்கிறது. அனைவரும் பாதுகாப்பாக இருந்த பின், மனித மதிப்பாய்வுக்காக சம்பவத்தை புகாரளிக்கலாம்.",
+        "நான் தகவல் வழிகாட்டுதலை மட்டுமே வழங்க முடியும். எந்த முடிவையும் அல்லது செயல்பாட்டு நடவடிக்கையையும் அங்கீகரிக்கப்பட்ட மனித பணியாளர்கள் மதிப்பாய்வு செய்து பதிவு செய்ய வேண்டும்.",
         "சம்பவத்தை புகாரளித்தல், உதவி தேடுதல், தங்குமிடங்கள், வளங்கள், தன்னார்வம், நன்கொடை அல்லது மனித முடிவுகள் பற்றி ஒரு கேள்வியை உள்ளிடவும்.",
         "சம்பவத்தை எப்படி புகாரளிப்பது, உதவி மற்றும் தங்குமிடங்களை கண்டுபிடிப்பது, வளங்கள் மற்றும் பதில் பணிப்பாய்வை புரிந்துகொள்வது, தன்னார்வம், நன்கொடை, மற்றும் அங்கீகரிக்கப்பட்டவர்கள் முடிவெடுக்கும் முறை ஆகியவற்றை நான் விளக்கலாம்.",
         new[] { "சம்பவத்தை எப்படி புகாரளிப்பது?", "உதவியை எப்படி கண்டுபிடிப்பது?" },
@@ -91,6 +105,12 @@ public sealed class AiChatService : IAiChatService
         if (question.Length > MaxMessageLength)
         {
             question = question[..MaxMessageLength];
+        }
+
+        // Emergency-first: never let an optional provider delay local emergency guidance.
+        if (IsImmediateDanger(question))
+        {
+            return RuleAnswer(pack, pack.EmergencyAnswer, pack.DefaultSuggestions, notice);
         }
 
         if (providerConfigured)
@@ -190,7 +210,7 @@ public sealed class AiChatService : IAiChatService
 
         return new AiChatResponseDto
         {
-            Answer = Truncate(answer) + " " + pack.Disclaimer,
+            Answer = NormalizeAnswer(answer, pack) + " " + pack.Disclaimer,
             Source = Cms.Domain.Constants.RecommendationSources.Ai,
             Suggestions = suggestions,
             DecidesNothing = true,
@@ -212,12 +232,40 @@ public sealed class AiChatService : IAiChatService
         string notice) =>
         new()
         {
-            Answer = answer + " " + pack.Disclaimer,
+            Answer = NormalizeAnswer(answer, pack) + " " + pack.Disclaimer,
             Source = Cms.Domain.Constants.RecommendationSources.Rule,
             Suggestions = suggestions,
             DecidesNothing = true,
             Notice = notice
         };
+
+    private static bool IsImmediateDanger(string question) =>
+        EmergencyKeywords.Any(keyword =>
+            question.Contains(keyword, StringComparison.OrdinalIgnoreCase));
+
+    private static string NormalizeAnswer(string answer, LocalePack pack)
+    {
+        var text = Truncate(answer.Trim());
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return pack.DefaultAnswer;
+        }
+
+        // Defensive guard: never allow provider text to imply autonomous critical actions.
+        foreach (var forbidden in new[]
+                 {
+                     "I have approved", "I approved", "I rejected", "I dispatched",
+                     "I allocated", "I submitted", "I closed the request"
+                 })
+        {
+            if (text.Contains(forbidden, StringComparison.OrdinalIgnoreCase))
+            {
+                return pack.SafetyGuardAnswer;
+            }
+        }
+
+        return text;
+    }
 
     private static string Truncate(string value) =>
         value.Length <= 4000 ? value : value[..4000];

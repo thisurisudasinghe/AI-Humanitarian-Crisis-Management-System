@@ -31,7 +31,7 @@ const opsNav: NavItem[] = [
 ];
 
 const publicOnlyPaths = ["/dashboard", "/my-reports", "/account"];
-const publicOnlyPrefixes = ["/portal"];
+const publicOnlyPrefixes = ["/portal", "/volunteer", "/donor"];
 
 const kpiRoles = [
   RoleNames.SystemAdmin,

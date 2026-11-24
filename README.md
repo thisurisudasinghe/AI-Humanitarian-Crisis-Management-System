@@ -34,7 +34,7 @@ AI-Humanitarian-Crisis-Management-System/
 │   │
 │   ├── db/
 │   │   ├── 00_common.sql
-│   │   ├── 01_cases.sql ... 08_don.sql   (module owners; includes 02_notif.sql)
+│   │   ├── 01_cases.sql ... 09_donor_portal.sql (module owners; includes 02_notif.sql)
 │   │   ├── 98_foreign_keys.sql
 │   │   ├── 99_seed_users.sql
 │   │   └── 90_seed_scenario.sql, 91_seed_ops.sql
@@ -108,11 +108,12 @@ Run the scripts in this canonical order on a fresh database:
 6. `backend/db/05_shelter.sql` — Member 4 shelter tables
 7. `backend/db/06_vol.sql` — Member 4 volunteer tables
 8. `backend/db/08_don.sql` — donation tables (Dev 1)
-9. `backend/db/98_foreign_keys.sql` — guarded cross-module foreign keys
-10. `backend/db/99_seed_users.sql` — roles and Lead Agency organisation
-11. Start the API once in `Development`; `DevelopmentDemoSeeder` creates the demo users.
-12. `backend/db/90_seed_scenario.sql` — Member 2 case workflow fixtures
-13. `backend/db/91_seed_ops.sql` — Member 4 resource/shelter/volunteer fixtures
+9. `backend/db/09_donor_portal.sql` — additive donor portal fields and structured items
+10. `backend/db/98_foreign_keys.sql` — guarded cross-module foreign keys
+11. `backend/db/99_seed_users.sql` — roles and Lead Agency organisation
+12. Start the API once in `Development`; `DevelopmentDemoSeeder` creates the demo users.
+13. `backend/db/90_seed_scenario.sql` — Member 2 case workflow fixtures
+14. `backend/db/91_seed_ops.sql` — Member 4 resource/shelter/volunteer fixtures
 
 `backend/db/07_geo.sql` is intentionally skipped because Member 4 uses `IMemoryCache`, not a persistent `geo.geo_cache` table. The two scenario seed scripts must run after the API has created the demo users. All schema and seed scripts are intended to be safe to re-run.
 
@@ -281,7 +282,10 @@ Server instance. Frontend checks are `npm.cmd run typecheck` and
   management, manual monetary/material donation entry, value-constrained
   allocations, campaign expenditure and a currency-aggregated transparency
   report that never exposes donor names. Suspicious values are flagged by a
-  rule and cleared only by a human reviewer.
+  rule and cleared only by a human reviewer. The signed-in donor portal adds a
+  four-step recording flow, structured multi-item supplies, optional campaign
+  intent, caller-scoped tracking and honest, backend-derived impact views;
+  `09_donor_portal.sql` adds only optional columns and a structured item table.
 - Evidence storage is available to every module through `IFileStore`
   (`LocalFileStore` writes under `FileStorage:RootPath`, `App_Data/uploads` by
   default). `POST /api/v1/files` accepts PNG, JPEG, WebP and PDF up to 1 MB,
@@ -352,7 +356,7 @@ sqlcmd -S "(localdb)\mssqllocaldb" -E -b -Q "CREATE DATABASE [$db];"
 $scripts = @(
   "00_common.sql", "01_cases.sql", "02_notif.sql", "03_ai.sql",
   "04_res.sql", "05_shelter.sql", "06_vol.sql", "08_don.sql",
-  "98_foreign_keys.sql", "99_seed_users.sql"
+  "09_donor_portal.sql", "98_foreign_keys.sql", "99_seed_users.sql"
 )
 foreach ($s in $scripts) {
   sqlcmd -S "(localdb)\mssqllocaldb" -d $db -I -b -i "backend/db/$s"
