@@ -44,13 +44,21 @@ public static class NotificationTemplates
             [("Shelter.Allocated", "es")] =
                 ("Asignación de refugio confirmada", "Ha sido asignado a {shelter}."),
             [("Donation.Received", "en")] =
-                ("Donation received", "Thank you. Your donation of {amount} {currency} has been recorded."),
+                ("Donation received", "Thank you. Donation {reference} for {amount} {currency} has been recorded."),
             [("Donation.Received", "si")] =
-                ("පරිත්‍යාගය ලැබුණි", "ස්තූතියි. ඔබේ {amount} {currency} පරිත්‍යාගය සටහන් කර ඇත."),
+                ("පරිත්‍යාගය ලැබුණි", "ස්තූතියි. {reference} පරිත්‍යාගය {amount} {currency} ලෙස සටහන් කර ඇත."),
             [("Donation.Received", "ta")] =
-                ("நன்கொடை பெறப்பட்டது", "நன்றி. உங்கள் {amount} {currency} நன்கொடை பதிவு செய்யப்பட்டுள்ளது."),
+                ("நன்கொடை பெறப்பட்டது", "நன்றி. {reference} நன்கொடை {amount} {currency} ஆகப் பதிவு செய்யப்பட்டுள்ளது."),
             [("Donation.Received", "es")] =
-                ("Donación recibida", "Gracias. Su donación de {amount} {currency} ha sido registrada."),
+                ("Donación recibida", "Gracias. La donación {reference} por {amount} {currency} ha sido registrada."),
+            [("Donation.Allocated", "en")] =
+                ("Donation allocated", "Donation {reference} has been allocated to {campaign} ({amount} {currency})."),
+            [("Donation.Allocated", "si")] =
+                ("පරිත්‍යාගය වෙන් කර ඇත", "{reference} පරිත්‍යාගය {campaign} වෙත වෙන් කර ඇත ({amount} {currency})."),
+            [("Donation.Allocated", "ta")] =
+                ("நன்கொடை ஒதுக்கப்பட்டது", "{reference} நன்கொடை {campaign} க்கு ஒதுக்கப்பட்டுள்ளது ({amount} {currency})."),
+            [("Donation.Allocated", "es")] =
+                ("Donación asignada", "La donación {reference} ha sido asignada a {campaign} ({amount} {currency})."),
             [("Account.Welcome", "en")] =
                 ("Welcome to SAFEWAY", "Hello {name}, your account is ready."),
             [("Account.Welcome", "es")] =

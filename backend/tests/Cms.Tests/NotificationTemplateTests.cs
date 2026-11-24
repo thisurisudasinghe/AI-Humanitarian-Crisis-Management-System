@@ -64,6 +64,45 @@ public class NotificationTemplateTests
         Assert.Equal(expectedBody, body);
     }
 
+    [Theory]
+    [InlineData("Donation.Received", "en")]
+    [InlineData("Donation.Received", "si")]
+    [InlineData("Donation.Received", "ta")]
+    [InlineData("Donation.Allocated", "en")]
+    [InlineData("Donation.Allocated", "si")]
+    [InlineData("Donation.Allocated", "ta")]
+    public void Render_donation_templates_without_raw_placeholders(
+        string templateKey,
+        string language)
+    {
+        var payload = new NotificationPayloadDto
+        {
+            TemplateKey = templateKey,
+            Language = language,
+            Data = new Dictionary<string, string>
+            {
+                ["reference"] = "DON-20261124-ABC12345",
+                ["campaign"] = "Flood relief",
+                ["amount"] = "750",
+                ["currency"] = "LKR"
+            }
+        };
+
+        var (subject, body) = NotificationTemplates.Render(payload);
+
+        Assert.Contains("DON-20261124-ABC12345", body);
+        Assert.Contains("750", body);
+        Assert.Contains("LKR", body);
+        Assert.DoesNotContain("{", subject);
+        Assert.DoesNotContain("}", subject);
+        Assert.DoesNotContain("{", body);
+        Assert.DoesNotContain("}", body);
+        if (templateKey == "Donation.Allocated")
+        {
+            Assert.Contains("Flood relief", body);
+        }
+    }
+
     [Fact]
     public void Supported_languages_include_locales_and_spanish()
     {
