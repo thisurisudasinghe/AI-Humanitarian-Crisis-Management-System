@@ -37,7 +37,10 @@ npm.cmd run build
 ```
 
 Database (canonical order, every script is idempotent — run each one twice to
-prove it):
+prove it). The Development default connection string points at
+`CmsDb_IntegrationTest`; any override must reference a database initialized with
+these scripts. The original `CmsDb` is a legacy migration-created database with
+`notif.*` tables and is not compatible with the current `common.*` model.
 
 ```powershell
 # Use a disposable database for integration runs, for example CmsDb_IntegrationTest.
