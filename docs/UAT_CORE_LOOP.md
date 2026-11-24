@@ -44,14 +44,17 @@ It is an **API-level UAT script**. Source-level frontend integrations now exist,
 
 1. Run the canonical SQL scripts in this exact order:
    - `backend/db/00_common.sql`
+   - `backend/db/00_identity_email_verification.sql`
    - `backend/db/01_cases.sql`
    - `backend/db/02_notif.sql`
    - `backend/db/03_ai.sql`
    - `backend/db/04_res.sql`
    - `backend/db/05_shelter.sql`
    - `backend/db/06_vol.sql`
-   - `backend/db/07_geo.sql`
    - `backend/db/08_don.sql`
+   - `backend/db/09_donor_portal.sql`
+   - `backend/db/10_operations_centre.sql`
+   - `backend/db/11_access_reporting.sql`
    - `backend/db/98_foreign_keys.sql`
    - `backend/db/99_seed_users.sql`
 2. **Start the API once** so `DevelopmentDemoSeeder` creates the demo users. `90_seed_scenario.sql` validates that those users exist.
