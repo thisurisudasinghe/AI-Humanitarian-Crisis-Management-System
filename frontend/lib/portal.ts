@@ -80,8 +80,12 @@ export function getVolunteerPortal(): Promise<VolunteerPortalData> {
   return api<VolunteerPortalData>("/api/v1/portal/volunteer/status");
 }
 
-export function getMyVolunteerTasks(): Promise<OperationsPaged<VolunteerTask>> {
-  return api<OperationsPaged<VolunteerTask>>("/api/v1/volunteer-tasks/mine");
+export function getMyVolunteerTasks(
+  page = 1,
+  pageSize = 50
+): Promise<OperationsPaged<VolunteerTask>> {
+  const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
+  return api<OperationsPaged<VolunteerTask>>(`/api/v1/volunteer-tasks/mine?${params.toString()}`);
 }
 
 export function saveVolunteerProfile(input: {

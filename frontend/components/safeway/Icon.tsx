@@ -39,6 +39,7 @@ export function Icon({
     menu: <path d="M4 7h16M4 12h16M4 17h16" />,
     close: <path d="m6 6 12 12M18 6 6 18" />,
     check: <path d="m5 12 4 4L19 6" />,
+    plus: <path d="M12 5v14M5 12h14" />,
     phone: (
       <path d="M22 16.9v3a2 2 0 0 1-2.2 2c-8.5-1-15.1-7.6-16-16A2 2 0 0 1 5.8 3h3a2 2 0 0 1 2 1.7c.1 1 .4 2 .7 2.9a2 2 0 0 1-.5 2.1L9.8 11a16 16 0 0 0 3.2 3.2l1.3-1.2a2 2 0 0 1 2.1-.5c.9.3 1.9.6 2.9.7a2 2 0 0 1 1.7 2Z" />
     ),
@@ -103,6 +104,19 @@ export function Icon({
       <>
         <rect x="5" y="4" width="14" height="17" rx="2" />
         <path d="M9 4V3h6v1M9 10h6M9 14h6M9 18h4" />
+      </>
+    ),
+    calendar: (
+      <>
+        <rect x="3" y="5" width="18" height="16" rx="2" />
+        <path d="M8 3v4m8-4v4M3 10h18M8 14h3m-3 3h6" />
+      </>
+    ),
+    award: (
+      <>
+        <circle cx="12" cy="9" r="5" />
+        <path d="m8.5 13.5-1.5 8 5-3 5 3-1.5-8" />
+        <path d="m10 9 1.5 1.5L14.5 7" />
       </>
     ),
     megaphone: (

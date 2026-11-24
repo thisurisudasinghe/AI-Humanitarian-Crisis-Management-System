@@ -1,536 +1,273 @@
 "use client";
 
 import Link from "next/link";
-import { localizedErrorMessage } from "@/lib/i18n/errors";
-import { useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { AuthGuard } from "@/components/AuthGuard";
 import { Icon } from "@/components/safeway/Icon";
 import {
   PortalHeader,
-  PortalNotice,
   PortalSection,
-  PortalState,
-  PortalStats
+  PortalState
 } from "@/components/safeway/PortalPrimitives";
-
-import { formatShortDate } from "@/lib/format";
-import { useT } from "@/lib/i18n";
-import { getInbox, type NotificationInboxDto } from "@/lib/notifications";
+import { localizedErrorMessage } from "@/lib/i18n/errors";
+import { useI18n } from "@/lib/i18n";
+import { formatDate } from "@/lib/i18n/core";
 import {
-  addVolunteerAvailability,
-  completeTask,
   getMyVolunteerTasks,
   getVolunteerPortal,
-  respondToTask,
-  saveVolunteerProfile,
   type VolunteerPortalData,
   type VolunteerTask
 } from "@/lib/portal";
 import { RoleNames } from "@/lib/roles";
+import {
+  activeAssignments,
+  backendTimestamp,
+  normalizeVerificationStatus,
+  verificationTone
+} from "@/lib/volunteer";
 
-function jsonArrayToText(value?: string | null): string {
-  if (!value) return "";
-  try {
-    const parsed: unknown = JSON.parse(value);
-    if (Array.isArray(parsed)) {
-      return parsed
-        .filter((item): item is string => typeof item === "string")
-        .join(", ");
-    }
-  } catch {
-    return value;
+const ACTION_CARDS = [
+  {
+    href: "/volunteer/opportunities",
+    icon: "search",
+    titleKey: "volunteerX.landing.cardFindTitle",
+    copyKey: "volunteerX.landing.cardFindCopy",
+    ctaKey: "volunteerX.landing.cardFindCta",
+    className: "blue"
+  },
+  {
+    href: "/volunteer/assignments",
+    icon: "clipboard",
+    titleKey: "volunteerX.landing.cardAssignmentsTitle",
+    copyKey: "volunteerX.landing.cardAssignmentsCopy",
+    ctaKey: "volunteerX.landing.cardAssignmentsCta",
+    className: "navy"
+  },
+  {
+    href: "/volunteer/availability",
+    icon: "calendar",
+    titleKey: "volunteerX.landing.cardAvailabilityTitle",
+    copyKey: "volunteerX.landing.cardAvailabilityCopy",
+    ctaKey: "volunteerX.landing.cardAvailabilityCta",
+    className: "green"
+  },
+  {
+    href: "/volunteer/contributions",
+    icon: "award",
+    titleKey: "volunteerX.landing.cardContributionsTitle",
+    copyKey: "volunteerX.landing.cardContributionsCopy",
+    ctaKey: "volunteerX.landing.cardContributionsCta",
+    className: "sky"
   }
-  return value;
-}
-
-function textToJson(value: string): string {
-  return JSON.stringify(
-    value
-      .split(",")
-      .map((item) => item.trim())
-      .filter(Boolean)
-  );
-}
-
-function skillList(value: string): string[] {
-  try {
-    const parsed: unknown = JSON.parse(value);
-    if (Array.isArray(parsed)) {
-      return parsed.filter((item): item is string => typeof item === "string");
-    }
-  } catch {
-    // Fall through to the raw value for legacy records.
-  }
-  return value ? [value] : [];
-}
-
-function optionalNumber(value: string, message: string): number | null {
-  if (!value.trim()) return null;
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed)) {
-    throw new Error(message);
-  }
-  return parsed;
-}
-
-function toIso(value: string, message: string): string {
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) {
-    throw new Error(message);
-  }
-  return parsed.toISOString();
-}
+] as const;
 
 export default function VolunteerPortalPage() {
-  const t = useT();
+  const { t, locale } = useI18n();
   const [portal, setPortal] = useState<VolunteerPortalData | null>(null);
   const [tasks, setTasks] = useState<VolunteerTask[]>([]);
-  const [inbox, setInbox] = useState<NotificationInboxDto | null>(null);
   const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
-
-  const [skills, setSkills] = useState("");
-  const [languages, setLanguages] = useState("");
-  const [lat, setLat] = useState("");
-  const [lng, setLng] = useState("");
-  const [active, setActive] = useState(true);
-  const [startsAt, setStartsAt] = useState("");
-  const [endsAt, setEndsAt] = useState("");
-
-  const [busy, setBusy] = useState(false);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [refreshToken, setRefreshToken] = useState(0);
 
-  async function load(initializeForm = false) {
-    const portalRequest = getVolunteerPortal()
-      .then((data) => {
-        setPortal(data);
-        if (initializeForm && data.profile) {
-          setSkills(jsonArrayToText(data.profile.skillsJson));
-          setLanguages(jsonArrayToText(data.profile.languagesJson));
-          setLat(data.profile.lat === null || data.profile.lat === undefined ? "" : String(data.profile.lat));
-          setLng(data.profile.lng === null || data.profile.lng === undefined ? "" : String(data.profile.lng));
-          setActive(data.profile.active);
-        }
-      })
-      .catch((cause) => {
-        setLoadError(localizedErrorMessage(cause, t));
-      });
-
-    const taskRequest = getMyVolunteerTasks()
-      .then((result) => setTasks(result.items))
-      .catch((cause) => {
-        setLoadError(localizedErrorMessage(cause, t));
-      });
-
-    const inboxRequest = getInbox({ limit: 5 })
-      .then((result) => setInbox(result))
-      .catch(() => {
-        // The notifications section reports its own state below.
-      });
-
-    await Promise.all([portalRequest, taskRequest, inboxRequest]);
-  }
-
-  useEffect(() => {
-    let activeRequest = true;
-    setLoading(true);
-    void load(true).finally(() => {
-      if (activeRequest) setLoading(false);
-    });
-    return () => {
-      activeRequest = false;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  const load = useCallback(async () => {
+    const [statusResult, taskResult] = await Promise.all([
+      getVolunteerPortal(),
+      getMyVolunteerTasks(1, 50)
+    ]);
+    return { statusResult, taskResult };
   }, []);
 
-  async function run(action: () => Promise<unknown>, success: string) {
-    setBusy(true);
-    setNotice(null);
-    setError(null);
+  useEffect(() => {
+    let active = true;
+    if (refreshToken === 0) setLoading(true);
+    else setRefreshing(true);
 
-    try {
-      await action();
-      await load(false);
-      setNotice(success);
-    } catch (cause) {
-      setError(localizedErrorMessage(cause, t));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  function onSaveProfile(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    void run(async () => {
-      const latitude = optionalNumber(lat, t("portal.volunteer.validation.coordinates"));
-      const longitude = optionalNumber(lng, t("portal.volunteer.validation.coordinates"));
-      if ((latitude === null) !== (longitude === null)) {
-        throw new Error(t("portal.volunteer.validation.coordinatesPair"));
-      }
-
-      await saveVolunteerProfile({
-        skillsJson: textToJson(skills),
-        languagesJson: textToJson(languages),
-        lat: latitude,
-        lng: longitude,
-        active
+    load()
+      .then(({ statusResult, taskResult }) => {
+        if (!active) return;
+        setPortal(statusResult);
+        setTasks(taskResult.items);
+        setError(null);
+      })
+      .catch((cause) => {
+        if (active) setError(localizedErrorMessage(cause, t));
+      })
+      .finally(() => {
+        if (!active) return;
+        setLoading(false);
+        setRefreshing(false);
       });
-    }, t("portal.volunteer.validation.profileSaved"));
-  }
 
-  function onAddAvailability(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    void run(async () => {
-      if (!startsAt || !endsAt) {
-        throw new Error(t("portal.volunteer.validation.timeRange"));
-      }
-      const from = toIso(startsAt, t("portal.volunteer.validation.validDateTime"));
-      const to = toIso(endsAt, t("portal.volunteer.validation.validDateTime"));
-      if (Date.parse(to) <= Date.parse(from)) {
-        throw new Error(t("portal.volunteer.validation.endAfterStart"));
-      }
-      await addVolunteerAvailability({ startsAt: from, endsAt: to });
-      setStartsAt("");
-      setEndsAt("");
-    }, t("portal.volunteer.validation.availabilityAdded"));
-  }
+    return () => {
+      active = false;
+    };
+  }, [load, refreshToken, t]);
 
-  const verification = portal?.profile?.verificationStatus ?? "Not started";
-  const verificationTone =
-    verification === "Verified" ? "green" : verification === "Pending" ? "amber" : "coral";
+  const status = normalizeVerificationStatus(
+    portal?.profile?.verificationStatus,
+    Boolean(portal?.profile)
+  );
+  const upcoming = activeAssignments(tasks).slice(0, 3);
+  const readinessTitleKey =
+    status === "Verified"
+      ? "volunteerX.landing.readyTitle"
+      : status === "Pending"
+        ? "volunteerX.landing.pendingTitle"
+        : status === "Rejected"
+          ? "volunteerX.landing.rejectedTitle"
+          : status === "Unknown"
+            ? "volunteerX.landing.unknownTitle"
+            : "volunteerX.landing.getReadyTitle";
 
   return (
     <AuthGuard allowedRoles={[RoleNames.Volunteer]} activationPurpose="volunteer">
-      <PortalHeader
-        eyebrow={t("portal.volunteer.eyebrow")}
-        title={t("portal.volunteer.title")}
-        description={t("portal.volunteer.description")}
-        action={
-          <Link className="btn btn-outline" href="/notifications">
-            <Icon name="bell" /> {t("portal.volunteer.notifications")}
-          </Link>
-        }
-      />
-
-      <PortalStats
-        items={[
-          {
-            label: t("portal.volunteer.stats.verification"),
-            value: loading ? "—" : verification === "Not started" ? t("portal.volunteer.verification.notStarted") : verification,
-            hint: verification === "Verified" ? t("portal.volunteer.verification.eligible") : t("portal.volunteer.verification.reviewRequired"),
-            icon: "shield",
-            tone: verificationTone
-          },
-          {
-            label: t("portal.volunteer.stats.completedTasks"),
-            value: loading ? "—" : (portal?.completedTasks ?? 0),
-            icon: "check",
-            tone: "green"
-          },
-          {
-            label: t("portal.volunteer.stats.openOpportunities"),
-            value: loading ? "—" : (portal?.opportunities.length ?? 0),
-            icon: "users",
-            tone: "blue"
-          },
-          {
-            label: t("portal.volunteer.stats.unreadMessages"),
-            value: loading ? "—" : (inbox?.unreadCount ?? 0),
-            icon: "bell",
-            tone: "green"
+      <div className="volunteer-landing">
+        <PortalHeader
+          eyebrow={t("volunteerX.landing.eyebrow")}
+          title={t("volunteerX.landing.title")}
+          description={t("volunteerX.landing.support")}
+          action={
+            <button
+              className="btn btn-outline"
+              type="button"
+              onClick={() => setRefreshToken((value) => value + 1)}
+              disabled={refreshing}
+              aria-busy={refreshing}
+            >
+              <Icon name="clock" size={16} />
+              {refreshing ? t("volunteerX.shared.refresh") : t("volunteerX.shared.refresh")}
+            </button>
           }
-        ]}
-      />
+        />
 
-      {loadError ? <PortalNotice tone="error">{loadError}</PortalNotice> : null}
-      {notice ? <PortalNotice>{notice}</PortalNotice> : null}
-      {error ? <PortalNotice tone="error">{error}</PortalNotice> : null}
-
-      <div className="portal-split-grid">
-        <PortalSection
-          title={t("portal.volunteer.profile.title")}
-          description={t("portal.volunteer.profile.description")}
-        >
-          {loading ? (
-            <PortalState kind="loading" title={t("portal.volunteer.profile.loadingTitle")}>
-              {t("portal.volunteer.profile.loadingBody")}
-            </PortalState>
-          ) : (
-            <form className="portal-form" onSubmit={onSaveProfile}>
-              <label>
-                <span>{t("portal.volunteer.profile.skills")}</span>
-                <input
-                  value={skills}
-                  onChange={(event) => setSkills(event.target.value)}
-                  placeholder={t("portal.volunteer.profile.skillsPlaceholder")}
-                />
-                <small>{t("portal.volunteer.profile.skillsHelp")}</small>
-              </label>
-              <label>
-                <span>{t("portal.volunteer.profile.languages")}</span>
-                <input
-                  value={languages}
-                  onChange={(event) => setLanguages(event.target.value)}
-                  placeholder="en, si"
-                />
-                <small>{t("portal.volunteer.profile.languagesHelp")}</small>
-              </label>
-              <div className="portal-form-row">
-                <label>
-                  <span>{t("portal.volunteer.profile.latitude")}</span>
-                  <input
-                    type="number"
-                    step="any"
-                    value={lat}
-                    onChange={(event) => setLat(event.target.value)}
-                    placeholder={t("portal.volunteer.profile.optional")}
-                  />
-                </label>
-                <label>
-                  <span>{t("portal.volunteer.profile.longitude")}</span>
-                  <input
-                    type="number"
-                    step="any"
-                    value={lng}
-                    onChange={(event) => setLng(event.target.value)}
-                    placeholder={t("portal.volunteer.profile.optional")}
-                  />
-                </label>
-              </div>
-              <label className="portal-checkbox">
-                <input
-                  type="checkbox"
-                  checked={active}
-                  onChange={(event) => setActive(event.target.checked)}
-                />
-                <span>{t("portal.volunteer.profile.available")}</span>
-              </label>
-              <button className="btn btn-primary" type="submit" disabled={busy}>
-                {busy ? t("portal.volunteer.profile.saving") : t("portal.volunteer.profile.save")}
-                {busy ? null : <Icon name="arrow" size={16} />}
-              </button>
-            </form>
-          )}
-        </PortalSection>
-
-        <PortalSection
-          title={t("portal.volunteer.availability.title")}
-          description={t("portal.volunteer.availability.description")}
-        >
-          {loading ? (
-            <PortalState kind="loading" title={t("portal.volunteer.availability.loadingTitle")}>
-              {t("portal.volunteer.availability.loadingBody")}
-            </PortalState>
-          ) : (
-            <>
-              {portal?.availability.length ? (
-                <div className="portal-list">
-                  {portal.availability.map((window) => (
-                    <article className="portal-row" key={window.id}>
-                      <i>
-                        <Icon name="clock" size={18} />
-                      </i>
-                      <div>
-                        <b>{formatShortDate(window.startsAt)}</b>
-                        <p>{t("portal.volunteer.availability.until", { date: formatShortDate(window.endsAt) })}</p>
-                      </div>
-                    </article>
-                  ))}
-                </div>
-              ) : (
-                <PortalState kind="empty" title={t("portal.volunteer.availability.emptyTitle")}>
-                  {t("portal.volunteer.availability.emptyBody")}
-                </PortalState>
-              )}
-
-              <form className="portal-form portal-form--inline" onSubmit={onAddAvailability}>
-                <label>
-                  <span>{t("portal.volunteer.availability.starts")}</span>
-                  <input
-                    type="datetime-local"
-                    value={startsAt}
-                    onChange={(event) => setStartsAt(event.target.value)}
-                    required
-                  />
-                </label>
-                <label>
-                  <span>{t("portal.volunteer.availability.ends")}</span>
-                  <input
-                    type="datetime-local"
-                    value={endsAt}
-                    onChange={(event) => setEndsAt(event.target.value)}
-                    required
-                  />
-                </label>
-                <button className="btn btn-outline" type="submit" disabled={busy}>
-                  {t("portal.volunteer.availability.addWindow")}
-                </button>
-              </form>
-            </>
-          )}
-        </PortalSection>
-      </div>
-
-      <div className="portal-split-grid">
-        <PortalSection
-          title={t("portal.volunteer.tasks.title")}
-          description={t("portal.volunteer.tasks.description")}
-        >
-          {loading ? (
-            <PortalState kind="loading" title={t("portal.volunteer.tasks.loadingTitle")}>
-              {t("portal.volunteer.tasks.loadingBody")}
-            </PortalState>
-          ) : tasks.length === 0 ? (
-            <PortalState kind="empty" title={t("portal.volunteer.tasks.emptyTitle")}>
-              {t("portal.volunteer.tasks.emptyBody")}
-            </PortalState>
-          ) : (
-            <div className="portal-list">
-              {tasks.map((task) => (
-                <article className="portal-row portal-row--stacked" key={task.id}>
-                  <i>
-                    <Icon name="users" size={18} />
-                  </i>
-                  <div>
-                    <b>{task.title}</b>
-                    <p>{t("portal.volunteer.tasks.skills", { skills: skillList(task.requiredSkillsJson).join(", ") || t("portal.volunteer.tasks.notSpecified") })}</p>
-                    <small>
-                      {task.status}
-                      {task.scheduledAt ? ` · ${formatShortDate(task.scheduledAt)}` : ""}
-                    </small>
-                  </div>
-                  <div className="portal-row-actions">
-                    {task.status === "Assigned" ? (
-                      <>
-                        <button
-                          className="btn btn-primary btn-small"
-                          type="button"
-                          disabled={busy}
-                          onClick={() => void run(() => respondToTask(task.id, true), t("portal.volunteer.validation.taskAccepted"))}
-                        >
-                          {t("portal.volunteer.tasks.accept")}
-                        </button>
-                        <button
-                          className="btn btn-outline btn-small"
-                          type="button"
-                          disabled={busy}
-                          onClick={() => void run(() => respondToTask(task.id, false), t("portal.volunteer.validation.taskDeclined"))}
-                        >
-                          {t("portal.volunteer.tasks.decline")}
-                        </button>
-                      </>
-                    ) : null}
-                    {task.status === "Accepted" ? (
-                      <button
-                        className="btn btn-primary btn-small"
-                        type="button"
-                        disabled={busy}
-                        onClick={() => void run(() => completeTask(task.id), t("portal.volunteer.validation.taskComplete"))}
-                      >
-                        {t("portal.volunteer.tasks.complete")}
-                      </button>
-                    ) : null}
-                  </div>
-                </article>
-              ))}
-            </div>
-          )}
-        </PortalSection>
-
-        <PortalSection
-          title={t("portal.volunteer.opportunities.title")}
-          description={t("portal.volunteer.opportunities.description")}
-        >
-          {loading ? (
-            <PortalState kind="loading" title={t("portal.volunteer.opportunities.loadingTitle")}>
-              {t("portal.volunteer.opportunities.loadingBody")}
-            </PortalState>
-          ) : !portal || portal.opportunities.length === 0 ? (
-            <PortalState kind="empty" title={t("portal.volunteer.opportunities.emptyTitle")}>
-              {t("portal.volunteer.opportunities.emptyBody")}
-            </PortalState>
-          ) : (
-            <div className="portal-list">
-              {portal.opportunities.map((task) => (
-                <article className="portal-row" key={task.id}>
-                  <i className="green">
-                    <Icon name="box" size={18} />
-                  </i>
-                  <div>
-                    <b>{task.title}</b>
-                    <p>{t("portal.volunteer.tasks.skills", { skills: skillList(task.requiredSkillsJson).join(", ") || t("portal.volunteer.tasks.notSpecified") })}</p>
-                    <small>
-                      {task.scheduledAt ? formatShortDate(task.scheduledAt) : t("portal.volunteer.opportunities.scheduleTbc")}
-                    </small>
-                  </div>
-                  <span className="badge green">
-                    <i /> {t("portal.volunteer.opportunities.open")}
-                  </span>
-                </article>
-              ))}
-            </div>
-          )}
-          <p className="portal-subtle">
-            {t("portal.volunteer.opportunities.note")}
-          </p>
-        </PortalSection>
-      </div>
-
-      <PortalSection
-        title={t("portal.volunteer.activity.title")}
-        description={t("portal.volunteer.activity.description")}
-        action={
-          <Link className="portal-text-link" href="/notifications">
-            {t("portal.volunteer.activity.openInbox")}
-          </Link>
-        }
-      >
-        <div className="portal-activity-summary">
-          <article>
-            <Icon name="check" />
-            <span>
-              <b>{loading ? "—" : (portal?.completedTasks ?? 0)}</b>
-              <small>{t("portal.volunteer.activity.completedTasks")}</small>
-            </span>
-          </article>
-          <article>
-            <Icon name="clock" />
-            <span>
-              <b>{loading ? "—" : (portal?.availability.length ?? 0)}</b>
-              <small>{t("portal.volunteer.activity.availabilityWindows")}</small>
-            </span>
-          </article>
-          <article>
-            <Icon name="bell" />
-            <span>
-              <b>{loading ? "—" : (inbox?.totalCount ?? 0)}</b>
-              <small>{t("portal.volunteer.activity.messagesReceived")}</small>
-            </span>
-          </article>
-        </div>
-
-        {!inbox || inbox.items.length === 0 ? (
-          <PortalState kind="empty" title={t("portal.volunteer.activity.emptyTitle")}>
-            {t("portal.volunteer.activity.emptyBody")}
-          </PortalState>
-        ) : (
-          <div className="portal-list">
-            {inbox.items.slice(0, 4).map((notification) => (
-              <article className="portal-row" key={notification.id}>
-                <i className={notification.isRead ? "muted" : ""}>
-                  <Icon name={notification.isRead ? "check" : "bell"} size={18} />
-                </i>
-                <div>
-                  <b>{notification.subject ?? notification.templateKey}</b>
-                  <p>{notification.body ?? t("portal.volunteer.activity.inboxDetails")}</p>
-                  <small>{formatShortDate(notification.createdAt)}</small>
-                </div>
-              </article>
-            ))}
+        {error ? (
+          <div className="volunteer-error-bar" role="alert">
+            <Icon name="info" size={17} />
+            <span>{error}</span>
+            <button
+              className="btn btn-primary"
+              type="button"
+              onClick={() => setRefreshToken((value) => value + 1)}
+            >
+              {t("volunteerX.shared.retry")}
+            </button>
           </div>
-        )}
-      </PortalSection>
+        ) : null}
+
+        <section className={`volunteer-readiness volunteer-readiness--${verificationTone(status)}`}>
+          <span className="volunteer-readiness__icon" aria-hidden="true">
+            <Icon name={status === "Verified" ? "shield" : status === "None" ? "user" : "clipboard"} size={26} />
+          </span>
+          <div className="volunteer-readiness__body">
+            {loading ? (
+              <>
+                <h2>{t("volunteerX.landing.readinessLoadingTitle")}</h2>
+                <p>{t("volunteerX.landing.readinessLoadingBody")}</p>
+              </>
+            ) : status === "None" ? (
+              <>
+                <h2>{t("volunteerX.landing.getReadyTitle")}</h2>
+                <p>{t("volunteerX.landing.getReadyBody")}</p>
+              </>
+            ) : (
+              <>
+                <h2>{t(readinessTitleKey)}</h2>
+                <p>
+                  {t("volunteerX.landing.readyBody", {
+                    status: status === "Unknown" ? t("volunteerX.shared.status.Unknown") : t(`volunteerX.shared.status.${status}`),
+                    note: t(`volunteerX.shared.statusNote.${status}`)
+                  })}
+                </p>
+              </>
+            )}
+          </div>
+          {!loading ? (
+            <div className="volunteer-readiness__actions">
+              {status === "None" ? (
+                <Link className="btn btn-primary" href="/volunteer/profile">
+                  {t("volunteerX.landing.completeProfile")} <Icon name="arrow" size={16} />
+                </Link>
+              ) : (
+                <>
+                  <Link className="btn btn-primary" href="/volunteer/profile">
+                    <Icon name="user" size={16} /> {t("volunteerX.landing.editProfile")}
+                  </Link>
+                  <Link className="btn btn-outline" href="/volunteer/verification">
+                    {t("volunteerX.landing.verificationDetails")}
+                  </Link>
+                </>
+              )}
+            </div>
+          ) : null}
+        </section>
+
+        <section className="volunteer-actions" aria-label={t("volunteerX.landing.actionsAria")}>
+          {ACTION_CARDS.map((card) => (
+            <Link className={`volunteer-action volunteer-action--${card.className}`} href={card.href} key={card.href}>
+              <span className="volunteer-action__icon" aria-hidden="true">
+                <Icon name={card.icon} size={26} />
+              </span>
+              <span className="volunteer-action__content">
+                <b>{t(card.titleKey)}</b>
+                <span>{t(card.copyKey)}</span>
+              </span>
+              <span className="volunteer-action__cta">
+                {t(card.ctaKey)} <Icon name="arrow" size={17} />
+              </span>
+            </Link>
+          ))}
+        </section>
+
+        <PortalSection
+          className="volunteer-upcoming-section"
+          title={t("volunteerX.landing.upcomingTitle")}
+          description={t("volunteerX.landing.upcomingDescription")}
+          action={
+            <Link className="portal-text-link" href="/volunteer/assignments">
+              {t("volunteerX.landing.viewAll")}
+            </Link>
+          }
+        >
+          {loading ? (
+            <PortalState kind="loading" title={t("volunteerX.landing.upcomingLoadingTitle")}>
+              {t("volunteerX.landing.upcomingLoadingBody")}
+            </PortalState>
+          ) : error ? (
+            <PortalState kind="error" title={t("volunteerX.landing.upcomingErrorTitle")}>
+              {error}
+            </PortalState>
+          ) : upcoming.length === 0 ? (
+            <PortalState kind="empty" title={t("volunteerX.landing.upcomingEmptyTitle")} href="/volunteer/opportunities" linkLabel={t("volunteerX.landing.cardFindCta")}>
+              {t("volunteerX.landing.upcomingEmptyBody")}
+            </PortalState>
+          ) : (
+            <div className="volunteer-upcoming-list">
+              {upcoming.map((task) => (
+                <article className="volunteer-upcoming-row" key={task.id}>
+                  <span className="volunteer-upcoming-row__icon" aria-hidden="true">
+                    <Icon name="clipboard" size={18} />
+                  </span>
+                  <div className="volunteer-upcoming-row__main">
+                    <b>{task.title}</b>
+                    <small>{task.scheduledAt ? formatDate(backendTimestamp(task.scheduledAt), locale) : t("volunteerX.shared.scheduleTbc")}</small>
+                  </div>
+                  <span className={`badge ${task.status.toLowerCase() === "assigned" ? "amber" : "blue"}`}>
+                    <i aria-hidden="true" /> {t(`volunteerX.shared.status.${task.status}`)}
+                  </span>
+                  <Link href={`/volunteer/assignments/${task.id}`}>
+                    {t("volunteerX.assignment.viewDetails")} <Icon name="arrow" size={14} />
+                  </Link>
+                </article>
+              ))}
+            </div>
+          )}
+        </PortalSection>
+
+        <p className="volunteer-landing__note">
+          <Icon name="bell" size={16} /> {t("volunteerX.landing.personalNote")}
+        </p>
+      </div>
     </AuthGuard>
   );
 }
