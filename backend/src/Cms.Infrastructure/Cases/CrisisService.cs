@@ -305,6 +305,29 @@ public sealed class CrisisService : ICrisisService
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<StaffServiceCentreDto>> ListStaffServiceCentresAsync(
+        CancellationToken cancellationToken = default)
+    {
+        EnsureCoordinator();
+        return await _context.Set<ServiceCentre>()
+            .AsNoTracking()
+            .OrderBy(s => s.Name)
+            .Select(s => new StaffServiceCentreDto
+            {
+                Id = s.Id,
+                CrisisId = s.CrisisId,
+                Name = s.Name,
+                Address = s.Address,
+                Lat = s.Lat,
+                Lng = s.Lng,
+                Services = s.Services,
+                OpeningHours = s.OpeningHours,
+                IsActive = s.IsActive,
+                PublicVisible = s.PublicVisible
+            })
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task PublishAlertToMapAsync(
         Guid alertId,
         PublishMapAlertDto request,

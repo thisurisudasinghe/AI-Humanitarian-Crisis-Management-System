@@ -50,6 +50,7 @@ public class ControllerAuthorizationTests
         AssertRoles<AlertsController>("Update", CasesRoles.CoordinatorOnly);
         AssertRoles<AlertsController>("List", CasesRoles.CoordinatorOnly);
         AssertRoles<AlertsController>("PublishToMap", CasesRoles.CoordinatorOnly);
+        AssertRoles<ServiceCentresController>("List", CasesRoles.CoordinatorOnly);
         AssertRoles<ServiceCentresController>("SetPublicVisibility", CasesRoles.CoordinatorOnly);
 
         var publicController = typeof(PublicController);

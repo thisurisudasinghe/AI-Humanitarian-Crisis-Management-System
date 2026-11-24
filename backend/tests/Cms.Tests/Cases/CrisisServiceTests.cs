@@ -153,28 +153,30 @@ public class CrisisServiceTests
                 Lat = 6.9m,
                 Lng = 79.9m,
                 Services = "Food",
-                IsActive = true
-            },
-            new ServiceCentre
-            {
-                Id = Guid.NewGuid(),
-                Name = "Closed centre",
-                Address = "2 Main St",
-                Lat = 6.9m,
-                Lng = 79.9m,
-                Services = "Food",
-                IsActive = false
+                IsActive = true,
+                PublicVisible = true
             },
             new ServiceCentre
             {
                 Id = Guid.NewGuid(),
                 Name = "Hidden centre",
-                Address = "3 Main St",
+                Address = "2 Main St",
                 Lat = 6.9m,
                 Lng = 79.9m,
                 Services = "Food",
                 IsActive = true,
                 PublicVisible = false
+            },
+            new ServiceCentre
+            {
+                Id = Guid.NewGuid(),
+                Name = "Closed centre",
+                Address = "3 Main St",
+                Lat = 6.9m,
+                Lng = 79.9m,
+                Services = "Food",
+                IsActive = false,
+                PublicVisible = true
             });
         await context.SaveChangesAsync();
         var service = CreateService(context, Coordinator(), DateTime.UtcNow);
@@ -183,6 +185,24 @@ public class CrisisServiceTests
 
         var centre = Assert.Single(result);
         Assert.Equal("Active centre", centre.Name);
+    }
+
+    [Fact]
+    public async Task Staff_service_centres_include_hidden_and_inactive_centres()
+    {
+        using var context = TestContext.Create();
+        await context.Set<ServiceCentre>().AddRangeAsync(
+            NewServiceCentre("Public centre", true, true),
+            NewServiceCentre("Hidden centre", true, false),
+            NewServiceCentre("Closed centre", false, true));
+        await context.SaveChangesAsync();
+        var service = CreateService(context, Coordinator(), DateTime.UtcNow);
+
+        var result = await service.ListStaffServiceCentresAsync();
+
+        Assert.Equal(3, result.Count);
+        Assert.Contains(result, centre => centre.Name == "Hidden centre" && !centre.PublicVisible);
+        Assert.Contains(result, centre => centre.Name == "Closed centre" && !centre.IsActive);
     }
 
     [Fact]
@@ -228,6 +248,18 @@ public class CrisisServiceTests
         Assert.Equal(1, summary.ByArea["Colombo"]);
         Assert.Equal(2, summary.ByArea["Unassigned"]);
     }
+
+    private static ServiceCentre NewServiceCentre(string name, bool isActive, bool publicVisible) => new()
+    {
+        Id = Guid.NewGuid(),
+        Name = name,
+        Address = "1 Main St",
+        Lat = 6.9m,
+        Lng = 79.9m,
+        Services = "Food",
+        IsActive = isActive,
+        PublicVisible = publicVisible
+    };
 
     private static FakeCurrentUser Coordinator() =>
         new() { Roles = new[] { CasesRoles.EmergencyCoordinator } };

@@ -525,6 +525,18 @@ public sealed class PublicMapWorkflowTests
         var map = await anonymous.GetFromJsonAsync<PublicMapDto>("/api/v1/public/map", JsonOptions);
         Assert.NotNull(map);
         Assert.DoesNotContain(map!.AidLocations, location => location.Id == centreId);
+
+        var publicJson = await anonymous.GetStringAsync("/api/v1/public/service-centres");
+        Assert.DoesNotContain(centreId.ToString(), publicJson, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(HttpStatusCode.Unauthorized,
+            (await anonymous.GetAsync("/api/v1/service-centres")).StatusCode);
+
+        var staffJson = await coordinator.GetStringAsync("/api/v1/service-centres");
+        using var staffDocument = JsonDocument.Parse(staffJson);
+        var staffCentre = Assert.Single(staffDocument.RootElement.EnumerateArray(),
+            item => item.GetProperty("id").GetString() == centreId.ToString());
+        Assert.False(staffCentre.GetProperty("publicVisible").GetBoolean());
+        Assert.True(staffCentre.GetProperty("isActive").GetBoolean());
     }
 
     private static Alert NewAlert(
