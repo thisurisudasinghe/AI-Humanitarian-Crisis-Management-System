@@ -9,6 +9,14 @@
     <ProjectReference Include="..\Cms.Domain\Cms.Domain.csproj" />
   </ItemGroup>
 
+  <!-- Safeway verification emails are rendered from the shared design templates. -->
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\..\docs\email-templates\email-verification-register.html" LogicalName="Cms.Infrastructure.EmailTemplates.Register.Html" />
+    <EmbeddedResource Include="..\..\..\docs\email-templates\email-verification-register.txt" LogicalName="Cms.Infrastructure.EmailTemplates.Register.Text" />
+    <EmbeddedResource Include="..\..\..\docs\email-templates\email-verification-resend.html" LogicalName="Cms.Infrastructure.EmailTemplates.Resend.Html" />
+    <EmbeddedResource Include="..\..\..\docs\email-templates\email-verification-resend.txt" LogicalName="Cms.Infrastructure.EmailTemplates.Resend.Text" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="MailKit" Version="5.0.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.11">

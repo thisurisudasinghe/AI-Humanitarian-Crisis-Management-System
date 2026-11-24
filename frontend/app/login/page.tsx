@@ -27,7 +27,11 @@ function LoginForm() {
 
   useEffect(() => {
     if (ready && user) {
-      router.replace(next ?? homePathForRoles(user.roles));
+      router.replace(
+        user.isEmailVerified
+          ? (next ?? homePathForRoles(user.roles))
+          : "/verify-email"
+      );
     }
     // `next` is validated against internal paths before it reaches this effect.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -40,7 +44,11 @@ function LoginForm() {
 
     try {
       const current = await login(email.trim(), password);
-      router.replace(next ?? homePathForRoles(current.roles));
+      router.replace(
+        current.isEmailVerified
+          ? (next ?? homePathForRoles(current.roles))
+          : "/verify-email"
+      );
     } catch (caught) {
       setError(localizedErrorMessage(caught, t));
     } finally {

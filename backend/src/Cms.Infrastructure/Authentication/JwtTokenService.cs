@@ -24,7 +24,8 @@ public class JwtTokenService
         Guid userId,
         string email,
         IEnumerable<string> roles,
-        Guid? organisationId = null)
+        Guid? organisationId = null,
+        bool isEmailVerified = false)
     {
         var jwtSettings = _configuration.GetSection("Jwt");
 
@@ -44,7 +45,8 @@ public class JwtTokenService
         {
             new(JwtRegisteredClaimNames.Sub, userId.ToString()),
             new(JwtRegisteredClaimNames.Email, email),
-            new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+            new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+            new("email_verified", isEmailVerified ? "true" : "false")
         };
 
         foreach (var role in roles.Distinct())

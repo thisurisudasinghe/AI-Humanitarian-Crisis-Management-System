@@ -49,6 +49,7 @@ public sealed class PublicPortalController : ControllerBase
     /// coordinator, logistics and administrator roles are rejected server-side.
     /// </summary>
     [HttpPost("enroll")]
+    [Authorize(Policy = "VerifiedOnly")]
     [ProducesResponseType(typeof(AuthResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
     public async Task<ActionResult<AuthResponseDto>> Enroll(
@@ -144,7 +145,7 @@ public sealed class PublicPortalController : ControllerBase
     /// existing supported recording workflow and does not process payments.
     /// </summary>
     [HttpPost("donor/donations")]
-    [Authorize(Roles = RoleNames.Donor)]
+    [Authorize(Roles = RoleNames.Donor, Policy = "VerifiedOnly")]
     [ProducesResponseType(typeof(DonationDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
     public async Task<ActionResult<DonationDto>> RecordDonation(
