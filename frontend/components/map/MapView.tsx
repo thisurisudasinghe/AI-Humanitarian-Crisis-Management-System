@@ -2,6 +2,8 @@
 
 // Member 4 / D4-03 stable public component.
 // Props: markers={[{ id, lat, lng, label, type }]}, height?.
+// Additional optional props (focus, currentLocation, controls) are additive and
+// existing callers such as report/shelter/resource forms remain unchanged.
 import dynamic from "next/dynamic";
 import { useT } from "@/lib/i18n";
 import type { MapViewProps } from "./MapViewInner";
@@ -16,7 +18,11 @@ const MapViewInner = dynamic(() => import("./MapViewInner"), {
   loading: MapLoading,
 });
 
-export type { MapMarker } from "./MapViewInner";
+export type {
+  CurrentMapLocation,
+  MapFocus,
+  MapMarker
+} from "./MapViewInner";
 
 export default function MapView(props: MapViewProps) {
   return <MapViewInner {...props} />;
