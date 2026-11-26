@@ -68,6 +68,23 @@ public class NamingConventionsTests
         Assert.Equal("next_retry_at", outbox.FindProperty(nameof(OutboxMessage.NextRetryAt))!.GetColumnName());
     }
 
+    [Fact]
+    public void DonationItem_expiry_date_uses_sql_date_type()
+    {
+        var options = new DbContextOptionsBuilder<CmsDbContext>()
+            .UseSqlServer("Server=(localdb)\\mssqllocaldb;Database=CmsDb_OutboxFixNonexistent;Trusted_Connection=True;TrustServerCertificate=True;")
+            .Options;
+
+        using var context = new CmsDbContext(options);
+        var donationItem = context.Model.FindEntityType(typeof(DonationItem))!;
+        var expiryDate = donationItem.FindProperty(nameof(DonationItem.ExpiryDate))!;
+
+        Assert.Equal("don", donationItem.GetSchema());
+        Assert.Equal("donation_items", donationItem.GetTableName());
+        Assert.Equal("expiry_date", expiryDate.GetColumnName());
+        Assert.Equal("date", expiryDate.GetColumnType());
+    }
+
     private sealed class LegacyOutboxMessage
     {
         public Guid Id { get; set; }

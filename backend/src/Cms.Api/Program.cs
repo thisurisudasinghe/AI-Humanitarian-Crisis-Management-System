@@ -7,6 +7,8 @@ using Cms.Api.Middleware;
 using Cms.Api.Modules;
 using Cms.Api.Seeding;
 using Cms.Infrastructure;
+using Cms.Infrastructure.Notifications;
+using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.OpenApi;
@@ -35,6 +37,27 @@ builder.Configuration["ConnectionStrings:DefaultConnection"] =
     Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
     ?? builder.Configuration["ConnectionStrings:DefaultConnection"];
 
+// Resend credentials are server-side only and are never read by the frontend.
+builder.Configuration["Resend:ApiKey"] =
+    Environment.GetEnvironmentVariable("RESEND_API_KEY")
+    ?? builder.Configuration["Resend:ApiKey"];
+
+builder.Configuration["Resend:FromEmail"] =
+    Environment.GetEnvironmentVariable("RESEND_FROM_EMAIL")
+    ?? builder.Configuration["Resend:FromEmail"];
+
+builder.Configuration["Resend:FromName"] =
+    Environment.GetEnvironmentVariable("RESEND_FROM_NAME")
+    ?? builder.Configuration["Resend:FromName"];
+
+builder.Configuration["EmailVerification:BaseUrl"] =
+    Environment.GetEnvironmentVariable("EMAIL_VERIFICATION_BASE_URL")
+    ?? builder.Configuration["EmailVerification:BaseUrl"];
+
+builder.Configuration["EmailVerification:LogoUrl"] =
+    Environment.GetEnvironmentVariable("EMAIL_LOGO_URL")
+    ?? builder.Configuration["EmailVerification:LogoUrl"];
+
 if (isDevelopment)
 {
     builder.Configuration["EmailProtection:EncryptionKey"] ??= GenerateKey();
@@ -45,6 +68,14 @@ if (isDevelopment)
     // with the current common.* model.
     builder.Configuration["ConnectionStrings:DefaultConnection"] ??=
         "Server=(localdb)\\mssqllocaldb;Database=CmsDb_IntegrationTest;Trusted_Connection=True;TrustServerCertificate=True;";
+
+    // Development-only HTTPS defaults. Production must supply these explicitly
+    // through the environment variables above; sending then fails closed.
+    builder.Configuration["Resend:FromEmail"] ??= "no-reply@safeway.local";
+    builder.Configuration["Resend:FromName"] ??= "Safeway";
+    builder.Configuration["EmailVerification:BaseUrl"] ??= "https://localhost:3000/verify-email/confirm";
+    builder.Configuration["EmailVerification:LogoUrl"] ??=
+        "https://localhost:3000/safeway-email-logo.svg";
 }
 else
 {
@@ -213,6 +244,23 @@ builder.Services.AddRateLimiter(options =>
         });
     });
 
+    // Verification links are one-time credentials: stricter budgets for sending
+    // and redeeming them. The global limiter still applies on top.
+    var verificationPermitLimit = builder.Configuration
+        .GetSection(EmailVerificationOptions.SectionName)
+        .GetValue<int?>("RateLimitPermitLimit") ?? 5;
+
+    options.AddPolicy("email-verification", httpContext =>
+    {
+        var key = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        return RateLimitPartition.GetFixedWindowLimiter(key, _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = Math.Max(1, verificationPermitLimit),
+            Window = TimeSpan.FromMinutes(10),
+            QueueLimit = 0
+        });
+    });
+
     // Public read-only endpoints (for example health checks) get a tighter budget.
     options.AddPolicy("public", httpContext =>
     {
@@ -243,6 +291,26 @@ var app = builder.Build();
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 app.UseMiddleware<SecurityHeadersMiddleware>();
 app.UseMiddleware<RequestBodyLimitMiddleware>();
+
+// Turn restricted-session authorization failures into the same ProblemDetails
+// contract as the rest of the API instead of an empty 403 body.
+app.UseStatusCodePages(async statusContext =>
+{
+    var context = statusContext.HttpContext;
+    var emailVerified = context.User.FindFirst("email_verified")?.Value;
+
+    if (context.Response.StatusCode == StatusCodes.Status403Forbidden &&
+        context.User.Identity?.IsAuthenticated == true &&
+        string.Equals(emailVerified, "false", StringComparison.Ordinal))
+    {
+        await ProblemDetailsResponses.WriteAsync(
+            context,
+            StatusCodes.Status403Forbidden,
+            "Email verification required",
+            "Verify your Safeway email address before using this feature.",
+            "EMAIL_VERIFICATION_REQUIRED");
+    }
+});
 
 if (isDevelopment)
 {

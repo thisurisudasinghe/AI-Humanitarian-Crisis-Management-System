@@ -50,12 +50,48 @@ public class ControllerAuthorizationTests
         AssertRoles<AlertsController>("Update", CasesRoles.CoordinatorOnly);
         AssertRoles<AlertsController>("List", CasesRoles.CoordinatorOnly);
         AssertRoles<AlertsController>("PublishToMap", CasesRoles.CoordinatorOnly);
+        AssertRoles<ServiceCentresController>("List", CasesRoles.CoordinatorOnly);
         AssertRoles<ServiceCentresController>("SetPublicVisibility", CasesRoles.CoordinatorOnly);
 
         var publicController = typeof(PublicController);
         Assert.NotNull(publicController.GetCustomAttribute<AllowAnonymousAttribute>());
         var publicMapController = typeof(PublicMapController);
         Assert.NotNull(publicMapController.GetCustomAttribute<AllowAnonymousAttribute>());
+    }
+
+    [Fact]
+    public void Public_participation_writes_require_verified_email()
+    {
+        AssertPolicy<RequestsController>("Submit", "VerifiedOnly");
+        AssertPolicy<PublicPortalController>("Enroll", "VerifiedOnly");
+        AssertPolicy<PublicPortalController>("RecordDonation", "VerifiedOnly");
+        AssertPolicy<OperationsController>("SaveVolunteerProfile", "VerifiedOnly");
+        AssertPolicy<OperationsController>("AddAvailability", "VerifiedOnly");
+        AssertPolicy<OperationsController>("RespondToTask", "VerifiedOnly");
+        AssertPolicy<OperationsController>("CompleteTask", "VerifiedOnly");
+    }
+
+    [Fact]
+    public void Public_reads_and_auth_status_do_not_require_verified_email()
+    {
+        AssertNoVerifiedPolicy<PublicPortalController>("VolunteerStatus");
+        AssertNoVerifiedPolicy<PublicPortalController>("DonorProfile");
+        AssertNoVerifiedPolicy<PublicPortalController>("DonorCampaigns");
+        AssertNoVerifiedPolicy<PublicPortalController>("DonorDonations");
+        AssertNoVerifiedPolicy<PublicPortalController>("DonorDonation");
+        AssertNoVerifiedPolicy<PublicPortalController>("Transparency");
+        AssertNoVerifiedPolicy<OperationsController>("MyVolunteerTasks");
+        AssertNoVerifiedPolicy<AuthController>("Me");
+    }
+
+    [Fact]
+    public void Registration_and_verification_endpoints_remain_anonymous()
+    {
+        AssertAnonymous<AuthController>("Register");
+        AssertAnonymous<AuthController>("Login");
+        AssertAnonymous<AuthController>("Refresh");
+        AssertAnonymous<AuthController>("VerifyEmail");
+        AssertAnonymous<AuthController>("ResendVerification");
     }
 
     private static void AssertRoles<TController>(string methodName, string expectedRoles)
@@ -66,5 +102,31 @@ public class ControllerAuthorizationTests
 
         Assert.NotNull(authorize);
         Assert.Equal(expectedRoles, authorize!.Roles);
+    }
+
+    private static void AssertPolicy<TController>(string methodName, string expectedPolicy)
+    {
+        var method = typeof(TController).GetMethod(methodName)
+            ?? throw new InvalidOperationException($"{typeof(TController).Name}.{methodName} was not found.");
+        var authorize = method.GetCustomAttribute<AuthorizeAttribute>();
+
+        Assert.NotNull(authorize);
+        Assert.Equal(expectedPolicy, authorize!.Policy);
+    }
+
+    private static void AssertNoVerifiedPolicy<TController>(string methodName)
+    {
+        var method = typeof(TController).GetMethod(methodName)
+            ?? throw new InvalidOperationException($"{typeof(TController).Name}.{methodName} was not found.");
+        var authorize = method.GetCustomAttribute<AuthorizeAttribute>();
+
+        Assert.NotEqual("VerifiedOnly", authorize?.Policy);
+    }
+
+    private static void AssertAnonymous<TController>(string methodName)
+    {
+        var method = typeof(TController).GetMethod(methodName)
+            ?? throw new InvalidOperationException($"{typeof(TController).Name}.{methodName} was not found.");
+        Assert.NotNull(method.GetCustomAttribute<AllowAnonymousAttribute>());
     }
 }

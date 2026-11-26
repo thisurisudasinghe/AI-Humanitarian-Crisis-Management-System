@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Cms.Application.Cases.DTOs;
 using Cms.Application.DTOs.Public;
 using Cms.Domain.Cases;
@@ -57,10 +58,59 @@ public class CrisisServiceTests
         Assert.Equal("Public road closure", alert.Title);
         Assert.Equal("Use the alternate route.", alert.Summary);
         Assert.Equal("Flood", alert.Type);
+        Assert.Equal("Published", alert.Status);
         Assert.NotNull(alert.PublishedAt);
 
         await service.PublishAlertToMapAsync(alertId, new PublishMapAlertDto { Visible = false });
         Assert.Empty(await service.ListPublicAlertsAsync());
+    }
+
+    [Fact]
+    public async Task Public_alerts_project_only_explicitly_approved_fields()
+    {
+        using var context = TestContext.Create();
+        var service = CreateService(context, Coordinator(), DateTime.UtcNow);
+        var crisisId = await service.CreateCrisisAsync(new CreateCrisisDto
+        {
+            Name = "Flood",
+            Type = "Flood",
+            StartedAt = DateTime.UtcNow
+        });
+        var alertId = await service.CreateAlertAsync(crisisId, new CreateAlertDto
+        {
+            Title = "PRIVATE_INTERNAL_TITLE",
+            Body = "PRIVATE_INTERNAL_BODY"
+        });
+        await service.UpdateAlertAsync(alertId, new UpdateAlertDto { Publish = true });
+        await service.PublishAlertToMapAsync(alertId, new PublishMapAlertDto
+        {
+            Visible = true,
+            PublicTitle = "SAFE_PUBLIC_TITLE",
+            PublicSummary = "SAFE_PUBLIC_SUMMARY",
+            CrisisType = "Flood",
+            Severity = "High",
+            District = "Colombo",
+            Latitude = 6.9,
+            Longitude = 79.9
+        });
+
+        var projected = Assert.Single(await service.ListPublicAlertsAsync());
+        Assert.Equal("SAFE_PUBLIC_TITLE", projected.Title);
+        Assert.Equal("SAFE_PUBLIC_SUMMARY", projected.Summary);
+
+        var json = JsonSerializer.Serialize(projected, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        Assert.DoesNotContain("PRIVATE_INTERNAL_TITLE", json, StringComparison.Ordinal);
+        Assert.DoesNotContain("PRIVATE_INTERNAL_BODY", json, StringComparison.Ordinal);
+        Assert.DoesNotContain("crisisId", json, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("publishedByUserId", json, StringComparison.OrdinalIgnoreCase);
+        using var document = JsonDocument.Parse(json);
+        var allowed = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "id", "title", "summary", "type", "severity", "status",
+            "district", "latitude", "longitude", "publishedAt", "expiresAt"
+        };
+        Assert.All(document.RootElement.EnumerateObject(),
+            property => Assert.Contains(property.Name, allowed));
     }
 
     [Fact]
@@ -103,28 +153,30 @@ public class CrisisServiceTests
                 Lat = 6.9m,
                 Lng = 79.9m,
                 Services = "Food",
-                IsActive = true
-            },
-            new ServiceCentre
-            {
-                Id = Guid.NewGuid(),
-                Name = "Closed centre",
-                Address = "2 Main St",
-                Lat = 6.9m,
-                Lng = 79.9m,
-                Services = "Food",
-                IsActive = false
+                IsActive = true,
+                PublicVisible = true
             },
             new ServiceCentre
             {
                 Id = Guid.NewGuid(),
                 Name = "Hidden centre",
-                Address = "3 Main St",
+                Address = "2 Main St",
                 Lat = 6.9m,
                 Lng = 79.9m,
                 Services = "Food",
                 IsActive = true,
                 PublicVisible = false
+            },
+            new ServiceCentre
+            {
+                Id = Guid.NewGuid(),
+                Name = "Closed centre",
+                Address = "3 Main St",
+                Lat = 6.9m,
+                Lng = 79.9m,
+                Services = "Food",
+                IsActive = false,
+                PublicVisible = true
             });
         await context.SaveChangesAsync();
         var service = CreateService(context, Coordinator(), DateTime.UtcNow);
@@ -133,6 +185,24 @@ public class CrisisServiceTests
 
         var centre = Assert.Single(result);
         Assert.Equal("Active centre", centre.Name);
+    }
+
+    [Fact]
+    public async Task Staff_service_centres_include_hidden_and_inactive_centres()
+    {
+        using var context = TestContext.Create();
+        await context.Set<ServiceCentre>().AddRangeAsync(
+            NewServiceCentre("Public centre", true, true),
+            NewServiceCentre("Hidden centre", true, false),
+            NewServiceCentre("Closed centre", false, true));
+        await context.SaveChangesAsync();
+        var service = CreateService(context, Coordinator(), DateTime.UtcNow);
+
+        var result = await service.ListStaffServiceCentresAsync();
+
+        Assert.Equal(3, result.Count);
+        Assert.Contains(result, centre => centre.Name == "Hidden centre" && !centre.PublicVisible);
+        Assert.Contains(result, centre => centre.Name == "Closed centre" && !centre.IsActive);
     }
 
     [Fact]
@@ -178,6 +248,18 @@ public class CrisisServiceTests
         Assert.Equal(1, summary.ByArea["Colombo"]);
         Assert.Equal(2, summary.ByArea["Unassigned"]);
     }
+
+    private static ServiceCentre NewServiceCentre(string name, bool isActive, bool publicVisible) => new()
+    {
+        Id = Guid.NewGuid(),
+        Name = name,
+        Address = "1 Main St",
+        Lat = 6.9m,
+        Lng = 79.9m,
+        Services = "Food",
+        IsActive = isActive,
+        PublicVisible = publicVisible
+    };
 
     private static FakeCurrentUser Coordinator() =>
         new() { Roles = new[] { CasesRoles.EmergencyCoordinator } };

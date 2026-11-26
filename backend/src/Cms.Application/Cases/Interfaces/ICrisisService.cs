@@ -15,6 +15,7 @@ public interface ICrisisService
     Task<IReadOnlyList<AlertPublicationDto>> ListAlertsForPublicationAsync(CancellationToken cancellationToken = default);
     Task<IReadOnlyList<PublicMapIncidentDto>> ListPublicAlertsAsync(CancellationToken cancellationToken = default);
     Task<IReadOnlyList<ServiceCentreDto>> ListPublicServiceCentresAsync(CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<StaffServiceCentreDto>> ListStaffServiceCentresAsync(CancellationToken cancellationToken = default);
     Task<CrisisSummaryDto> GetSummaryAsync(Guid crisisId, CancellationToken cancellationToken = default);
 
     // Explicit publication layer for the anonymous live map.

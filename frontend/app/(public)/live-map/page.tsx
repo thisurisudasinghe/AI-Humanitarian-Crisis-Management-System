@@ -9,14 +9,13 @@ import { useI18n } from "@/lib/i18n";
 import { localizedErrorMessage } from "@/lib/i18n/errors";
 import {
   finiteCoordinate,
-  getPublicMap,
   incidentMarkerType,
   publicMapSeverityLabelKey,
   publicMapStatusLabelKey,
   publicMapTypeLabelKey,
-  type PublicCrisisFilter,
-  type PublicMapData
-} from "@/lib/publicMap";
+  type PublicCrisisFilter
+} from "@/lib/publicMapFormat";
+import { getPublicMap, type PublicMapData } from "@/lib/publicMap";
 import "./public-map.css";
 
 type LayerKey = "incidents" | "shelters" | "aidLocations";
@@ -93,7 +92,7 @@ export default function PublicLiveMapPage() {
     return (data?.incidents ?? []).filter((incident) => {
       if (crisisFilter !== "all" && incidentMarkerType(incident.type) !== crisisFilter) return false;
       if (!needle) return true;
-      return [incident.title, incident.summary, incident.district ?? "", incident.type, incident.severity]
+      return [incident.title ?? "", incident.summary ?? "", incident.district ?? "", incident.type ?? "", incident.severity ?? ""]
         .join(" ")
         .toLocaleLowerCase()
         .includes(needle);
@@ -125,9 +124,9 @@ export default function PublicLiveMapPage() {
           id: `incident:${incident.id}`,
           lat,
           lng,
-          label: incident.title,
+          label: incident.title ?? t("publicMap.notProvided"),
           type: incidentMarkerType(incident.type),
-          description: incident.district || incident.summary
+          description: incident.district || incident.summary || undefined
         });
       }
     }
@@ -173,14 +172,14 @@ export default function PublicLiveMapPage() {
     [locale, t]
   );
 
-  function severityLabel(value: string): string {
+  function severityLabel(value: string | null | undefined): string {
     const key = publicMapSeverityLabelKey(value);
-    return key ? t(key) : value;
+    return key ? t(key) : value?.trim() || t("publicMap.notProvided");
   }
 
-  function statusLabel(value: string): string {
+  function statusLabel(value: string | null | undefined): string {
     const key = publicMapStatusLabelKey(value);
-    return key ? t(key) : value;
+    return key ? t(key) : value?.trim() || t("publicMap.notProvided");
   }
 
   function toggleLayer(layer: LayerKey) {
@@ -365,8 +364,8 @@ export default function PublicLiveMapPage() {
                 </div>
                 {selectedIncident ? (
                   <article>
-                    <h3>{selectedIncident.title}</h3>
-                    <p>{selectedIncident.summary}</p>
+                    <h3>{selectedIncident.title ?? t("publicMap.notProvided")}</h3>
+                    <p>{selectedIncident.summary ?? ""}</p>
                     <dl>
                       <div><dt>{t("publicMap.typeLabel")}</dt><dd>{t(publicMapTypeLabelKey(selectedIncident.type))}</dd></div>
                       <div><dt>{t("publicMap.severity")}</dt><dd>{severityLabel(selectedIncident.severity)}</dd></div>
@@ -421,8 +420,8 @@ export default function PublicLiveMapPage() {
                         <Icon name="alert" size={18} />
                       </span>
                       <div>
-                        <h3>{incident.title}</h3>
-                        <p>{incident.summary}</p>
+                        <h3>{incident.title ?? t("publicMap.notProvided")}</h3>
+                        <p>{incident.summary ?? ""}</p>
                         <p className="public-live-map__meta">
                           {incident.district || t("publicMap.notProvided")} · {severityLabel(incident.severity)} · {statusLabel(incident.status)}
                         </p>

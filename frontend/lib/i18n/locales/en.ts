@@ -867,6 +867,7 @@ export const en = {
     "adminLastAdmin": "At least one administrator must remain active.",
     "shelterFull": "The selected shelter is at capacity.",
     "shelterCapacityBelowOccupancy": "Shelter capacity cannot be below current occupancy.",
+    "emailVerificationRequired": "Verify your Safeway email address before continuing.",
     "domain": "The request could not be completed. Please review the details and try again.",
     "generic": "The request could not be completed. Please try again.",
     "server": "The service is temporarily unavailable. Please try again in a moment."

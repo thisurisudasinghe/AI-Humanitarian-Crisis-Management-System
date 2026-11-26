@@ -4,8 +4,9 @@ namespace Cms.Application.DTOs.Public;
 
 /// <summary>
 /// Anonymous live-map projection. It contains only the fields that are safe to
-/// disclose; requests, volunteers, internal identifiers and private alert text
-/// are never part of this contract.
+/// disclose; requests, volunteers, internal ownership identifiers and private
+/// alert text are never part of this contract. The incident Id is the public
+/// key used by the map UI and is not a requester or volunteer identifier.
 /// </summary>
 public sealed record PublicMapDto(
     DateTime UpdatedAt,

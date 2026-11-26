@@ -34,6 +34,7 @@ AI-Humanitarian-Crisis-Management-System/
 │   │
 │   ├── db/
 │   │   ├── 00_common.sql
+│   │   ├── 00_identity_email_verification.sql
 │   │   ├── 01_cases.sql ... 10_operations_centre.sql (module owners; includes 02_notif.sql)
 │   │   ├── 98_foreign_keys.sql
 │   │   ├── 99_seed_users.sql
@@ -101,21 +102,22 @@ used and `dotnet ef database update` is not part of the workflow.
 Run the scripts in this canonical order on a fresh database:
 
 1. `backend/db/00_common.sql` — identity and common tables (Dev 1)
-2. `backend/db/01_cases.sql` — case/request tables (Dev 2)
-3. `backend/db/02_notif.sql` — notification templates (Dev 3; before AI)
-4. `backend/db/03_ai.sql` — recommendations and decision records (Dev 3)
-5. `backend/db/04_res.sql` — Member 4 resource tables
-6. `backend/db/05_shelter.sql` — Member 4 shelter tables
-7. `backend/db/06_vol.sql` — Member 4 volunteer tables
-8. `backend/db/08_don.sql` — donation tables (Dev 1)
-9. `backend/db/09_donor_portal.sql` — additive donor portal fields and structured items
-10. `backend/db/10_operations_centre.sql` — additive public live-map publication fields and indexes
-11. `backend/db/11_access_reporting.sql` — staff access applications and hashed-token guest reporting
-12. `backend/db/98_foreign_keys.sql` — guarded cross-module foreign keys
-13. `backend/db/99_seed_users.sql` — roles and Lead Agency organisation
-14. Start the API once in `Development`; `DevelopmentDemoSeeder` creates the demo users.
-15. `backend/db/90_seed_scenario.sql` — Member 2 case workflow fixtures
-16. `backend/db/91_seed_ops.sql` — Member 4 resource/shelter/volunteer fixtures
+2. `backend/db/00_identity_email_verification.sql` — email verification token table (Dev 2)
+3. `backend/db/01_cases.sql` — case/request tables (Dev 2)
+4. `backend/db/02_notif.sql` — notification templates (Dev 3; before AI)
+5. `backend/db/03_ai.sql` — recommendations and decision records (Dev 3)
+6. `backend/db/04_res.sql` — Member 4 resource tables
+7. `backend/db/05_shelter.sql` — Member 4 shelter tables
+8. `backend/db/06_vol.sql` — Member 4 volunteer tables
+9. `backend/db/08_don.sql` — donation tables (Dev 1)
+10. `backend/db/09_donor_portal.sql` — additive donor portal fields and structured items
+11. `backend/db/10_operations_centre.sql` — additive public live-map publication fields and indexes
+12. `backend/db/11_access_reporting.sql` — staff access applications and hashed-token guest reporting
+13. `backend/db/98_foreign_keys.sql` — guarded cross-module foreign keys
+14. `backend/db/99_seed_users.sql` — roles and Lead Agency organisation
+15. Start the API once in `Development`; `DevelopmentDemoSeeder` creates the demo users.
+16. `backend/db/90_seed_scenario.sql` — Member 2 case workflow fixtures
+17. `backend/db/91_seed_ops.sql` — Member 4 resource/shelter/volunteer fixtures
 
 `backend/db/07_geo.sql` is intentionally skipped because Member 4 uses `IMemoryCache`, not a persistent `geo.geo_cache` table. The two scenario seed scripts must run after the API has created the demo users. All schema and seed scripts are intended to be safe to re-run.
 
@@ -320,9 +322,11 @@ Server instance. Frontend checks are `npm.cmd run typecheck` and
   `/operations/ai/chat` is explicitly informational and decides nothing.
 - The post-incident review UI is at `/operations/decisions`; it filters by
   crisis id, date range and outcome and shows the final request status.
-- Database run order for Dev 3 is `backend/db/00_common.sql` →
-  `backend/db/02_notif.sql` → `backend/db/03_ai.sql` → `backend/db/98_foreign_keys.sql`
-  → `backend/db/99_seed_users.sql`. `02_notif.sql` seeds English (`en`) and
+- Database run order for Dev 3 includes the canonical
+  `backend/db/00_common.sql` → `backend/db/00_identity_email_verification.sql`
+  → `backend/db/02_notif.sql` → `backend/db/03_ai.sql` →
+  `backend/db/98_foreign_keys.sql` → `backend/db/99_seed_users.sql`.
+  `02_notif.sql` seeds English (`en`) and
   Spanish (`es`) template rows keyed by `template_key` + `language`; the
   in-code fallback registry holds English, Sinhala, Tamil and Spanish defaults
   for the core notification keys, with new staff-access keys localized in code.
@@ -357,9 +361,9 @@ sqlcmd -S "(localdb)\mssqllocaldb" -E -b -Q "CREATE DATABASE [$db];"
 
 # 2. Canonical schema order (07_geo.sql is stale and intentionally skipped).
 $scripts = @(
-  "00_common.sql", "01_cases.sql", "02_notif.sql", "03_ai.sql",
-  "04_res.sql", "05_shelter.sql", "06_vol.sql", "08_don.sql",
-  "09_donor_portal.sql", "10_operations_centre.sql", "11_access_reporting.sql",
+  "00_common.sql", "00_identity_email_verification.sql", "01_cases.sql",
+  "02_notif.sql", "03_ai.sql", "04_res.sql", "05_shelter.sql", "06_vol.sql",
+  "08_don.sql", "09_donor_portal.sql", "10_operations_centre.sql", "11_access_reporting.sql",
   "98_foreign_keys.sql", "99_seed_users.sql"
 )
 foreach ($s in $scripts) {

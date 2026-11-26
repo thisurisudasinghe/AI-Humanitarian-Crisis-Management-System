@@ -46,12 +46,13 @@ these scripts. The original `CmsDb` is a legacy migration-created database with
 ```powershell
 # Use a disposable database for integration runs, for example CmsDb_IntegrationTest.
 # Canonical order (07_geo.sql is intentionally skipped):
-# 00_common.sql -> 01_cases.sql -> 02_notif.sql -> 03_ai.sql -> 04_res.sql
+# 00_common.sql -> 00_identity_email_verification.sql -> 01_cases.sql -> 02_notif.sql -> 03_ai.sql -> 04_res.sql
 # -> 05_shelter.sql -> 06_vol.sql -> 08_don.sql -> 09_donor_portal.sql
 # -> 10_operations_centre.sql -> 11_access_reporting.sql -> 98_foreign_keys.sql
 # -> 99_seed_users.sql -> start API once -> 90_seed_scenario.sql -> 91_seed_ops.sql
 $db = "CmsDb_IntegrationTest"
 sqlcmd -S "(localdb)\mssqllocaldb" -d $db -I -b -i backend/db/00_common.sql
+sqlcmd -S "(localdb)\mssqllocaldb" -d $db -I -b -i backend/db/00_identity_email_verification.sql
 sqlcmd -S "(localdb)\mssqllocaldb" -d $db -I -b -i backend/db/01_cases.sql
 sqlcmd -S "(localdb)\mssqllocaldb" -d $db -I -b -i backend/db/02_notif.sql
 sqlcmd -S "(localdb)\mssqllocaldb" -d $db -I -b -i backend/db/03_ai.sql
@@ -187,8 +188,9 @@ startup by `DevelopmentDemoSeeder` after the SQL schema scripts have run.
 
 Run this before every Dev 1 hand-off or demo.
 
-1. Run `00_common.sql`, `02_notif.sql`, `03_ai.sql`, `08_don.sql`,
-   `09_donor_portal.sql`, `10_operations_centre.sql`, `11_access_reporting.sql`,
+1. Run `00_common.sql`, `00_identity_email_verification.sql`,
+   `02_notif.sql`, `03_ai.sql`, `08_don.sql`, `09_donor_portal.sql`,
+   `10_operations_centre.sql`, `11_access_reporting.sql`,
    `98_foreign_keys.sql` and `99_seed_users.sql` twice.
    Both passes must succeed;
    `common.system_settings` must contain three rows and

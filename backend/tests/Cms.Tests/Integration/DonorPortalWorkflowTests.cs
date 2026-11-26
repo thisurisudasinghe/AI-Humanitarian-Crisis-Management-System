@@ -1,7 +1,9 @@
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 using Cms.Application.DTOs;
 using Cms.Application.DTOs.Authentication;
 using Cms.Application.DTOs.Donations;
@@ -33,6 +35,7 @@ public sealed class DonorPortalWorkflowTests : IClassFixture<CmsWebApplicationFa
     {
         await _factory.EnsureSeededAsync();
         var email = $"donor.workflow.{Guid.NewGuid():N}@tests.local";
+        var messageBefore = _factory.VerificationSender.Messages.Count;
 
         using var registration = _factory.CreateClient();
         var created = await registration.PostAsJsonAsync("/api/v1/auth/register", new
@@ -47,7 +50,23 @@ public sealed class DonorPortalWorkflowTests : IClassFixture<CmsWebApplicationFa
         var auth = await created.Content.ReadFromJsonAsync<AuthResponseDto>(JsonOptions);
         Assert.NotNull(auth);
 
-        return await _factory.CreateAuthenticatedClientAsync(email);
+        var token = Regex.Match(
+                _factory.VerificationSender.Messages.Skip(messageBefore).First().Text,
+                @"[?&]token=([^&\s]+)")
+            .Groups[1].Value;
+        using (var verify = _factory.CreateClient())
+        {
+            var verified = await verify.PostAsJsonAsync(
+                "/api/v1/auth/email/verify",
+                new { token });
+            Assert.Equal(HttpStatusCode.OK, verified.StatusCode);
+        }
+
+        var login = await _factory.LoginAsync(email);
+        var client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", login.AccessToken);
+        return client;
     }
 
     [Fact]

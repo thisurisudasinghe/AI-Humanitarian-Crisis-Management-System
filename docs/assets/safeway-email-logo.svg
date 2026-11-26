@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="220" height="56" viewBox="0 0 220 56" role="img" aria-labelledby="title desc">
+  <title id="title">Safeway</title>
+  <desc id="desc">Safeway logo: a heart supported by a protective hand, with the Safeway wordmark.</desc>
+  <rect x="0" y="2" width="52" height="52" rx="17" fill="#EAF4FC"/>
+  <path d="M26 40.5C17.2 34.8 12 30 12 24.4 12 20.5 15.1 17.5 18.9 17.5c2.8 0 5.3 1.5 7.1 3.8 1.8-2.3 4.3-3.8 7.1-3.8 3.8 0 6.9 3 6.9 6.9 0 5.6-5.2 10.4-14 16.1Z" fill="#438FC5"/>
+  <path d="M15 40.8c4.1 5.1 18 5.1 22.2 0" fill="none" stroke="#24577A" stroke-width="3" stroke-linecap="round"/>
+  <path d="M19.5 45.2c4.3 2.6 12.7 2.6 17 0" fill="none" stroke="#559875" stroke-width="2.5" stroke-linecap="round"/>
+  <text x="64" y="37" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="700" fill="#17364F">Safe</text>
+  <text x="119" y="37" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="700" fill="#559875">way</text>
+</svg>

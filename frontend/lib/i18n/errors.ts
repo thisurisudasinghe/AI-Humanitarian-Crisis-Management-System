@@ -15,7 +15,9 @@ const CODE_KEYS: Record<string, string> = {
   ADMIN_SELF_LOCKOUT: "apiErrors.adminSelfLockout",
   ADMIN_LAST_ADMIN: "apiErrors.adminLastAdmin",
   SHELTER_FULL: "apiErrors.shelterFull",
-  SHELTER_CAPACITY_BELOW_OCCUPANCY: "apiErrors.shelterCapacityBelowOccupancy"
+  SHELTER_CAPACITY_BELOW_OCCUPANCY: "apiErrors.shelterCapacityBelowOccupancy",
+  EMAIL_VERIFICATION_REQUIRED: "apiErrors.emailVerificationRequired",
+  EMAIL_NOT_VERIFIED: "apiErrors.emailVerificationRequired"
 };
 
 const STATUS_KEYS: Record<number, string> = {

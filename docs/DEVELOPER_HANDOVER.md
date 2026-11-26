@@ -55,9 +55,10 @@ $db = "CmsDb_IntegrationTest"
 sqlcmd -S "(localdb)\mssqllocaldb" -E -b -Q "IF DB_ID('$db') IS NOT NULL BEGIN ALTER DATABASE [$db] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [$db]; END; CREATE DATABASE [$db];"
 
 $scripts = @(
-  "00_common.sql","01_cases.sql","02_notif.sql","03_ai.sql",
-  "04_res.sql","05_shelter.sql","06_vol.sql","08_don.sql",
-  "98_foreign_keys.sql","99_seed_users.sql","90_seed_scenario.sql","91_seed_ops.sql"
+  "00_common.sql","00_identity_email_verification.sql","01_cases.sql",
+  "02_notif.sql","03_ai.sql","04_res.sql","05_shelter.sql","06_vol.sql",
+  "08_don.sql","09_donor_portal.sql","10_operations_centre.sql","11_access_reporting.sql","98_foreign_keys.sql","99_seed_users.sql",
+  "90_seed_scenario.sql","91_seed_ops.sql"
 )
 foreach ($s in $scripts) {
   sqlcmd -S "(localdb)\mssqllocaldb" -d $db -I -b -i "backend/db/$s"

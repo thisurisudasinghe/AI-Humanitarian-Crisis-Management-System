@@ -32,6 +32,9 @@ public class DonationItemConfiguration : IEntityTypeConfiguration<DonationItem>
         builder.Property(item => item.Notes)
             .HasMaxLength(500);
 
+        builder.Property(item => item.ExpiryDate)
+            .HasColumnType("date");
+
         builder.Property(item => item.Packaging)
             .HasMaxLength(200);
 

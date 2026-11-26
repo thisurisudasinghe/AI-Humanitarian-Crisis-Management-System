@@ -9,6 +9,8 @@ import { Icon } from "@/components/safeway/Icon";
 import { useAuth } from "@/lib/auth";
 import { useT } from "@/lib/i18n";
 import { type PublicPurpose } from "@/lib/roles";
+import { resendVerificationEmail } from "@/lib/verification";
+import { resendView, type ResendState } from "@/lib/verification-state";
 
 type FieldErrors = Partial<
   Record<
@@ -49,12 +51,19 @@ export default function RegisterPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const [resendState, setResendState] = useState<ResendState>("idle");
 
   const purposes: { value: PublicPurpose; icon: string; title: string; copy: string }[] = [
     { value: "citizen", icon: "file", title: t("auth.purposeCitizen"), copy: t("auth.purposeCitizenCopy") },
     { value: "volunteer", icon: "users", title: t("auth.purposeVolunteer"), copy: t("auth.purposeVolunteerCopy") },
     { value: "donor", icon: "heart", title: t("auth.purposeDonor"), copy: t("auth.purposeDonorCopy") }
   ];
+
+  async function onResend() {
+    setResendState("loading");
+    const result = await resendVerificationEmail(email.trim());
+    setResendState(result.state);
+  }
 
   function validate(): FieldErrors {
     const next: FieldErrors = {};
@@ -127,12 +136,37 @@ export default function RegisterPage() {
           <span className="mobile-brand"><Brand /></span>
 
           {complete ? (
-            <div className="register-success-panel">
-              <div className="register-success-icon"><Icon name="check" size={28} /></div>
-              <h2>{t("auth.accountCreated")}</h2>
-              <p>{t("auth.accountCreatedCopy")}</p>
-              <Link className="btn btn-primary login-submit" href="/dashboard">
-                {t("auth.continueToDashboard")} <Icon name="arrow" />
+            <div className="register-success-panel verification-pending">
+              <div className="register-success-icon"><Icon name="bell" size={28} /></div>
+              <div className="section-kicker">One more step</div>
+              <h2>Check your email, {firstName.trim() || "friend"}.</h2>
+              <p>
+                Your Safeway account has been created. We sent a verification link to{" "}
+                <strong>{email.trim()}</strong>. Open it within 30 minutes to activate your account.
+              </p>
+              <p className="verification-hint">
+                Links stay valid for 30 minutes and can only be used once.
+              </p>
+              <div className="verification-actions">
+                <Link className="btn btn-primary login-submit" href="/verify-email">
+                  I have a link <Icon name="arrow" />
+                </Link>
+                <button
+                  className="btn btn-outline login-submit"
+                  type="button"
+                  onClick={onResend}
+                  disabled={resendState === "loading"}
+                >
+                  {resendState === "loading" ? "Sending…" : "Resend email"}
+                </button>
+              </div>
+              {resendState !== "idle" ? (
+                <p className="verification-feedback" role="status">
+                  {resendView(resendState).message}
+                </p>
+              ) : null}
+              <Link className="verification-login-link" href="/login">
+                Back to login
               </Link>
             </div>
           ) : (

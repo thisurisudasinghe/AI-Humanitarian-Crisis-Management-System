@@ -114,6 +114,25 @@ public class ServiceCentreDto
     public string? OpeningHours { get; set; }
 }
 
+/// <summary>
+/// Coordinator-facing service-centre list. Unlike the anonymous projection it
+/// includes hidden and inactive centres with their visibility flags so staff
+/// can manage them.
+/// </summary>
+public class StaffServiceCentreDto
+{
+    public Guid Id { get; set; }
+    public Guid? CrisisId { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string Address { get; set; } = string.Empty;
+    public decimal Lat { get; set; }
+    public decimal Lng { get; set; }
+    public string Services { get; set; } = string.Empty;
+    public string? OpeningHours { get; set; }
+    public bool IsActive { get; set; }
+    public bool PublicVisible { get; set; }
+}
+
 public class CrisisSummaryDto
 {
     public Guid CrisisId { get; set; }
