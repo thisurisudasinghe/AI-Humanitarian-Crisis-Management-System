@@ -46,7 +46,42 @@ public sealed class AuthFlowTests : IClassFixture<CmsWebApplicationFactory>
 
         var token = new JwtSecurityTokenHandler().ReadJwtToken(auth.AccessToken);
         Assert.Single(token.Claims, claim => claim.Type == "role");
+        Assert.Equal("false", token.Claims.Single(claim => claim.Type == "email_verified").Value);
         Assert.DoesNotContain(token.Claims, claim => claim.Type == "orgId");
+    }
+
+    [Fact]
+    public async Task Unverified_account_can_login_refresh_and_read_status()
+    {
+        await _factory.EnsureSeededAsync();
+        var email = $"unverified.status.{Guid.NewGuid():N}@tests.local";
+        using var registration = _factory.CreateClient();
+        var register = await registration.PostAsJsonAsync("/api/v1/auth/register", new
+        {
+            fullName = "Unverified Status",
+            email,
+            phoneNumber = "0771234567",
+            password = TestSecrets.Password
+        });
+        register.EnsureSuccessStatusCode();
+        var registered = await register.Content.ReadFromJsonAsync<AuthResponseDto>();
+        Assert.NotNull(registered);
+        Assert.False(registered!.IsEmailVerified);
+
+        var login = await _factory.LoginAsync(email);
+        Assert.False(login.IsEmailVerified);
+
+        using var refreshClient = _factory.CreateClient();
+        var refresh = await refreshClient.PostAsJsonAsync("/api/v1/auth/refresh", new
+        {
+            refreshToken = login.RefreshToken
+        });
+        Assert.Equal(HttpStatusCode.OK, refresh.StatusCode);
+
+        using var meClient = await _factory.CreateAuthenticatedClientAsync(email);
+        var me = await meClient.GetFromJsonAsync<CurrentUserDto>("/api/v1/auth/me");
+        Assert.NotNull(me);
+        Assert.False(me!.IsEmailVerified);
     }
 
     [Fact]

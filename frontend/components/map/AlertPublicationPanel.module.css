@@ -1,0 +1,114 @@
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+  gap: 1rem;
+  margin-top: 0.75rem;
+  align-items: start;
+}
+
+.alertList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+.alertItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  width: 100%;
+  min-width: 0;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--line, #d7e0ea);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--deep, #123);
+  text-align: left;
+  cursor: pointer;
+}
+
+.alertItem:hover,
+.alertItemActive {
+  border-color: #438fc5;
+  background: #f2f8fc;
+}
+
+.alertName {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-weight: 600;
+}
+
+.publicFlag {
+  flex: none;
+  border-radius: 999px;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.isPublic {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.isHidden {
+  background: #e8eef5;
+  color: #334155;
+}
+
+.form {
+  min-width: 0;
+}
+
+.privateTitle {
+  display: grid;
+  gap: 0.15rem;
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 0.55rem 0.7rem;
+  border-radius: 8px;
+  background: #f5f8fb;
+}
+
+.privacy {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.confirmRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  grid-column: 1 / -1;
+  padding: 0.6rem;
+  border-radius: 8px;
+  background: #fff7ed;
+}
+
+.confirmText {
+  flex: 1 1 260px;
+  font-weight: 600;
+}
+
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+
+  .alertList {
+    max-height: 240px;
+  }
+}

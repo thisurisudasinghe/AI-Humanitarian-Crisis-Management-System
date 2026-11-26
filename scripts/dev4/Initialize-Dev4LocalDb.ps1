@@ -27,7 +27,7 @@ if ($RunScenarioSeeds) {
     Invoke-SqlFile '90_seed_scenario.sql' $Database
     Invoke-SqlFile '91_seed_ops.sql' $Database
     # Re-run all schema scripts and the idempotent seeds to verify re-runnability.
-    foreach ($file in @('00_common.sql','01_cases.sql','02_notif.sql','03_ai.sql','04_res.sql','05_shelter.sql','06_vol.sql','08_don.sql','98_foreign_keys.sql','99_seed_users.sql','90_seed_scenario.sql','91_seed_ops.sql')) {
+    foreach ($file in @('00_common.sql','00_identity_email_verification.sql','01_cases.sql','02_notif.sql','03_ai.sql','04_res.sql','05_shelter.sql','06_vol.sql','08_don.sql','09_donor_portal.sql','10_operations_centre.sql','11_access_reporting.sql','98_foreign_keys.sql','99_seed_users.sql','90_seed_scenario.sql','91_seed_ops.sql')) {
         Invoke-SqlFile $file $Database
     }
     Write-Host 'Scenario seeds and idempotent re-run pass completed. Run Test-Dev4SqlGuards.ps1 next.' -ForegroundColor Green
@@ -46,7 +46,7 @@ if ($existing -and $existing -ne 'NULL') {
 if ($LASTEXITCODE -ne 0) { throw "Could not create database '$Database'." }
 
 # 07_geo.sql is intentionally omitted: this implementation uses IMemoryCache, not geo.geo_cache.
-foreach ($file in @('00_common.sql','01_cases.sql','02_notif.sql','03_ai.sql','04_res.sql','05_shelter.sql','06_vol.sql','08_don.sql','98_foreign_keys.sql','99_seed_users.sql')) {
+foreach ($file in @('00_common.sql','00_identity_email_verification.sql','01_cases.sql','02_notif.sql','03_ai.sql','04_res.sql','05_shelter.sql','06_vol.sql','08_don.sql','09_donor_portal.sql','10_operations_centre.sql','11_access_reporting.sql','98_foreign_keys.sql','99_seed_users.sql')) {
     Invoke-SqlFile $file $Database
 }
 

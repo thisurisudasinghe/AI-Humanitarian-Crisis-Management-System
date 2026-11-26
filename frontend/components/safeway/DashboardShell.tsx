@@ -2,101 +2,279 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode
+} from "react";
 import { useAuth } from "@/lib/auth";
+import { initials } from "@/lib/format";
 import { useT } from "@/lib/i18n";
-import { initials, humanizeRole } from "@/lib/format";
 import { getInbox } from "@/lib/notifications";
-import { RoleNames, hasAnyRole, hasRole, isStaff } from "@/lib/roles";
+import {
+  RoleNames,
+  StaffRoles,
+  hasAnyRole,
+  homePathForRoles,
+  isStaff
+} from "@/lib/roles";
 import { Brand } from "./Brand";
 import { Icon } from "./Icon";
 
-type NavItem = {
+type NavLink = {
   href: string;
   icon: string;
   labelKey: string;
+  roles: readonly string[];
+  separated?: boolean;
 };
 
-const publicNav: NavItem[] = [
-  { href: "/dashboard", icon: "grid", labelKey: "dashboard.dashboard" },
-  { href: "/portal/citizen", icon: "file", labelKey: "dashboard.citizenPortal" },
-  { href: "/my-reports", icon: "file", labelKey: "dashboard.myReports" },
-  { href: "/find-assistance", icon: "search", labelKey: "dashboard.findAssistance" },
-  { href: "/notifications", icon: "bell", labelKey: "dashboard.notifications" },
-  { href: "/account", icon: "user", labelKey: "dashboard.accountSettings" }
-];
-
-const portalSectionLabels: Record<string, string> = {
-  "/dashboard": "dashboard.dashboard",
-  "/portal/citizen": "dashboard.citizenPortal",
-  "/portal/volunteer": "dashboard.volunteerPortal",
-  "/portal/donor": "dashboard.donorPortal",
-  "/my-reports": "dashboard.myReports",
-  "/find-assistance": "dashboard.findAssistance",
-  "/notifications": "dashboard.notifications",
-  "/account": "dashboard.accountSettings"
+type NavGroup = {
+  id: string;
+  icon: string;
+  labelKey: string;
+  links: NavLink[];
 };
 
-const opsNav: NavItem[] = [
-  { href: "/operations", icon: "grid", labelKey: "dashboard.overview" },
-  { href: "/operations/crises", icon: "alert", labelKey: "dashboard.crisesCases" },
-  { href: "/operations/ai", icon: "brain", labelKey: "dashboard.aiDecisionSupport" },
-  { href: "/operations/decisions", icon: "file", labelKey: "dashboard.decisionHistory" },
-  { href: "/operations/map", icon: "map", labelKey: "dashboard.liveMap" },
-  { href: "/resources", icon: "box", labelKey: "dashboard.resources" },
-  { href: "/shelters", icon: "home", labelKey: "dashboard.shelters" },
-  { href: "/volunteers", icon: "users", labelKey: "dashboard.volunteers" },
-  { href: "/notifications", icon: "bell", labelKey: "dashboard.notifications" },
-  { href: "/kpis", icon: "chart", labelKey: "dashboard.reportsKpis" }
-];
-
-const publicOnlyPaths = ["/dashboard", "/my-reports", "/account"];
-const publicOnlyPrefixes = ["/portal"];
-
-const kpiRoles = [
-  RoleNames.SystemAdmin,
+const caseStaff = [RoleNames.EmergencyCoordinator, RoleNames.CaseManager];
+const volunteerStaff = [
+  RoleNames.VolunteerCoordinator,
   RoleNames.EmergencyCoordinator,
-  RoleNames.PartnerOfficer
+  RoleNames.SystemAdmin
 ];
-
-const donationRoles = [
+const donationStaff = [
   RoleNames.SystemAdmin,
   RoleNames.DonorOfficer,
   RoleNames.EmergencyCoordinator,
   RoleNames.PartnerOfficer
 ];
+const logisticsStaff = [
+  RoleNames.LogisticsManager,
+  RoleNames.EmergencyCoordinator,
+  RoleNames.SystemAdmin
+];
+const shelterStaff = [
+  RoleNames.ShelterAdmin,
+  RoleNames.EmergencyCoordinator,
+  RoleNames.SystemAdmin
+];
+const mapStaff = [
+  RoleNames.LogisticsManager,
+  RoleNames.ShelterAdmin,
+  RoleNames.VolunteerCoordinator,
+  RoleNames.EmergencyCoordinator,
+  RoleNames.SystemAdmin
+];
+const kpiStaff = [
+  RoleNames.SystemAdmin,
+  RoleNames.EmergencyCoordinator,
+  RoleNames.PartnerOfficer
+];
+const deciderStaff = [
+  RoleNames.CaseManager,
+  RoleNames.EmergencyCoordinator,
+  RoleNames.LogisticsManager,
+  RoleNames.ShelterAdmin,
+  RoleNames.VolunteerCoordinator
+];
+const adminStaff = [RoleNames.SystemAdmin];
 
-function isOpsPath(pathname: string, roles: readonly string[]): boolean {
-  if (
-    publicOnlyPaths.includes(pathname) ||
-    publicOnlyPrefixes.some((prefix) => pathname.startsWith(prefix))
-  ) {
-    return false;
+/** The eight configured staff navigation groups. Empty groups are not rendered. */
+const navGroups: NavGroup[] = [
+  {
+    id: "overview",
+    icon: "grid",
+    labelKey: "opsX.nav.overview",
+    links: [
+      {
+        href: "/operations",
+        icon: "grid",
+        labelKey: "opsX.nav.overview",
+        roles: StaffRoles
+      }
+    ]
+  },
+  {
+    id: "response",
+    icon: "alert",
+    labelKey: "opsX.nav.response",
+    links: [
+      {
+        href: "/operations/crises",
+        icon: "file",
+        labelKey: "opsX.nav.crisesCases",
+        roles: caseStaff
+      },
+      {
+        href: "/operations/crises?status=Submitted",
+        icon: "clipboard",
+        labelKey: "opsX.nav.assistanceRequests",
+        roles: caseStaff
+      },
+      {
+        href: "/public-alerts",
+        icon: "megaphone",
+        labelKey: "opsX.nav.publicAlerts",
+        roles: [RoleNames.EmergencyCoordinator]
+      }
+    ]
+  },
+  {
+    id: "aid",
+    icon: "handHeart",
+    labelKey: "opsX.nav.aid",
+    links: [
+      {
+        href: "/volunteers",
+        icon: "users",
+        labelKey: "opsX.nav.volunteers",
+        roles: volunteerStaff
+      },
+      {
+        href: "/donations",
+        icon: "heart",
+        labelKey: "opsX.nav.donations",
+        roles: donationStaff
+      }
+    ]
+  },
+  {
+    id: "resources",
+    icon: "box",
+    labelKey: "opsX.nav.resources",
+    links: [
+      {
+        href: "/resources",
+        icon: "box",
+        labelKey: "opsX.nav.resourcesLink",
+        roles: logisticsStaff
+      },
+      {
+        href: "/shelters",
+        icon: "home",
+        labelKey: "opsX.nav.shelters",
+        roles: shelterStaff
+      }
+    ]
+  },
+  {
+    id: "map",
+    icon: "map",
+    labelKey: "opsX.nav.map",
+    links: [
+      {
+        href: "/operations/map",
+        icon: "map",
+        labelKey: "opsX.nav.liveMap",
+        roles: mapStaff
+      }
+    ]
+  },
+  {
+    id: "ai",
+    icon: "brain",
+    labelKey: "opsX.nav.ai",
+    links: [
+      {
+        href: "/operations/ai",
+        icon: "brain",
+        labelKey: "opsX.nav.ai",
+        roles: StaffRoles
+      },
+      {
+        href: "/operations/decisions",
+        icon: "clipboard",
+        labelKey: "opsX.nav.decisions",
+        roles: deciderStaff
+      }
+    ]
+  },
+  {
+    id: "reports",
+    icon: "chart",
+    labelKey: "opsX.nav.reports",
+    links: [
+      {
+        href: "/reports",
+        icon: "chart",
+        labelKey: "opsX.nav.reportsKpis",
+        roles: kpiStaff
+      }
+    ]
+  },
+  {
+    id: "administration",
+    icon: "shield",
+    labelKey: "opsX.nav.administration",
+    links: [
+      {
+        href: "/admin",
+        icon: "shield",
+        labelKey: "opsX.nav.adminLanding",
+        roles: adminStaff
+      },
+      {
+        href: "/admin/users",
+        icon: "users",
+        labelKey: "common.adminUsers",
+        roles: adminStaff
+      },
+      {
+        href: "/admin/organisations",
+        icon: "building",
+        labelKey: "common.adminOrgs",
+        roles: adminStaff
+      },
+      {
+        href: "/admin/announcements",
+        icon: "megaphone",
+        labelKey: "common.adminAnnouncements",
+        roles: adminStaff
+      },
+      {
+        href: "/admin/audit",
+        icon: "clipboard",
+        labelKey: "common.adminAudit",
+        roles: adminStaff
+      },
+      {
+        href: "/admin/notifications",
+        icon: "bell",
+        labelKey: "common.adminFailedNotifications",
+        roles: adminStaff
+      },
+      {
+        href: "/admin/config",
+        icon: "shield",
+        labelKey: "common.adminConfig",
+        roles: adminStaff
+      },
+      {
+        href: "/admin/outbox",
+        icon: "mail",
+        labelKey: "common.adminOutbox",
+        roles: adminStaff,
+        separated: true
+      }
+    ]
   }
-
-  if (pathname.startsWith("/operations") || pathname.startsWith("/resources")) {
-    return true;
-  }
-
-  if (
-    pathname.startsWith("/shelters") ||
-    pathname.startsWith("/volunteers") ||
-    pathname.startsWith("/kpis") ||
-    pathname.startsWith("/donations") ||
-    pathname.startsWith("/admin")
-  ) {
-    return true;
-  }
-
-  return isStaff(roles);
-}
+];
 
 function isActive(pathname: string, href: string): boolean {
-  if (href === "/operations" || href === "/dashboard") {
-    return pathname === href;
+  const [base] = href.split("?");
+
+  // Query-specific links are shortcuts, not canonical active routes.
+  if (href.includes("?")) return false;
+  if (base === "/reports") {
+    return pathname === "/reports" || pathname === "/kpis";
+  }
+  if (base === "/operations" || base === "/admin") {
+    return pathname === base;
   }
 
-  return pathname === href || pathname.startsWith(`${href}/`);
+  return pathname === base || pathname.startsWith(`${base}/`);
 }
 
 export function DashboardShell({ children }: { children: ReactNode }) {
@@ -105,8 +283,37 @@ export function DashboardShell({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth();
   const t = useT();
   const [mobileNav, setMobileNav] = useState(false);
-  const [search, setSearch] = useState("");
+  const [collapsed, setCollapsed] = useState(false);
+  const [openGroups, setOpenGroups] = useState<string[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const mobileTriggerRef = useRef<HTMLButtonElement>(null);
+  const drawerRef = useRef<HTMLElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+
+  const roles = user?.roles ?? [];
+  const rolesKey = roles.join("|");
+  const staffMode = isStaff(roles);
+  const homeHref = homePathForRoles(roles);
+  const displayName = user?.fullName ?? t("common.loading");
+  const roleKeys: string[] = [
+    RoleNames.EmergencyCoordinator,
+    RoleNames.CaseManager,
+    RoleNames.LogisticsManager,
+    RoleNames.ShelterAdmin,
+    RoleNames.VolunteerCoordinator,
+    RoleNames.DonorOfficer,
+    RoleNames.PartnerOfficer,
+    RoleNames.SystemAdmin
+  ];
+  const activeRole = roles.find((role) => roleKeys.includes(role as never)) ?? roles[0];
+  const roleLabel = activeRole ? t(`roleLabels.${activeRole}`) : t("dashboard.commandCentre");
+
+  const visibleGroups = navGroups
+    .map((group) => ({
+      ...group,
+      links: group.links.filter((link) => hasAnyRole(roles, link.roles))
+    }))
+    .filter((group) => group.links.length > 0);
 
   const loadUnreadCount = useCallback(async () => {
     try {
@@ -132,12 +339,77 @@ export function DashboardShell({ children }: { children: ReactNode }) {
     };
   }, [loadUnreadCount]);
 
+  useEffect(() => {
+    try {
+      setCollapsed(window.localStorage.getItem("safeway.sidebarCollapsed") === "1");
+    } catch {
+      // Storage may be disabled; the expanded layout remains usable.
+    }
+  }, []);
+
+  useEffect(() => {
+    setMobileNav(false);
+    const activeGroup = navGroups.find((group) =>
+      group.links.some((link) => isActive(pathname, link.href))
+    );
+    if (activeGroup && hasAnyRole(roles, activeGroup.links.flatMap((link) => [...link.roles]))) {
+      setOpenGroups((current) =>
+        current.includes(activeGroup.id) ? current : [...current, activeGroup.id]
+      );
+    }
+    // rolesKey changes only when the authenticated user's roles change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname, rolesKey]);
+
+  useEffect(() => {
+    if (!mobileNav || !staffMode) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    closeButtonRef.current?.focus();
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setMobileNav(false);
+        return;
+      }
+
+      if (event.key !== "Tab" || !drawerRef.current) return;
+      const focusable = Array.from(
+        drawerRef.current.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )
+      );
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = previousOverflow;
+      mobileTriggerRef.current?.focus();
+    };
+  }, [mobileNav, staffMode]);
+
   const bellLabel =
-    unreadCount > 0 ? `${t("dashboard.notifications")} (${unreadCount})` : t("dashboard.notifications");
+    unreadCount > 0
+      ? `${t("dashboard.notifications")} (${unreadCount})`
+      : t("dashboard.notifications");
 
   const bell = (
     <span className="notification-bell">
-      <Icon name="bell" />
+      <Icon name="bell" size={18} />
       {unreadCount > 0 ? (
         <span className="notification-badge" aria-hidden="true">
           {unreadCount > 9 ? "9+" : unreadCount}
@@ -146,191 +418,222 @@ export function DashboardShell({ children }: { children: ReactNode }) {
     </span>
   );
 
-  const roles = user?.roles ?? [];
-  const mode = isOpsPath(pathname, roles) ? "ops" : "public";
-  const admin = roles.includes(RoleNames.SystemAdmin);
-  const donations = hasAnyRole(roles, donationRoles);
+  function toggleCollapsed() {
+    setCollapsed((current) => {
+      const next = !current;
+      try {
+        window.localStorage.setItem("safeway.sidebarCollapsed", next ? "1" : "0");
+      } catch {
+        // Storage may be disabled; the current session still updates.
+      }
+      return next;
+    });
+  }
 
-  const navItems: NavItem[] =
-    mode === "ops"
-      ? opsNav.filter(
-          (item) => item.href !== "/kpis" || hasAnyRole(roles, kpiRoles)
-        )
-      : [
-          publicNav[0],
-          ...(hasRole(roles, RoleNames.Volunteer)
-            ? [{ href: "/portal/volunteer", icon: "users", labelKey: "dashboard.volunteerPortal" }]
-            : []),
-          ...(hasRole(roles, RoleNames.Donor)
-            ? [{ href: "/portal/donor", icon: "heart", labelKey: "dashboard.donorPortal" }]
-            : []),
-          ...publicNav.slice(1)
-        ];
-  const displayName = user?.fullName ?? t("common.loading");
-  const roleLabel = mode === "ops" ? humanizeRole(roles[0], t) : t("dashboard.publicAccount");
+  function toggleGroup(id: string) {
+    if (collapsed && !mobileNav) {
+      setCollapsed(false);
+      setOpenGroups((current) => (current.includes(id) ? current : [...current, id]));
+      return;
+    }
+    setOpenGroups((current) =>
+      current.includes(id) ? current.filter((item) => item !== id) : [...current, id]
+    );
+  }
+
+  function closeMobileNav() {
+    setMobileNav(false);
+  }
 
   async function onLogout() {
     await logout();
     router.replace("/login");
   }
 
-  function onSearch(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const query = search.trim();
-    router.push(query ? `/operations/crises?q=${encodeURIComponent(query)}` : "/operations/crises");
-    setMobileNav(false);
-  }
+  const sidebar = (
+    <aside
+      ref={drawerRef}
+      className={`sidebar ${mobileNav ? "sidebar--open" : ""} ${
+        collapsed && !mobileNav ? "sidebar--collapsed" : ""
+      }`}
+      aria-label={t("dashboard.mainNav")}
+    >
+      <div className="sidebar-brand">
+        <Brand light href={homeHref} />
+        <button
+          ref={closeButtonRef}
+          type="button"
+          className="sidebar-mobile-close"
+          onClick={closeMobileNav}
+          aria-label={t("common.closeNavigation")}
+        >
+          <Icon name="close" size={18} />
+        </button>
+        <button
+          type="button"
+          className="sidebar-collapse"
+          onClick={toggleCollapsed}
+          aria-label={t(collapsed ? "opsX.nav.expandSidebar" : "opsX.nav.collapseSidebar")}
+          aria-expanded={!collapsed}
+        >
+          <Icon name="chevron" size={16} />
+        </button>
+      </div>
 
-  const sectionLabelKey = portalSectionLabels[pathname] ?? "dashboard.publicAccount";
+      <nav aria-label={t("dashboard.mainNav")} className="sidebar-groups">
+        {visibleGroups.map((group) => {
+          const groupActive = group.links.some((link) => isActive(pathname, link.href));
+
+          // Single-destination groups are rendered as a plain navigation item;
+          // they do not need an expandable accordion trigger.
+          if (group.links.length === 1) {
+            const link = group.links[0];
+            const active = isActive(pathname, link.href);
+            return (
+              <div className={`sidebar-group ${groupActive ? "sidebar-group--active" : ""}`} key={group.id}>
+                <Link
+                  href={link.href}
+                  className={`sidebar-group__link ${active ? "sidebar-group__link--active" : ""}`}
+                  aria-current={active ? "page" : undefined}
+                  onClick={closeMobileNav}
+                  title={t(link.labelKey)}
+                >
+                  <Icon name={link.icon} size={15} />
+                  <span>{t(link.labelKey)}</span>
+                </Link>
+              </div>
+            );
+          }
+
+          const expanded = openGroups.includes(group.id) || groupActive;
+          return (
+            <div className={`sidebar-group ${groupActive ? "sidebar-group--active" : ""}`} key={group.id}>
+              <button
+                type="button"
+                className="sidebar-group__trigger"
+                onClick={() => toggleGroup(group.id)}
+                aria-expanded={expanded}
+                aria-controls={`sidebar-group-${group.id}`}
+              >
+                <Icon name={group.icon} size={18} />
+                <span>{t(group.labelKey)}</span>
+                <span className="sidebar-group__chevron">
+                  <Icon name="chevron" size={14} />
+                </span>
+              </button>
+              {expanded ? (
+                <div className="sidebar-group__panel" id={`sidebar-group-${group.id}`}>
+                  {group.links.map((link) => (
+                    <span key={link.href}>
+                      {link.separated ? (
+                        <span className="sidebar-group__divider" aria-hidden="true" />
+                      ) : null}
+                      <Link
+                        href={link.href}
+                        className={`sidebar-group__link ${
+                          isActive(pathname, link.href) ? "sidebar-group__link--active" : ""
+                        }`}
+                        aria-current={isActive(pathname, link.href) ? "page" : undefined}
+                        onClick={closeMobileNav}
+                        title={t(link.labelKey)}
+                      >
+                        <Icon name={link.icon} size={15} />
+                        <span>{t(link.labelKey)}</span>
+                      </Link>
+                    </span>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          );
+        })}
+      </nav>
+
+      <div className="sidebar-footer">
+        <span className="sidebar-footer__avatar" title={displayName}>
+          {initials(displayName)}
+        </span>
+        <span className="sidebar-footer__identity">
+          <b>{displayName}</b>
+          <small>{roleLabel}</small>
+        </span>
+      </div>
+    </aside>
+  );
 
   return (
-    <div className={`dashboard-shell ${mode}`}>
+    <div className={`dashboard-shell ${staffMode ? "ops" : "public"}`}>
       <a className="skip-link" href="#main-content">
         {t("common.skipToMain")}
       </a>
 
-      <aside className={`sidebar ${mobileNav ? "open" : ""}`}>
-        <div className="sidebar-brand">
-          <Brand light />
-          <button type="button" onClick={() => setMobileNav(false)} aria-label={t("common.closeNavigation")}>
-            <Icon name="close" />
-          </button>
-        </div>
-
-        {mode === "ops" ? (
-          <div className="command-label">
-            <span>{t("dashboard.commandCentre")}</span>
-            <small>{t("dashboard.regionalOps")}</small>
-          </div>
-        ) : null}
-
-        <nav aria-label={t("dashboard.mainNav")}>
-          {navItems.map((item) => (
-            <Link
-              key={`${item.href}-${item.labelKey}`}
-              href={item.href}
-              className={isActive(pathname, item.href) ? "active" : ""}
-              onClick={() => setMobileNav(false)}
+      <header className="app-topbar">
+        <div className="app-topbar__inner">
+          {staffMode ? (
+            <button
+              ref={mobileTriggerRef}
+              type="button"
+              className="app-topbar__menu"
+              onClick={() => setMobileNav(true)}
+              aria-label={t("common.openNavigation")}
+              aria-expanded={mobileNav}
             >
-              <Icon name={item.icon} />
-              <span>{t(item.labelKey)}</span>
-            </Link>
-          ))}
-          {mode === "ops" && donations ? (
-            <Link
-              href="/donations"
-              className={isActive(pathname, "/donations") ? "active" : ""}
-              onClick={() => setMobileNav(false)}
-            >
-              <Icon name="heart" />
-              <span>{t("dashboard.donations")}</span>
-            </Link>
+              <Icon name="menu" size={20} />
+            </button>
           ) : null}
-        </nav>
 
-        <div className="side-bottom">
-          <Link href="/" onClick={() => setMobileNav(false)}>
-            <Icon name="home" />
-            <span>{t("dashboard.home")}</span>
-          </Link>
-          <Link href="/account" onClick={() => setMobileNav(false)}>
-            <Icon name="user" />
-            <span>{t("dashboard.profile")}</span>
-          </Link>
-          {mode === "ops" && admin ? (
-            <Link href="/admin/users" onClick={() => setMobileNav(false)}>
-              <Icon name="shield" />
-              <span>{t("dashboard.administration")}</span>
+          <Brand href={homeHref} className="app-topbar__brand" />
+
+          <nav className="app-topbar__nav" aria-label={t("dashboard.accountNav")}>
+            <Link href={homeHref} className="app-topbar__link" aria-label={t("dashboard.home")}>
+              <Icon name="home" size={17} />
+              <span>{t("dashboard.home")}</span>
             </Link>
-          ) : null}
-          <button type="button" onClick={() => void onLogout()}>
-            <Icon name="logout" />
-            <span>{t("common.logout")}</span>
-          </button>
-          <Link className="profile" href="/account" onClick={() => setMobileNav(false)}>
-            <span>{initials(displayName)}</span>
-            <div>
-              <b>{displayName}</b>
-              <small>{roleLabel}</small>
-            </div>
-            <Icon name="chevron" size={16} />
-          </Link>
-        </div>
-      </aside>
-
-      <div className="dash-content">
-        <header className="dash-mobile-header">
-          <button type="button" onClick={() => setMobileNav(true)} aria-label={t("common.openNavigation")}>
-            <Icon name="menu" />
-          </button>
-          <Brand />
-          <Link
-            href="/notifications"
-            aria-label={bellLabel}
-            onClick={() => void loadUnreadCount()}
-          >
-            {bell}
-          </Link>
-        </header>
-
-        {mode === "ops" ? (
-          <header className="ops-header">
-            <div>
-              <span className="status-dot" /> {t("dashboard.systemsOperational")}
-            </div>
-            <form onSubmit={onSearch}>
-              <label>
-                <Icon name="search" />
-                <input
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  placeholder={t("dashboard.searchPlaceholder")}
-                  aria-label={t("dashboard.searchAria")}
-                />
-              </label>
-            </form>
-            <div className="ops-header-links">
-              <Link href="/">{t("dashboard.home")}</Link>
-              <Link href="/account">{t("dashboard.profile")}</Link>
-            </div>
+            <Link href="/account" className="app-topbar__link" aria-label={t("dashboard.profile")}>
+              <Icon name="user" size={17} />
+              <span>{t("dashboard.profile")}</span>
+            </Link>
             <Link
               href="/notifications"
+              className="app-topbar__link"
               aria-label={bellLabel}
               onClick={() => void loadUnreadCount()}
             >
               {bell}
+              <span>{t("dashboard.notifications")}</span>
             </Link>
-            <div className="profile-mini">{initials(displayName)}</div>
-          </header>
-        ) : null}
+            <button
+              type="button"
+              className="app-topbar__link"
+              onClick={() => void onLogout()}
+              aria-label={t("common.logout")}
+            >
+              <Icon name="logout" size={17} />
+              <span>{t("common.logout")}</span>
+            </button>
+          </nav>
+        </div>
+      </header>
 
-        {mode === "public" ? (
-          <header className="public-topbar">
-            <div className="public-topbar-title">
-              <small>{t("dashboard.publicPortal")}</small>
-              <b>{t(sectionLabelKey)}</b>
-            </div>
-            <nav aria-label={t("dashboard.accountNav")}>
-              <Link href="/">{t("dashboard.home")}</Link>
-              {pathname !== "/dashboard" ? (
-                <Link href="/dashboard">{t("common.backToDashboard")}</Link>
-              ) : null}
-              <Link href="/account">{t("dashboard.profile")}</Link>
-              <Link
-                href="/notifications"
-                aria-label={bellLabel}
-                onClick={() => void loadUnreadCount()}
-              >
-                {bell}
-              </Link>
-              <button type="button" onClick={() => void onLogout()}>
-                <Icon name="logout" size={16} /> {t("common.logout")}
-              </button>
-            </nav>
-          </header>
-        ) : null}
+      {staffMode ? (
+        <>
+          {mobileNav ? (
+            <button
+              type="button"
+              className="sidebar-scrim"
+              onClick={closeMobileNav}
+              aria-label={t("common.closeNavigation")}
+            />
+          ) : null}
+          {sidebar}
+        </>
+      ) : null}
 
-        <main className="dashboard-main" id="main-content">
+      <div className={`dashboard-main-wrap ${staffMode ? "dashboard-main-wrap--ops" : ""}`}>
+        <main
+          className={`dashboard-main ${staffMode ? "" : "dashboard-main--public"}`}
+          id="main-content"
+        >
           {children}
         </main>
       </div>

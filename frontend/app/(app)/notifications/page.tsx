@@ -6,7 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Skeleton, Toast } from "@/components/ui";
 import { Icon } from "@/components/safeway/Icon";
 import { useT } from "@/lib/i18n";
-import { EmptyPanel } from "@/components/safeway/IntegrationNotice";
+import { EmptyPanel } from "@/components/safeway/EmptyPanel";
 import { formatDate } from "@/lib/admin";
 
 import {

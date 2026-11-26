@@ -132,7 +132,7 @@ public sealed class OperationsController(IOperationsService operations) : Contro
     [HttpGet("volunteers"), Authorize(Roles = RoleNames.VolunteerCoordinator + "," + RoleNames.EmergencyCoordinator + "," + RoleNames.SystemAdmin)]
     public async Task<IActionResult> Volunteers(CancellationToken ct) => Ok(await operations.GetVolunteersAsync(ct));
 
-    [HttpPost("volunteers/profile"), Authorize(Roles = RoleNames.Volunteer)]
+    [HttpPost("volunteers/profile"), Authorize(Roles = RoleNames.Volunteer, Policy = "VerifiedOnly")]
     public async Task<IActionResult> SaveVolunteerProfile(SaveVolunteerProfileInput input, CancellationToken ct) =>
         Ok(await operations.SaveVolunteerProfileAsync(input, ct));
 
@@ -140,7 +140,7 @@ public sealed class OperationsController(IOperationsService operations) : Contro
     public async Task<IActionResult> VerifyVolunteer(Guid id, VerificationBody body, CancellationToken ct) =>
         Ok(await operations.VerifyVolunteerAsync(id, body.Approved, body.Reason, ct));
 
-    [HttpPost("volunteers/availability"), Authorize(Roles = RoleNames.Volunteer)]
+    [HttpPost("volunteers/availability"), Authorize(Roles = RoleNames.Volunteer, Policy = "VerifiedOnly")]
     public async Task<IActionResult> AddAvailability(AddAvailabilityInput input, CancellationToken ct)
     {
         var row = await operations.AddAvailabilityAsync(input, ct);
@@ -168,11 +168,11 @@ public sealed class OperationsController(IOperationsService operations) : Contro
     public async Task<IActionResult> AssignVolunteerTask(Guid id, [FromQuery] Guid volunteerId, CancellationToken ct) =>
         Ok(await operations.AssignVolunteerTaskAsync(id, volunteerId, ct));
 
-    [HttpPost("volunteer-tasks/{id:guid}/respond"), Authorize(Roles = RoleNames.Volunteer)]
+    [HttpPost("volunteer-tasks/{id:guid}/respond"), Authorize(Roles = RoleNames.Volunteer, Policy = "VerifiedOnly")]
     public async Task<IActionResult> RespondToTask(Guid id, TaskResponse body, CancellationToken ct) =>
         Ok(await operations.RespondToTaskAsync(id, body.Accept, body.Reason, ct));
 
-    [HttpPost("volunteer-tasks/{id:guid}/complete"), Authorize(Roles = RoleNames.Volunteer)]
+    [HttpPost("volunteer-tasks/{id:guid}/complete"), Authorize(Roles = RoleNames.Volunteer, Policy = "VerifiedOnly")]
     public async Task<IActionResult> CompleteTask(Guid id, CancellationToken ct) =>
         Ok(await operations.CompleteTaskAsync(id, ct));
 

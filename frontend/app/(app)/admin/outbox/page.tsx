@@ -12,7 +12,6 @@ import {
   type Column
 } from "@/components/ui";
 import { AuthGuard } from "@/components/AuthGuard";
-import { AdminNav } from "@/components/safeway/AdminNav";
 import { api, apiJson } from "@/lib/api";
 import {
   formatDate,
@@ -184,8 +183,6 @@ export default function OutboxPage() {
             {t("admin.outbox.clearFilters")}
           </Button>
         </header>
-
-        <AdminNav />
 
         <section className="card">
           <div className="filters">

@@ -63,8 +63,11 @@ if (isDevelopment)
     builder.Configuration["EmailProtection:EncryptionKey"] ??= GenerateKey();
     builder.Configuration["EmailProtection:HashKey"] ??= GenerateKey();
     builder.Configuration["Jwt:SecretKey"] ??= GenerateKey();
+    // Development fallback uses the documented disposable canonical-schema database.
+    // The legacy migration-created CmsDb has notif.* tables and is not compatible
+    // with the current common.* model.
     builder.Configuration["ConnectionStrings:DefaultConnection"] ??=
-        "Server=(localdb)\\mssqllocaldb;Database=CmsDb;Trusted_Connection=True;TrustServerCertificate=True;";
+        "Server=(localdb)\\mssqllocaldb;Database=CmsDb_IntegrationTest;Trusted_Connection=True;TrustServerCertificate=True;";
 
     // Development-only HTTPS defaults. Production must supply these explicitly
     // through the environment variables above; sending then fails closed.

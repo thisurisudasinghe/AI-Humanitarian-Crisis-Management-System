@@ -27,7 +27,7 @@ public class DecisionRecordConfiguration
         builder.Property(x => x.DecidedAt)
             .IsRequired();
 
-        builder.HasIndex(x => x.RecommendationId);
+        builder.HasIndex(x => x.RecommendationId).IsUnique();
 
         builder.HasOne<Recommendation>()
             .WithMany()

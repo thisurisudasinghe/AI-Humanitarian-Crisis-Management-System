@@ -27,8 +27,6 @@ public static class AiModule
         services.AddScoped<IAiChatService, AiChatService>();
         services.AddScoped<IRecommendationService, RecommendationService>();
         services.AddScoped<IMatchRecommendationService, MatchRecommendationService>();
-        services.AddScoped<Cms.Application.Interfaces.AI.IDecisionService,
-            Cms.Infrastructure.Services.AI.DecisionService>();
 
         // React to request submission without ever blocking the citizen flow.
         services.TryAddEnumerable(

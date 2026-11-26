@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 using Cms.Application.DTOs;
 using Cms.Application.DTOs.Authentication;
 using Cms.Application.DTOs.Donations;
@@ -142,16 +143,10 @@ public sealed class PublicPortalEndpointTests : IClassFixture<CmsWebApplicationF
     {
         await _factory.EnsureSeededAsync();
         var email = $"enroll.volunteer.{Guid.NewGuid():N}@tests.local";
-        using var client = _factory.CreateClient();
-        await client.PostAsJsonAsync("/api/v1/auth/register", new
-        {
-            fullName = "Enrolling Volunteer",
-            email,
-            phoneNumber = "0771234567",
-            password = TestSecrets.Password
-        });
+        var messageBefore = _factory.VerificationSender.Messages.Count;
+        await RegisterAsync(email, "Enrolling Volunteer");
 
-        using var volunteer = await _factory.CreateAuthenticatedClientAsync(email);
+        using var volunteer = await CreateVerifiedClientAsync(email, messageBefore);
         var response = await volunteer.PostAsJsonAsync(
             "/api/v1/portal/enroll",
             new { purpose = "volunteer" });
@@ -180,8 +175,10 @@ public sealed class PublicPortalEndpointTests : IClassFixture<CmsWebApplicationF
         var secondEmail = $"donor.b.{Guid.NewGuid():N}@tests.local";
 
         using var registration = _factory.CreateClient();
+        var messageIndexes = new List<int>();
         foreach (var email in new[] { firstEmail, secondEmail })
         {
+            messageIndexes.Add(_factory.VerificationSender.Messages.Count);
             var created = await registration.PostAsJsonAsync("/api/v1/auth/register", new
             {
                 fullName = email.Split('.')[0],
@@ -193,8 +190,8 @@ public sealed class PublicPortalEndpointTests : IClassFixture<CmsWebApplicationF
             created.EnsureSuccessStatusCode();
         }
 
-        using var firstDonor = await _factory.CreateAuthenticatedClientAsync(firstEmail);
-        using var secondDonor = await _factory.CreateAuthenticatedClientAsync(secondEmail);
+        using var firstDonor = await CreateVerifiedClientAsync(firstEmail, messageIndexes[0]);
+        using var secondDonor = await CreateVerifiedClientAsync(secondEmail, messageIndexes[1]);
 
         var firstProfile = await firstDonor.GetFromJsonAsync<DonorDto>(
             "/api/v1/portal/donor/profile", JsonOptions);
@@ -247,5 +244,163 @@ public sealed class PublicPortalEndpointTests : IClassFixture<CmsWebApplicationF
             (await citizen.GetAsync("/api/v1/portal/donor/campaigns")).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden,
             (await admin.GetAsync("/api/v1/portal/donor/campaigns")).StatusCode);
+    }
+
+    [Fact]
+    public async Task Enroll_rejects_unverified_account_and_succeeds_after_verification()
+    {
+        await _factory.EnsureSeededAsync();
+        var email = $"enroll.verify.{Guid.NewGuid():N}@tests.local";
+        var messageBefore = _factory.VerificationSender.Messages.Count;
+        var registered = await RegisterAsync(email, "Verify Enrollment");
+
+        using var unverified = CreateClientWithToken(registered.AccessToken);
+        var denied = await unverified.PostAsJsonAsync(
+            "/api/v1/portal/enroll",
+            new { purpose = "volunteer" });
+        Assert.Equal(HttpStatusCode.Forbidden, denied.StatusCode);
+        Assert.Equal("EMAIL_VERIFICATION_REQUIRED", await GetErrorCodeAsync(denied));
+
+        using var verified = await CreateVerifiedClientAsync(email, messageBefore);
+        var accepted = await verified.PostAsJsonAsync(
+            "/api/v1/portal/enroll",
+            new { purpose = "volunteer" });
+        Assert.Equal(HttpStatusCode.OK, accepted.StatusCode);
+        var roles = await accepted.Content.ReadFromJsonAsync<AuthResponseDto>();
+        Assert.NotNull(roles);
+        Assert.Contains(RoleNames.Volunteer, roles!.Roles);
+    }
+
+    [Fact]
+    public async Task Donor_donation_write_rejects_unverified_account_and_succeeds_after_verification()
+    {
+        await _factory.EnsureSeededAsync();
+        var email = $"donor.verify.{Guid.NewGuid():N}@tests.local";
+        var messageBefore = _factory.VerificationSender.Messages.Count;
+        var registered = await RegisterAsync(email, "Verify Donor", "donor");
+
+        using var unverified = CreateClientWithToken(registered.AccessToken);
+        var denied = await unverified.PostAsJsonAsync(
+            "/api/v1/portal/donor/donations",
+            NewDonation());
+        Assert.Equal(HttpStatusCode.Forbidden, denied.StatusCode);
+        Assert.Equal("EMAIL_VERIFICATION_REQUIRED", await GetErrorCodeAsync(denied));
+
+        using var verified = await CreateVerifiedClientAsync(email, messageBefore);
+        var accepted = await verified.PostAsJsonAsync(
+            "/api/v1/portal/donor/donations",
+            NewDonation());
+        Assert.Equal(HttpStatusCode.OK, accepted.StatusCode);
+    }
+
+    [Fact]
+    public async Task Volunteer_write_rejects_unverified_account_and_succeeds_after_verification()
+    {
+        await _factory.EnsureSeededAsync();
+        var email = $"volunteer.verify.{Guid.NewGuid():N}@tests.local";
+        var messageBefore = _factory.VerificationSender.Messages.Count;
+        var registered = await RegisterAsync(email, "Verify Volunteer", "volunteer");
+        var availability = new
+        {
+            startsAt = DateTime.UtcNow.AddHours(1),
+            endsAt = DateTime.UtcNow.AddHours(3)
+        };
+
+        using var unverified = CreateClientWithToken(registered.AccessToken);
+        var denied = await unverified.PostAsJsonAsync(
+            "/api/v1/volunteers/availability",
+            availability);
+        Assert.Equal(HttpStatusCode.Forbidden, denied.StatusCode);
+        Assert.Equal("EMAIL_VERIFICATION_REQUIRED", await GetErrorCodeAsync(denied));
+
+        using var verified = await CreateVerifiedClientAsync(email, messageBefore);
+        var profile = await verified.PostAsJsonAsync(
+            "/api/v1/volunteers/profile",
+            new
+            {
+                skillsJson = "[]",
+                languagesJson = "[]",
+                lat = 6.9,
+                lng = 79.9,
+                active = true
+            });
+        Assert.Equal(HttpStatusCode.OK, profile.StatusCode);
+
+        var accepted = await verified.PostAsJsonAsync(
+            "/api/v1/volunteers/availability",
+            availability);
+        Assert.Equal(HttpStatusCode.Created, accepted.StatusCode);
+    }
+
+    [Fact]
+    public async Task Unverified_account_can_still_read_portal_data()
+    {
+        await _factory.EnsureSeededAsync();
+        var email = $"portal.reads.{Guid.NewGuid():N}@tests.local";
+        var registered = await RegisterAsync(email, "Read-Only Donor", "donor");
+        using var client = CreateClientWithToken(registered.AccessToken);
+
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/v1/portal/donor/profile")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/v1/portal/donor/campaigns")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/v1/portal/donor/donations")).StatusCode);
+    }
+
+    private async Task<AuthResponseDto> RegisterAsync(
+        string email,
+        string fullName,
+        string? accountPurpose = null)
+    {
+        using var client = _factory.CreateClient();
+        var response = await client.PostAsJsonAsync("/api/v1/auth/register", new
+        {
+            fullName,
+            email,
+            phoneNumber = "0771234567",
+            password = TestSecrets.Password,
+            accountPurpose
+        });
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<AuthResponseDto>(JsonOptions)
+            ?? throw new InvalidOperationException("Registration response was empty.");
+    }
+
+    private HttpClient CreateClientWithToken(string accessToken)
+    {
+        var client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", accessToken);
+        return client;
+    }
+
+    private async Task<HttpClient> CreateVerifiedClientAsync(string email, int messageBefore)
+    {
+        var token = ExtractToken(_factory.VerificationSender.Messages.Skip(messageBefore).First().Text);
+        using (var verifyClient = _factory.CreateClient())
+        {
+            var verify = await verifyClient.PostAsJsonAsync(
+                "/api/v1/auth/email/verify",
+                new { token });
+            Assert.Equal(HttpStatusCode.OK, verify.StatusCode);
+        }
+
+        var login = await _factory.LoginAsync(email);
+        return CreateClientWithToken(login.AccessToken);
+    }
+
+    private static CreateDonationRequestDto NewDonation() => new()
+    {
+        DonationType = DonationType.Monetary,
+        Amount = 25m,
+        Currency = "USD",
+        Notes = "Verification gate regression"
+    };
+
+    private static string ExtractToken(string message) =>
+        Regex.Match(message, @"[?&]token=([^&\s]+)").Groups[1].Value;
+
+    private static async Task<string> GetErrorCodeAsync(HttpResponseMessage response)
+    {
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        return document.RootElement.GetProperty("code").GetString() ?? string.Empty;
     }
 }

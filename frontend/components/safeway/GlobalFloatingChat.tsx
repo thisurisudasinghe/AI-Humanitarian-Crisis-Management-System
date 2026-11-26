@@ -3,7 +3,7 @@
 import { useAuth } from "@/lib/auth";
 import { localizedErrorMessage } from "@/lib/i18n/errors";
 import { ApiError } from "@/lib/api";
-import { sendChatMessage } from "@/lib/aiChat";
+import { MAX_CHAT_MESSAGE_LENGTH, sendChatMessage } from "@/lib/aiChat";
 import { useI18n } from "@/lib/i18n";
 import { Icon } from "@/components/safeway/Icon";
 import { usePathname } from "next/navigation";
@@ -182,6 +182,17 @@ export function GlobalFloatingChat() {
   const ask = useCallback(async (rawQuestion: string) => {
     const question = rawQuestion.trim();
     if (!question || sending) return;
+    if (question.length > MAX_CHAT_MESSAGE_LENGTH) {
+      const tooLongMessage: ChatMessage = {
+        id: createId(),
+        role: "assistant",
+        text: t("chat.lengthError", { max: MAX_CHAT_MESSAGE_LENGTH }),
+        source: "Error",
+        createdAt: Date.now()
+      };
+      setMessages((current) => [...current, tooLongMessage].slice(-MAX_STORED_MESSAGES));
+      return;
+    }
     const userMessage: ChatMessage = { id: createId(), role: "user", text: question, createdAt: Date.now() };
     setMessages((current) => [...current, userMessage].slice(-MAX_STORED_MESSAGES));
     setDraft("");
@@ -292,7 +303,7 @@ export function GlobalFloatingChat() {
 
           <div className="safeway-chat-safety" role="note">
             <Icon name="shield" size={15} />
-            <span>{t("chat.safety")}</span>
+            <span>{t("chat.safety")} {t("chat.safetyDetail")}</span>
           </div>
 
           <div ref={logRef} className="safeway-chat-log" role="log" aria-live="polite" aria-relevant="additions" aria-busy={sending}>
@@ -330,9 +341,10 @@ export function GlobalFloatingChat() {
               id="safeway-chat-input"
               ref={inputRef}
               rows={2}
-              maxLength={2000}
+              maxLength={MAX_CHAT_MESSAGE_LENGTH}
               value={draft}
               placeholder={t("chat.placeholder")}
+              aria-describedby="safeway-chat-input-help"
               onChange={(event) => setDraft(event.target.value)}
               onKeyDown={(event) => {
                 if (event.key === "Enter" && !event.shiftKey) {
@@ -341,12 +353,17 @@ export function GlobalFloatingChat() {
                 }
               }}
             />
+            <span id="safeway-chat-input-help" className="safeway-chat-sr-only">
+              {t("chat.inputHelp", { max: MAX_CHAT_MESSAGE_LENGTH })}
+            </span>
             <button type="submit" className="safeway-chat-send" disabled={sending || !draft.trim()} aria-label={t("chat.send")} title={t("chat.send")}>
               <Icon name="arrow" size={18} />
             </button>
           </form>
 
-          <footer className="safeway-chat-footer">{t("chat.footer")}</footer>
+          <footer className="safeway-chat-footer">
+            {t("chat.footer")} {t("chat.footerDetail")}
+          </footer>
         </section>
       ) : null}
 

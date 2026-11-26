@@ -5,12 +5,8 @@
  * auth/refresh/error handling stays in `lib/api.ts`; this module only adds
  * DEV2-specific payload mapping and response types.
  */
-import {
-  api,
-  apiJson,
-  ApiError,
-  EMAIL_VERIFICATION_REQUIRED
-} from "@/lib/api";
+import { api, apiJson, ApiError } from "@/lib/api";
+import { localizedErrorMessage } from "@/lib/i18n/errors";
 
 export interface CrisisReportInput {
   category: string;
@@ -19,11 +15,15 @@ export interface CrisisReportInput {
   urgency: string;
   lat: number;
   lng: number;
+  householdSize: number;
+  accessibilityNeeds?: string;
 }
 
 export interface CrisisReportReceipt {
   reference: string;
   submittedAt: string;
+  status: RequestStatus;
+  statusConfirmed: boolean;
   evidenceAttached?: boolean;
   evidenceFileName?: string;
   evidenceError?: string;
@@ -98,6 +98,40 @@ export interface CaseRequestListItem {
   isOverdue: boolean;
 }
 
+export interface RequestTimelineEntry {
+  id: string;
+  fromStatus: RequestStatus;
+  toStatus: RequestStatus;
+  actorDisplayName?: string | null;
+  reason?: string | null;
+  createdAt: string;
+}
+
+export interface RequestAttachmentMetadata {
+  id: string;
+  originalFileName: string;
+  contentType: string;
+  sizeBytes: number;
+  createdAt: string;
+}
+
+export interface CaseRequestDetail extends CaseRequestListItem {
+  requesterUserId: string;
+  crisisId?: string | null;
+  lat: number;
+  lng: number;
+  address?: string | null;
+  householdSize: number;
+  accessibilityNeeds?: string | null;
+  assignedToUserId?: string | null;
+  mergedIntoRequestId?: string | null;
+  verifiedAt?: string | null;
+  triagedAt?: string | null;
+  closedAt?: string | null;
+  attachments: RequestAttachmentMetadata[];
+  timeline: RequestTimelineEntry[];
+}
+
 export interface CrisisRecord {
   id: string;
   name: string;
@@ -135,6 +169,7 @@ interface CreateCaseRequestPayload {
   lng: number;
   address: string;
   householdSize: number;
+  accessibilityNeeds?: string;
 }
 
 export interface StaffCaseQuery {
@@ -205,6 +240,7 @@ export async function submitCrisisReport(
     throw new Error("Valid latitude and longitude are required.");
   }
 
+  const accessibilityNeeds = clean(input.accessibilityNeeds ?? "");
   const payload: CreateCaseRequestPayload = {
     category: reportCategoryToCaseCategory[input.category] ?? "Other",
     urgency: reportSeverityToCaseUrgency[input.urgency] ?? "Low",
@@ -212,15 +248,44 @@ export async function submitCrisisReport(
     lat: input.lat,
     lng: input.lng,
     address: clean(input.location),
-    householdSize: 1
+    householdSize: Math.min(100, Math.max(1, Math.trunc(input.householdSize) || 1)),
+    ...(accessibilityNeeds ? { accessibilityNeeds } : {})
   };
 
   const created = await apiJson<{ id: string }>("/api/v1/requests", "POST", payload);
 
-  return {
-    reference: created.id,
-    submittedAt: new Date().toISOString()
-  };
+  // The create endpoint returns only the id. Fetch the newly created request so
+  // the confirmation shows the persisted timestamp and current status instead
+  // of a client-side guess. A failed detail fetch must not hide a successful
+  // submission from the citizen.
+  try {
+    const detail = await getCaseRequestDetail(created.id);
+    return {
+      reference: created.id,
+      submittedAt: detail.submittedAt,
+      status: detail.status,
+      statusConfirmed: true
+    };
+  } catch {
+    // Never invent a submission time. The reference is real because the
+    // create call succeeded, but the receipt stays explicitly unconfirmed.
+    return {
+      reference: created.id,
+      submittedAt: "",
+      status: "Submitted",
+      statusConfirmed: false
+    };
+  }
+}
+
+/** Reads the server-side status history for a request. */
+export function getCaseRequestTimeline(id: string): Promise<RequestTimelineEntry[]> {
+  return api<RequestTimelineEntry[]>(`/api/v1/requests/${encodeURIComponent(id)}/timeline`);
+}
+
+/** Reads the full request DTO, including address, household and timeline. */
+export function getCaseRequestDetail(id: string): Promise<CaseRequestDetail> {
+  return api<CaseRequestDetail>(`/api/v1/requests/${encodeURIComponent(id)}`);
 }
 
 /**
@@ -288,6 +353,26 @@ export function listMyCaseRequests(
   );
 }
 
+/**
+ * The list DTO intentionally stays small. Citizen cards need the address and
+ * latest timeline entry, so fetch those details for the visible slice only.
+ */
+export async function loadCaseRequestDetails(
+  items: readonly CaseRequestListItem[],
+  limit = 12
+): Promise<Record<string, CaseRequestDetail | null>> {
+  const entries = await Promise.all(
+    items.slice(0, limit).map(async (item) => {
+      try {
+        return [item.id, await getCaseRequestDetail(item.id)] as const;
+      } catch {
+        return [item.id, null] as const;
+      }
+    })
+  );
+  return Object.fromEntries(entries);
+}
+
 export function listCrises(): Promise<CrisisRecord[]> {
   return api<CrisisRecord[]>("/api/v1/crises");
 }
@@ -335,18 +420,5 @@ export function caseRequestErrorMessage(
   if (cause instanceof ApiError && cause.status === 401) {
     return t ? t("apiErrors.unauthorized") : "Sign in as a citizen to submit and track reports.";
   }
-
-  if (
-    cause instanceof ApiError &&
-    (cause.code === EMAIL_VERIFICATION_REQUIRED ||
-      cause.code === "EMAIL_NOT_VERIFIED")
-  ) {
-    return "Verify your Safeway email address before submitting a report.";
-  }
-
-  if (cause instanceof ApiError && cause.status === 403) {
-    return "Verify your Safeway email address, then sign in again to continue.";
-  }
-
-  return cause instanceof Error ? cause.message : fallback;
+  return t ? localizedErrorMessage(cause, t) : fallback;
 }

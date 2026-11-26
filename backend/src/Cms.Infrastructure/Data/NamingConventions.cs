@@ -13,6 +13,17 @@ public static class NamingConventions
     {
         foreach (var entityType in modelBuilder.Model.GetEntityTypes())
         {
+            // Preserve only the known legacy Dev 3 outbox mapping. The canonical
+            // V4 mapping uses common.outbox_messages and must stay snake_case.
+            var isLegacyNotifOutbox =
+                string.Equals(entityType.GetSchema(), "notif", StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(entityType.GetTableName(), "OutboxMessages", StringComparison.OrdinalIgnoreCase);
+
+            if (isLegacyNotifOutbox)
+            {
+                continue;
+            }
+
             var tableName = entityType.GetTableName();
             if (!string.IsNullOrWhiteSpace(tableName))
             {

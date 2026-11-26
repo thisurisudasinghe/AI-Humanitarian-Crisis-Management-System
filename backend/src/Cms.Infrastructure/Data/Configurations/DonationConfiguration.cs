@@ -34,6 +34,30 @@ public class DonationConfiguration : IEntityTypeConfiguration<Donation>
         builder.Property(donation => donation.EstimatedValue)
             .HasPrecision(18, 2);
 
+        builder.Property(donation => donation.Category)
+            .HasMaxLength(80);
+
+        builder.Property(donation => donation.Unit)
+            .HasMaxLength(80);
+
+        builder.Property(donation => donation.LocationText)
+            .HasMaxLength(300);
+
+        // Coordinates are CLR doubles; SQL Server decimal columns cannot be read
+        // into a double by the provider. Use the approximate numeric type that
+        // matches the entity and DTOs, while validation still bounds the values.
+        builder.Property(donation => donation.Latitude)
+            .HasColumnType("float");
+
+        builder.Property(donation => donation.Longitude)
+            .HasColumnType("float");
+
+        builder.Property(donation => donation.DeliveryMethod)
+            .HasMaxLength(80);
+
+        builder.Property(donation => donation.IdempotencyKey)
+            .HasMaxLength(100);
+
         builder.Property(donation => donation.ReceivedAt)
             .IsRequired();
 
@@ -54,9 +78,20 @@ public class DonationConfiguration : IEntityTypeConfiguration<Donation>
             .HasConstraintName("FK_donations_donors")
             .OnDelete(DeleteBehavior.NoAction);
 
+        builder.HasOne(donation => donation.Campaign)
+            .WithMany()
+            .HasForeignKey(donation => donation.CampaignId)
+            .HasConstraintName("FK_donations_campaigns_portal")
+            .OnDelete(DeleteBehavior.NoAction);
+
         builder.HasIndex(donation => donation.Reference, "UX_donations_reference")
             .IsUnique();
 
+        builder.HasIndex(donation => donation.IdempotencyKey, "UX_donations_idempotency_key")
+            .IsUnique()
+            .HasFilter("idempotency_key IS NOT NULL");
+
+        builder.HasIndex(donation => donation.CampaignId, "IX_donations_campaign_id");
         builder.HasIndex(donation => donation.DonorId, "IX_donations_donor_id");
         builder.HasIndex(donation => donation.ReceivedAt, "IX_donations_received_at");
         builder.HasIndex(donation => donation.Status, "IX_donations_status");

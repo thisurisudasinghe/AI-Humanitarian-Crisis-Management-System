@@ -23,4 +23,11 @@ public static class AuthorizedRoles
     public const string Deciders =
         Roles.CaseManager + "," + Roles.EmergencyCoordinator + "," + Roles.LogisticsManager + "," +
         Roles.ShelterAdmin + "," + Roles.VolunteerCoordinator;
+
+    /// <summary>
+    /// Explicit reviewers for staff access applications. SystemAdmin is included
+    /// by name rather than assumed through a broad wildcard policy.
+    /// </summary>
+    public const string StaffAccessReviewers =
+        Roles.EmergencyCoordinator + "," + Roles.SystemAdmin;
 }

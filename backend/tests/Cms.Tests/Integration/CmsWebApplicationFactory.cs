@@ -55,6 +55,7 @@ public sealed class CmsWebApplicationFactory : WebApplicationFactory<Program>
 
     public const string AdminEmail = "admin@tests.local";
     public const string OfficerEmail = "officer@tests.local";
+    public const string CoordinatorEmail = "coordinator@tests.local";
     public const string CitizenEmail = "citizen@tests.local";
     public const string InactiveEmail = "inactive@tests.local";
 
@@ -155,6 +156,8 @@ public sealed class CmsWebApplicationFactory : WebApplicationFactory<Program>
                 [RoleNames.SystemAdmin], organisation.Id);
             AddUser(db, emailProtection, passwordHashing, OfficerEmail, "Field Officer",
                 [RoleNames.PartnerOfficer, RoleNames.CaseManager], organisation.Id);
+            AddUser(db, emailProtection, passwordHashing, CoordinatorEmail, "Test Coordinator",
+                [RoleNames.EmergencyCoordinator], organisation.Id);
             AddUser(db, emailProtection, passwordHashing, CitizenEmail, "Test Citizen",
                 [RoleNames.Citizen], null);
             AddUser(db, emailProtection, passwordHashing, InactiveEmail, "Inactive User",

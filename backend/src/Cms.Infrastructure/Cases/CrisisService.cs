@@ -1,5 +1,7 @@
+using System.ComponentModel.DataAnnotations;
 using Cms.Application.Cases.DTOs;
 using Cms.Application.Cases.Interfaces;
+using Cms.Application.DTOs.Public;
 using Cms.Application.Interfaces;
 using ICurrentUser = Cms.Application.Contracts.ICurrentUser;
 using Cms.Domain.Cases;
@@ -8,6 +10,8 @@ using Cms.Domain.Enums.Cases;
 using Cms.Domain.Exceptions;
 using Cms.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using AuditActions = Cms.Application.Common.AuditActions;
+using DomainValidationException = Cms.Domain.Exceptions.ValidationException;
 
 namespace Cms.Infrastructure.Cases;
 
@@ -239,13 +243,14 @@ public sealed class CrisisService : ICrisisService
         await _context.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task<IReadOnlyList<AlertDto>> ListPublicAlertsAsync(CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<AlertPublicationDto>> ListAlertsForPublicationAsync(
+        CancellationToken cancellationToken = default)
     {
+        EnsureCoordinator();
         return await _context.Set<Alert>()
             .AsNoTracking()
-            .Where(a => a.Status == AlertStatus.Published)
-            .OrderByDescending(a => a.PublishedAt ?? a.CreatedAt)
-            .Select(a => new AlertDto
+            .OrderByDescending(a => a.CreatedAt)
+            .Select(a => new AlertPublicationDto
             {
                 Id = a.Id,
                 CrisisId = a.CrisisId,
@@ -253,9 +258,30 @@ public sealed class CrisisService : ICrisisService
                 Body = a.Body,
                 Status = a.Status,
                 PublishedAt = a.PublishedAt,
-                CreatedAt = a.CreatedAt
+                PublicVisible = a.PublicVisible,
+                PublicTitle = a.PublicTitle,
+                PublicSummary = a.PublicSummary,
+                CrisisType = a.PublicType,
+                Severity = a.Severity,
+                District = a.District,
+                Latitude = a.Latitude,
+                Longitude = a.Longitude,
+                ExpiresAt = a.PublicExpiresAt,
+                PublishedByUserId = a.PublishedByUserId
             })
             .ToListAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Legacy anonymous alert feed. It now reuses the explicit map-publication
+    /// projection so private editorial Title/Body can never be exposed, and a
+    /// draft/internal alert can never become public merely because its editorial
+    /// status was set to Published.
+    /// </summary>
+    public async Task<IReadOnlyList<PublicMapIncidentDto>> ListPublicAlertsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        return await GetPublicIncidentsAsync(cancellationToken);
     }
 
     public async Task<IReadOnlyList<ServiceCentreDto>> ListPublicServiceCentresAsync(
@@ -263,7 +289,7 @@ public sealed class CrisisService : ICrisisService
     {
         return await _context.Set<ServiceCentre>()
             .AsNoTracking()
-            .Where(s => s.IsActive)
+            .Where(s => s.IsActive && s.PublicVisible)
             .OrderBy(s => s.Name)
             .Select(s => new ServiceCentreDto
             {
@@ -277,6 +303,191 @@ public sealed class CrisisService : ICrisisService
                 OpeningHours = s.OpeningHours
             })
             .ToListAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<StaffServiceCentreDto>> ListStaffServiceCentresAsync(
+        CancellationToken cancellationToken = default)
+    {
+        EnsureCoordinator();
+        return await _context.Set<ServiceCentre>()
+            .AsNoTracking()
+            .OrderBy(s => s.Name)
+            .Select(s => new StaffServiceCentreDto
+            {
+                Id = s.Id,
+                CrisisId = s.CrisisId,
+                Name = s.Name,
+                Address = s.Address,
+                Lat = s.Lat,
+                Lng = s.Lng,
+                Services = s.Services,
+                OpeningHours = s.OpeningHours,
+                IsActive = s.IsActive,
+                PublicVisible = s.PublicVisible
+            })
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task PublishAlertToMapAsync(
+        Guid alertId,
+        PublishMapAlertDto request,
+        CancellationToken cancellationToken = default)
+    {
+        EnsureCoordinator();
+        ArgumentNullException.ThrowIfNull(request);
+        ValidateMapPublication(request);
+
+        var alert = await _context.Set<Alert>()
+            .FirstOrDefaultAsync(a => a.Id == alertId, cancellationToken)
+            ?? throw new NotFoundException("ALERT_NOT_FOUND", $"Alert {alertId} was not found.");
+
+        var now = _dateTimeService.UtcNow;
+
+        if (!request.Visible)
+        {
+            // Hiding removes the whole public payload. Private Title/Body stay intact.
+            alert.PublicVisible = false;
+            alert.PublicTitle = null;
+            alert.PublicSummary = null;
+            alert.PublicType = null;
+            alert.Severity = null;
+            alert.District = null;
+            alert.Latitude = null;
+            alert.Longitude = null;
+            alert.PublicExpiresAt = null;
+            alert.UpdatedAt = now;
+
+            await _writer.AddAuditAsync(
+                AuditActions.AlertHiddenFromMap,
+                "Alert",
+                alertId,
+                new { alertId },
+                _currentUser.UserId,
+                cancellationToken);
+            await _context.SaveChangesAsync(cancellationToken);
+            return;
+        }
+
+        var firstPublished = !alert.PublishedAt.HasValue;
+        alert.PublicVisible = true;
+        alert.PublicTitle = request.PublicTitle!.Trim();
+        alert.PublicSummary = request.PublicSummary!.Trim();
+        alert.PublicType = request.CrisisType!.Trim();
+        alert.Severity = string.IsNullOrWhiteSpace(request.Severity)
+            ? null
+            : request.Severity.Trim();
+        alert.District = request.District?.Trim();
+        alert.Latitude = request.Latitude!.Value;
+        alert.Longitude = request.Longitude!.Value;
+        alert.PublicExpiresAt = request.ExpiresAt;
+        alert.PublishedByUserId = _currentUser.UserId;
+        // Publication for anonymous consumers is controlled only by PublicVisible.
+        // Editorial Alert.Status is retained for internal workflow state and is
+        // never used as a public disclosure flag.
+        alert.PublishedAt ??= now;
+        alert.UpdatedAt = now;
+
+        await _writer.AddAuditAsync(
+            AuditActions.AlertPublishedToMap,
+            "Alert",
+            alertId,
+            new
+            {
+                alertId,
+                publicTitle = alert.PublicTitle,
+                type = alert.PublicType,
+                severity = alert.Severity,
+                district = alert.District,
+                expiresAt = alert.PublicExpiresAt,
+                firstPublished
+            },
+            _currentUser.UserId,
+            cancellationToken);
+        await _context.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task<IReadOnlyList<PublicMapIncidentDto>> GetPublicIncidentsAsync(
+        CancellationToken cancellationToken)
+    {
+        var now = _dateTimeService.UtcNow;
+        return await _context.Set<Alert>()
+            .AsNoTracking()
+            .Where(a => a.PublicVisible
+                        && (a.PublicExpiresAt == null || a.PublicExpiresAt > now))
+            .OrderByDescending(a => a.PublishedAt ?? a.CreatedAt)
+            .Select(a => new PublicMapIncidentDto(
+                a.Id,
+                a.PublicTitle,
+                a.PublicSummary,
+                a.PublicType,
+                a.Severity,
+                nameof(AlertStatus.Published),
+                a.District,
+                a.Latitude,
+                a.Longitude,
+                a.PublishedAt,
+                a.PublicExpiresAt))
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<PublicMapDto> GetPublicMapAsync(CancellationToken cancellationToken = default)
+    {
+        var now = _dateTimeService.UtcNow;
+
+        var incidents = await GetPublicIncidentsAsync(cancellationToken);
+
+        var shelters = await _context.Shelters
+            .AsNoTracking()
+            .Where(s => s.Approved)
+            .OrderBy(s => s.Name)
+            .Select(s => new PublicMapShelterDto(
+                s.Id,
+                s.Name,
+                s.Lat,
+                s.Lng,
+                s.Capacity,
+                s.Occupancy,
+                s.Services))
+            .ToListAsync(cancellationToken);
+
+        var aidLocations = await _context.Set<ServiceCentre>()
+            .AsNoTracking()
+            .Where(s => s.PublicVisible && s.IsActive)
+            .OrderBy(s => s.Name)
+            .Select(s => new PublicMapAidLocationDto(
+                s.Id,
+                s.Name,
+                s.Address,
+                s.Lat,
+                s.Lng,
+                s.Services,
+                s.OpeningHours))
+            .ToListAsync(cancellationToken);
+
+        return new PublicMapDto(now, incidents, shelters, aidLocations);
+    }
+
+    public async Task SetServiceCentrePublicVisibilityAsync(
+        Guid serviceCentreId,
+        bool isPublic,
+        CancellationToken cancellationToken = default)
+    {
+        EnsureCoordinator();
+        var centre = await _context.Set<ServiceCentre>()
+            .FirstOrDefaultAsync(s => s.Id == serviceCentreId, cancellationToken)
+            ?? throw new NotFoundException("SERVICE_CENTRE_NOT_FOUND", $"Service centre {serviceCentreId} was not found.");
+
+        centre.PublicVisible = isPublic;
+        centre.UpdatedAt = _dateTimeService.UtcNow;
+
+        await _writer.AddAuditAsync(
+            AuditActions.ServiceCentrePublicVisibilityChanged,
+            "ServiceCentre",
+            serviceCentreId,
+            new { serviceCentreId, isPublic },
+            _currentUser.UserId,
+            cancellationToken);
+        await _context.SaveChangesAsync(cancellationToken);
     }
 
     public async Task<CrisisSummaryDto> GetSummaryAsync(
@@ -308,6 +519,21 @@ public sealed class CrisisService : ICrisisService
             OverdueTotal = requests.Count(r =>
                 RequestStateMachine.IsOpen(r.Status) && _overduePolicy.IsOverdue(r.SubmittedAt, now))
         };
+    }
+
+    private static void ValidateMapPublication(PublishMapAlertDto request)
+    {
+        var errors = request.Validate(new ValidationContext(request))
+            .Where(result => result.MemberNames.Any())
+            .GroupBy(result => result.MemberNames.First())
+            .ToDictionary(
+                group => group.Key,
+                group => group.Select(result => result.ErrorMessage ?? "Invalid value.").ToArray());
+
+        if (errors.Count > 0)
+        {
+            throw new DomainValidationException("MAP_PUBLICATION_INVALID", errors);
+        }
     }
 
     private void EnsureCoordinator()

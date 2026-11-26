@@ -81,6 +81,20 @@ export interface DonationAllocationDto {
   createdAt: string;
 }
 
+export interface DonationItemDto {
+  id: string;
+  donationId: string;
+  name: string;
+  category?: string | null;
+  quantity: number;
+  unit?: string | null;
+  condition?: string | null;
+  notes?: string | null;
+  expiryDate?: string | null;
+  packaging?: string | null;
+  createdAt: string;
+}
+
 export interface DonationDto {
   id: string;
   reference: string;
@@ -92,6 +106,16 @@ export interface DonationDto {
   itemDescription?: string | null;
   quantity?: number | null;
   estimatedValue?: number | null;
+  campaignId?: string | null;
+  campaignName?: string | null;
+  category?: string | null;
+  unit?: string | null;
+  locationText?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  deliveryMethod?: string | null;
+  idempotencyKey?: string | null;
+  items?: DonationItemDto[];
   allocatableValue?: number | null;
   allocatedAmount: number;
   unallocatedAmount?: number | null;
